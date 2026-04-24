@@ -1,0 +1,295 @@
+﻿@using Library.API.Goals.Models
+@using Library.API.Goals.Models.RatingPeriod
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@inject IRatingPeriodsServices RatingPeriodsService
+@inject DialogService DialogService
+
+<PageTitle>Rating Periods</PageTitle>
+
+<!-- Header (Always Visible) -->
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px" Class="mb-4">
+    <RadzenIcon Icon="date_range" Style="font-size: 32px; color:#000000;" />
+    <RadzenText Text="Rating Periods" Style="font-weight: 700; font-size: 28px; color:#111827;" />
+</RadzenStack>
+
+ <RadzenStack Orientation="Orientation.Horizontal" class="mb-3" Style="gap: 8px;">
+    <RadzenTextBox @bind-Value="_searchText"
+                   @oninput="@OnSearchInput"
+                   Placeholder="Search status..."
+                   Style="width: 100%;" />
+    @if (!string.IsNullOrWhiteSpace(_searchText))
+    {
+        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Click="@ClearSearch" />
+    }
+    <RadzenButton Icon="add" title="Add Status" Click="OnAddNew" />
+</RadzenStack>
+
+@if (isLoading)
+{
+    <!-- Loader -->
+    <div style="display: flex; justify-content: center; align-items: center; height: 60vh; flex-direction: column;">
+        <RadzenIcon Icon="autorenew" Style="font-size: 60px; color:#000000; animation: spin 1s linear infinite;" />
+        <RadzenText Text="Loading Rating Periods..."
+                    Style="margin-top: 12px; font-size: 18px; color:#374151; font-weight: 600;" />
+    </div>
+}
+else if (filteredRatingPeriods != null && filteredRatingPeriods.Any())
+{
+    <!-- Data Grid for Rating Periods -->
+    <RadzenDataGrid TItem="RatingPeriodDto"
+                    Data="@filteredRatingPeriods"
+                    AllowPaging="true"
+                    PageSize="10"
+                    AllowSorting="true"
+                    AllowFiltering="true"
+                    FilterMode="FilterMode.Advanced"
+                    Responsive="true"
+                    AllowColumnResize="true"
+                    Style="overflow-x: auto; display: block; white-space: nowrap;"
+                    Class="shadow-sm rounded-lg">
+        <Columns>
+            <RadzenDataGridColumn TItem="RatingPeriodDto" Property="Name" Title="Name" />
+            <RadzenDataGridColumn TItem="RatingPeriodDto" Property="DisplayName" Title="Display Name" />
+            <RadzenDataGridColumn TItem="RatingPeriodDto" Title="No. of Dates">
+                <Template Context="data">
+                    @(noOfDates.TryGetValue(data.UUID ?? string.Empty, out var count) ? count : 0)
+                </Template>
+            </RadzenDataGridColumn>
+
+            <!-- Action Buttons -->
+            <RadzenDataGridColumn TItem="RatingPeriodDto" Context="data" Title="Actions" Width="150px">
+                <Template Context="data">
+                    <div class="@(data.UUID == _selectedUUID ? "hover-row selected-row" : "hover-row")">
+                        <RadzenButton Icon="edit"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Info"
+                                      Click="@(args => OnEdit(data))"
+                                      @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="delete"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Click="@(args => OnDelete(data))"
+                                      @onclick:stopPropagation="true" />
+                    </div>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+else
+{
+    <!-- No Data Message -->
+    <RadzenText Text="No rating periods found. Click 'Add New Rating Period' to create your first rating period."
+                Style="display:block; text-align: center; margin-top: 2rem; color: #6b7280; font-style: italic; font-size: 16px;" />
+}
+
+<style>
+    @@keyframes spin {
+        from
+
+    {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+
+    }
+</style>
+
+
+
+@code {
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+    // List of all rating periods (fetched from API)
+    private List<RatingPeriodDto>? ratingPeriods = new();
+    // Filtered list for search functionality
+    private List<RatingPeriodDto>? filteredRatingPeriods = new();
+    // List of rating period dates
+    private List<RatingPeriodDateDto>? ratingPeriodDates = new();
+    // Search text input from user
+    private string _searchText = string.Empty;
+    // Currently selected UUID (used when editing)
+    private string? _selectedUUID;
+    // Flag to show/hide loader
+    private bool isLoading = true;
+    // Dictionary to hold number of dates per rating period
+    private Dictionary<string, int> noOfDates = new();
+    [Parameter] public Enumerables.MenuItemSubTypes ItemSub { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemSubTypes> ItemSubChanged { get; set; }
+
+
+    /// <summary>
+    /// Lifecycle method triggered when the component is initialized.
+    /// Subscribes to the RightSidebarService refresh event and loads initial data.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (_rightSidebarService != null)
+        {
+            // Subscribe to the sidebar's refresh event so we can reload data when needed
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+        await LoadData(); // Fetch data from API
+        await base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Loads rating periods and rating period dates from the service.
+    /// Populates noOfDates dictionary and filters out deleted periods.
+    /// </summary>
+    private async Task LoadData()
+    {
+        isLoading = true; // Show loader
+        try
+        {
+            ratingPeriods = await RatingPeriodsService.GetRatingPeriodTypes();
+            ratingPeriodDates = await RatingPeriodsService.GetRatingPeriodDates();
+            //RatingPeriodUUID => Count of active dates
+            noOfDates = ratingPeriods?
+               .Where(p => p.UUID != null)
+               .ToDictionary(
+                   p => p.UUID!,
+                   p => ratingPeriodDates?.Count(d => d.RatingPeriodsUUID == p.UUID && !d.isDeleted) ?? 0
+               ) ?? new();
+            // Remove deleted rating periods from filtered list
+            filteredRatingPeriods = ratingPeriods?.Where(p => !p.isDeleted).ToList() ?? new();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false; // Hide loader
+        }
+    }
+
+    /// <summary>
+    /// Handles refresh events triggered by the RightSidebarService.
+    /// Reloads data and updates the UI when certain control types are refreshed.
+    /// </summary>
+    /// <param name="controlType">Type of control that triggered refresh.</param>
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        if (controlType == ControlTypes.sb_Goals_RatingPeriods || controlType == ControlTypes.sb_Goals_AddRatingPeriod)
+        {
+            await InvokeAsync(async () => await LoadData());
+            StateHasChanged(); //  UI updates
+        }
+    }
+
+ 
+
+    /// <summary>
+    /// Opens the RightSidebar in "Add New Rating Period" mode.
+    /// </summary>
+    private void OnAddNew()
+    {
+		RatingPeriodDto period = new();
+        // Open the Add New Rating Period sidebar by passing a special context
+        _rightSidebarService.Open(ControlTypes.sb_Goals_RatingPeriods, period); // New control type for add functionality
+    }
+
+    /// <summary>
+    /// Opens the RightSidebar in edit mode for the selected rating period.
+    /// </summary>
+    /// <param name="period">The rating period to edit.</param>
+    private void OnEdit(RatingPeriodDto period)
+    {
+        _selectedUUID = period.UUID; 
+        _rightSidebarService.Open(ControlTypes.sb_Goals_RatingPeriods, period); // Existing control type for edit functionality
+    }
+
+    /// <summary>
+    /// Deletes a rating period after confirmation from the user.
+    /// Reloads data and updates the UI on successful delete.
+    /// </summary>
+    /// <param name="period">The rating period to delete.</param>
+    private async Task OnDelete(RatingPeriodDto period)
+    {
+        var confirmed = await DialogService.Confirm("Delete rating period?", "Confirm",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await RatingPeriodsService.DeleteRatingPeriodType(period.UUID ?? "");
+            if (result?.isValid == true)
+            {
+                await ShowError("Rating period deleted successfully!", "Success");
+
+                await LoadData();
+
+                StateHasChanged();
+            }
+            else
+            {
+                await ShowError(result?.Message ?? "Failed to delete rating period.", "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error deleting rating period: {ex.Message}", "Error");
+        }
+    }
+
+    /// <summary>
+    /// Displays a notification/alert dialog.
+    /// </summary>
+    /// <param name="message">Message to display.</param>
+    /// <param name="title">Title of the dialog (default: Notification).</param>
+    private async Task ShowError(string message, string title = "Notification")
+    {
+        await DialogService.Alert(message, title, new AlertOptions()
+        {
+            OkButtonText = "OK"
+        });
+    }
+
+    /// <summary>
+    /// Handles search input changes and filters the rating periods list.
+    /// Searches across Name and DisplayName properties.
+    /// </summary>
+    /// <param name="args">Input change event arguments containing the search text.</param>
+    private void OnSearchInput(ChangeEventArgs args)
+    {
+        _searchText = args.Value?.ToString() ?? string.Empty;
+        FilterRatingPeriods();
+    }
+
+    /// <summary>
+    /// Clears the search text and resets the filtered list to show all rating periods.
+    /// </summary>
+    private void ClearSearch()
+    {
+        _searchText = string.Empty;
+        FilterRatingPeriods();
+    }
+
+    /// <summary>
+    /// Filters the rating periods based on the current search text.
+    /// Searches across Name and DisplayName properties (case-insensitive).
+    /// </summary>
+    private void FilterRatingPeriods()
+    {
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            // Show all non-deleted rating periods when search is empty
+            filteredRatingPeriods = ratingPeriods?.Where(p => !p.isDeleted).ToList() ?? new();
+        }
+        else
+        {
+            // Filter based on search text across Name and DisplayName
+            filteredRatingPeriods = ratingPeriods?
+                .Where(p => !p.isDeleted && 
+                       (p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                        p.DisplayName.Contains(_searchText, StringComparison.OrdinalIgnoreCase)))
+                .ToList() ?? new();
+        }
+    }
+}

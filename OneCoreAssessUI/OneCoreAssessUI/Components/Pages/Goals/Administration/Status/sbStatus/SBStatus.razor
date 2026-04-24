@@ -1,0 +1,239 @@
+﻿@using Library.API.Goals.Models
+@using Library.API.Goals.Models.Status
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+
+@inject DialogService DialogService
+
+<RadzenStack class="container rz-p-4" Style="max-height: calc(100vh - 100px); overflow-y: auto; padding-bottom: 2rem;">
+    <RadzenStack>
+        @* Header *@
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+            <RadzenText Text="Status" Style="font-weight: 700; font-size: 20px;" />
+        </RadzenStack>
+
+        @if (_logMessage != null && _logMessage.isValid.HasValue)
+        {
+            <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+                <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+                <span>@_logMessage.Message</span>
+            </div>
+        }
+
+        @* Loading Indicator *@
+        @if (_isLoading)
+        {
+            <RadzenCard class="rz-text-align-center rz-p-4">
+                <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+                    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                    <RadzenText Text="Loading..." />
+                </RadzenStack>
+            </RadzenCard>
+        }
+        else
+        {
+            @* Form with Tabs *@
+            <RadzenTabs TabPosition="TabPosition.Top" RenderMode="TabRenderMode.Client" @bind-SelectedIndex="_selectedTabIndex">
+                <Tabs>
+                    <RadzenTabsItem Text="Basic">
+                        <RadzenRow Gap="1rem">
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Name" Variant="Variant.Outlined" />
+                                <RadzenTextBox @bind-Value="_status.Name"
+                                               Style="width: 100%;"
+                                               Placeholder="Enter status name..." />
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Description" Variant="Variant.Outlined" />
+                                <RadzenTextArea @bind-Value="_status.Description"
+                                                Style="width: 100%; min-height: 80px;"
+                                                Placeholder="Enter description..." />
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Display Order" Variant="Variant.Outlined" />
+                                <RadzenNumeric @bind-Value="_status.OrderVal"
+                                               Style="width: 100%;"
+                                               Min="1"
+                                               Max="999"
+                                               Step="1"
+                                               Placeholder="1" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenTabsItem>
+
+                    <RadzenTabsItem Text="Ranges" Visible="@(_status.UUID != null)">
+                        <OneCoreAssessUI.Components.Pages.Goals.Administration.Status.sbStatus.Components.SBStatusRanges 
+                            StatusUUID="@_status.UUID" 
+                            OnRangeChanged="@OnRangeChanged" />
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
+
+            @* Show save/delete buttons only when not on Ranges tab *@
+            @if (!IsRangesTabSelected())
+            {
+                <RadzenColumn Size="12" class="mt-5 mb-5">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                        <RadzenButton style="flex: 1;"
+                                      Icon="save"
+                                      BusyText="Saving ..."
+                                      IsBusy="_isSaving"
+                                      Click=@SaveStatus
+                                      Text="Save" />
+
+                        @if (!string.IsNullOrEmpty(_status?.UUID))
+                        {
+                            <RadzenButton Icon="delete"
+                                          Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                          IsBusy="_isSaving"
+                                          Click=OnDelete_Confirm />
+                        }
+                    </RadzenStack>
+                </RadzenColumn>
+            }
+        }
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Inject] public IStatusService _StatusService { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    [Parameter] public EventCallback<StatusModel> OnSaveComplete { get; set; }
+
+    private StatusModel _status = new();
+    private StatusModel _statusCurrent;
+    private ResultsModel? _logMessage = null;
+    
+    // Track the selected tab index
+    private int _selectedTabIndex = 0;
+    
+    private bool _isLoading = false;
+    private bool _isSaving = false;
+    private bool _isAddMode = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //get data if its sent to the right sidebar area
+        _statusCurrent = _rightSidebarService.GetSharedContext<StatusModel>();
+
+        if (_status != null && _statusCurrent == null) 
+            _status = new StatusModel { OrderVal = 1 };
+
+        if (_statusCurrent != null && _status != _statusCurrent)
+        {
+            _logMessage = null;
+            _status = _statusCurrent ?? new StatusModel { OrderVal = 1 };
+            _isAddMode = string.IsNullOrEmpty(_status.UUID);
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task SaveStatus()
+    {
+        if (_status == null || string.IsNullOrWhiteSpace(_status.Name))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Please enter a name for the status." };
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            _logMessage = await _StatusService.SaveStatus(_status);
+            
+            if (_logMessage != null && _logMessage.isValid == true && _status.UUID == null)
+            {
+                _status.UUID = _logMessage.UUID;
+                _isAddMode = false;
+            }
+
+            await OnSaveComplete.InvokeAsync(_status);
+            _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Goals_Administration_Status);
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error saving status: {ex.Message}" };
+            Console.WriteLine($"Error saving status: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnDelete_Confirm(MouseEventArgs args)
+    {
+        string message = "Are you sure you want to delete this status?";
+        string title = "Delete Status";
+
+        var result = await DialogService.Confirm(message, title, new ConfirmOptions()
+        {
+            OkButtonText = "Yes",
+            CancelButtonText = "No"
+        });
+
+        // Only proceed with deletion if the user explicitly clicked "Yes"
+        if (result.HasValue && result.Value)
+        {
+            await OnDelete_Click();
+        }
+    }
+
+    private async Task OnDelete_Click()
+    {
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            _logMessage = await _StatusService.DeleteStatus(_status.UUID);
+            _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Goals_Administration_Status);
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error deleting status: {ex.Message}" };
+            Console.WriteLine($"Error deleting status: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool IsRangesTabSelected()
+    {
+        // Ranges tab is index 1
+        return _selectedTabIndex == 1;
+    }
+
+    private async Task OnRangeChanged()
+    {
+        // Handle range changes if needed
+        // This could trigger a refresh of parent data or other actions
+        StateHasChanged();
+    }
+
+    private void ClosePanel()
+    {
+        _rightSidebarService?.Close();
+    }
+
+    public void Dispose()
+    {
+        // Clean up if needed
+    }
+}

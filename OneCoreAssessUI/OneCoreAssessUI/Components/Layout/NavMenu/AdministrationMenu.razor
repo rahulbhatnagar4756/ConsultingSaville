@@ -1,0 +1,51 @@
+﻿@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+
+<RadzenMenu>
+    <RadzenMenuItem Text="Dashboard" Icon="dashboard" Click="(async() => await ChangeMenuItem(MenuItemTypes.AdministrationDashboard))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Employees" Icon="badge" Click="(async() => await ChangeMenuItem(MenuItemTypes.Employees))"></RadzenMenuItem>
+    <RadzenMenuItem Text="ESP" Icon="notifications" Click="(async() => await ChangeMenuItem(MenuItemTypes.ESP))"></RadzenMenuItem>
+
+    <RadzenMenuItem Text="Business" Icon="manufacturing">
+        <RadzenMenuItem Text="Business Type" Icon="storefront" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationBusinessHierarchyBusinessUnitTypes))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Business Units" Icon="apartment" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationBusinessHierarchyBusinessUnits))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Departments" Icon="source_environment" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationBusinessHierarchyDepartments))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Levels" Icon="stat_3" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationBusinessHierarchyLevels))"></RadzenMenuItem>
+    </RadzenMenuItem>
+
+    <RadzenMenuItem Text="Position" Icon="settings_cinematic_blur">
+        <RadzenMenuItem Text="Positions" Icon="business_center" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationBusinessHierarchyPositions))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Disciplines" Icon="person_play" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationBusinessHierarchyJobDisciplines))"></RadzenMenuItem>
+    </RadzenMenuItem>
+</RadzenMenu>
+
+@code {
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+
+    [Parameter] public Enumerables.MenuItemTypes Item { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemTypes> ItemChanged { get; set; }
+
+    [Parameter] public Enumerables.MenuItemSubTypes ItemSub { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemSubTypes> ItemSubChanged { get; set; }
+
+    private async Task ChangeMenuItem(MenuItemTypes Option)
+    {
+        // Update the cascading parameter directly
+        if (_menuNav != null)
+        {
+            _menuNav.MenuItemType = Option;
+        }
+        await ItemChanged.InvokeAsync(Option);
+    }
+
+    private async Task ChangeMenuItemSub(MenuItemSubTypes Option)
+    {
+        // Update the cascading parameter directly
+        if (_menuNav != null)
+        {
+            _menuNav.MenuItemSubType = Option;
+        }
+        await ItemSubChanged.InvokeAsync(Option);
+        await InvokeAsync(StateHasChanged);
+    }
+}

@@ -1,0 +1,175 @@
+﻿@using Library.API.Base.Services.Users
+@using Library.API.Base.Models.Users
+@using OneCoreAssessUI.Services
+
+<div class="profile-container">
+    @if (_isLoading)
+    {
+        <div class="profile-loading">
+            <RadzenProgressBarCircular ShowValue="false"
+                                       Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Medium" />
+            <RadzenText Text="Loading profile..." TextStyle="TextStyle.Caption" />
+        </div>
+    }
+    else if (_hasError)
+    {
+        <div class="profile-error">
+            <RadzenIcon Icon="error" Style="color: var(--rz-danger); font-size: 2rem; margin-bottom: 0.5rem;" />
+            <RadzenText Text="Unable to load profile" TextStyle="TextStyle.H6" />
+            <RadzenText Text="@_errorMessage" TextStyle="TextStyle.Caption" />
+        </div>
+    }
+    else if (_userProfile != null)
+    {
+        <!-- Profile Avatar Section -->
+        <div class="profile-avatar-section">
+            <div class="profile-avatar">
+                @if (!string.IsNullOrEmpty(_userProfile.UsersImageURL) & 1==2)
+                {
+                    <img src="@_userProfile.UsersImageURL" alt="@_userProfile.FullName" class="avatar-image" />
+                }
+                else
+                {
+                    <span class="avatar-initials">@GetInitials(_userProfile.FirstName, _userProfile.LastName)</span>
+                }
+            </div>
+        </div>
+
+        <!-- Profile Information Section -->
+        <div class="profile-info-section">
+            <RadzenRow class="profile-row">
+                <RadzenColumn Size="12">
+                    
+                    <!-- First Name -->
+                    <div class="profile-field">
+                        <RadzenText Text="First Name" 
+                                    TextStyle="TextStyle.Caption" 
+                                    class="profile-label" />
+                        <RadzenText Text="@(_userProfile.FirstName ?? "Not provided")" 
+                                    TextStyle="TextStyle.Body1" 
+                                    class="profile-value" />
+                    </div>
+
+                    <!-- Last Name -->
+                    <div class="profile-field">
+                        <RadzenText Text="Last Name" 
+                                    TextStyle="TextStyle.Caption" 
+                                    class="profile-label" />
+                        <RadzenText Text="@(_userProfile.LastName ?? "Not provided")" 
+                                    TextStyle="TextStyle.Body1" 
+                                    class="profile-value" />
+                    </div>
+
+                    <!-- Email -->
+                    <div class="profile-field">
+                        <RadzenText Text="Email" 
+                                    TextStyle="TextStyle.Caption" 
+                                    class="profile-label" />
+                        <RadzenText Text="@(_userProfile.Email ?? "Not provided")" 
+                                    TextStyle="TextStyle.Body1" 
+                                    class="profile-value" />
+                    </div>
+
+                </RadzenColumn>
+            </RadzenRow>
+        </div>
+    }
+    else
+    {
+        <div class="profile-no-data">
+            <RadzenIcon Icon="person" Style="font-size: 3rem; margin-bottom: 1rem; color: var(--sc-primary-colour2);" />
+            <RadzenText Text="No profile data available" TextStyle="TextStyle.H6" />
+        </div>
+    }
+</div>
+
+@code {
+    [Inject] private IUsersService usersService { get; set; } = default!;
+    [CascadingParameter] public RightSidebarService? _rightSidebarService { get; set; }
+    [Parameter] public string? UsersUUID { get; set; }
+
+    private UserBasicInformationModel? _userProfile;
+    private bool _isLoading = true;
+    private bool _hasError = false;
+    private string _errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserProfile();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadUserProfile();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        _isLoading = true;
+        _hasError = false;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            string? userUUID = UsersUUID;
+
+            // If no UsersUUID parameter, try to get it from the shared context
+            if (string.IsNullOrEmpty(userUUID) && _rightSidebarService != null)
+            {
+                // Try to get from shared context - could be a CandidateTestModel or other object with UsersUUID
+                var sharedContext = _rightSidebarService.SharedContext;
+                if (sharedContext != null)
+                {
+                    var contextType = sharedContext.GetType();
+                    var userUUIDProperty = contextType.GetProperty("UsersUUID");
+                    if (userUUIDProperty != null)
+                    {
+                        userUUID = userUUIDProperty.GetValue(sharedContext)?.ToString();
+                    }
+                }
+            }
+
+            // If still no UUID, try to get from token
+            if (string.IsNullOrEmpty(userUUID))
+            {
+                var loggedInInfo = await usersService.GetLoggedInInformation();
+                userUUID = loggedInInfo?.User?.UsersUUID;
+            }
+
+            if (!string.IsNullOrEmpty(userUUID))
+            {
+                _userProfile = await usersService.GetUserBasicInformationByUUID(userUUID);
+                
+                if (_userProfile == null)
+                {
+                    _hasError = true;
+                    _errorMessage = "User profile not found.";
+                }
+            }
+            else
+            {
+                _hasError = true;
+                _errorMessage = "Unable to determine user identity.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = "Failed to load user profile. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetInitials(string? firstName, string? lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName.Substring(0, 1) : "";
+        var last = !string.IsNullOrEmpty(lastName) ? lastName.Substring(0, 1) : "";
+        var initials = (first + last).ToUpper();
+        return string.IsNullOrEmpty(initials) ? "U" : initials;
+    }
+}

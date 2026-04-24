@@ -1,0 +1,50 @@
+﻿@using Library.Frog.Services
+
+
+@if (Element != null)
+{
+    <RadzenStack class=@string.Format("form {0}", Element.CSSClass)>
+        <RadzenButton Style=@Element.Style class="form-control " 
+                      text=@Element.Label 
+                      Click=@(args => ButtonClick()) />
+    </RadzenStack>
+}
+
+
+@code {
+    [Inject] IFrogService FrogService { get; set; }
+    [Inject] NavigationManager NavigationManager { get; set; }
+    [Parameter] public Library.Frog.Models.FrogElementModel Element { get; set; }
+    [Parameter] public string CompanyUUID { get; set; }
+    [Parameter] public string UsersUUIDLoggedIn { get; set; }
+
+    [Parameter] public EventCallback<Library.Frog.Models.ResultModel> ReloadPage { get; set; } 
+    [Parameter] public EventCallback<string> RedirectURL { get; set; }
+
+    private List<Library.Frog.Models.FrogLookupModel> _Lookups = new();
+
+    private async Task ButtonClick()
+    {
+        //first status change then redirect
+        if (Element.OnClickStatus.HasValue) await ChangeStatus();
+        else if (!string.IsNullOrWhiteSpace(Element.URL)) await RedirectToURL();
+    }
+
+    private async Task ChangeStatus()
+    {
+        Library.Frog.Models.FrogChangeStatusModel element = new()
+            {
+                CompanyUUID = CompanyUUID ,
+                UsersUUIDLoggedIn = UsersUUIDLoggedIn,
+                FrogsUUID = Element.FormsUUID,
+                StatusId = Element.OnClickStatus  
+            };
+
+        Library.Frog.Models.ResultModel result = await FrogService.ChangeStatus(element);
+        if (result != null && result.isSuccess != null) await ReloadPage.InvokeAsync(result);
+        else await ReloadPage.InvokeAsync(new Library.Frog.Models.ResultModel { isSuccess = false, Message = "Failed to change status" });
+    }
+
+    private async Task RedirectToURL() =>
+        await RedirectURL.InvokeAsync(Element.URL);
+}

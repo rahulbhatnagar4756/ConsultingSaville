@@ -1,0 +1,264 @@
+﻿@using Library.API.Goals.Models
+@using Library.API.Goals.Models.BASE
+@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Models.Mapper
+@using Library.API.Goals.Models.Templates
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Components.Pages.Employees.Components
+@using OneCoreAssessUI.Mapper
+@using OneCoreAssessUI.Services
+
+@if (template != null)
+{
+    <RadzenStack class="headings">
+        <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" class="mb-4">
+
+            <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white)">
+                <RadzenStack AlignItems="AlignItems.Center">
+                    <RadzenText TextStyle="TextStyle.H4" style="color: var(--rz-white)">
+                        @(template?.Contracts?.Where(x => x.ContractsUUID != null).Count() ?? 0)
+                    </RadzenText>
+                </RadzenStack>
+                <RadzenStack AlignItems="AlignItems.Center">
+                    Total Contracts
+                </RadzenStack>
+            </RadzenCard>
+
+            <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white)">
+                <RadzenStack AlignItems="AlignItems.Center">
+                    <RadzenText TextStyle="TextStyle.H4" style="color: var(--rz-white)">
+                        @(template?.Employees?.Count() ?? 0)
+                    </RadzenText>
+                </RadzenStack>
+                <RadzenStack AlignItems="AlignItems.Center">
+                    Total Employees
+                </RadzenStack>
+            </RadzenCard>
+
+        </RadzenStack>
+
+        <RadzenCard>
+
+            <RadzenStack class="header-subs">Template Information</RadzenStack>
+            <div class="header-underline mb-4"></div>
+
+            <RadzenRow>
+                <RadzenColumn Size="12">
+                    <RadzenText >Template Name</RadzenText>
+                    <RadzenTextBox @bind-Value="@template.Name" Style="width: 100%"></RadzenTextBox>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12">
+                    <RadzenText>Template Code</RadzenText>
+                    <RadzenTextBox @bind-Value="@template.Code" Style="width: 100%"></RadzenTextBox>
+                </RadzenColumn>
+
+                <RadzenColumn Size="12">
+                    <RadzenButton Text="Update" Click="Click_SaveTemplate"></RadzenButton>
+                </RadzenColumn>
+
+            </RadzenRow>
+        </RadzenCard>
+
+        @if (template.Contracts != null)
+        {
+            <RadzenCard>
+                <RadzenStack class="header-subs">Template Contracts</RadzenStack>
+                <div class="header-underline mb-4"></div>
+
+                <RadzenDataGrid  Data="@template.Contracts.OrderByDescending(x => x.DateStart )"
+                AllowSorting="false"
+                AllowFiltering="false" 
+                AllowPaging="false" 
+                PageSize="5" 
+                PagerHorizontalAlign="HorizontalAlign.Center" 
+                ColumnWidth="200px">
+                    <Columns>
+                        <RadzenDataGridColumn Property="@nameof(ContractsBasicModel.ContractPeriods)" Title="Periods" Frozen="true" Width="160px" />
+
+                        <RadzenDataGridColumn Property="@nameof(ContractsBasicModel.DateStart)" Title="Date Start" FormatString="{0:d}" TextAlign="TextAlign.Left" />
+                        <RadzenDataGridColumn Property="@nameof(ContractsBasicModel.DateEnd)" Title="Date End" FormatString="{0:d}" TextAlign="TextAlign.Left" />
+
+                        <RadzenDataGridColumn Title="Has Contract" TextAlign="TextAlign.Center">
+                            <Template Context="data">
+                                @(data.ContractsUUID == null ? "No" : "Yes")
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn Property="@nameof(ContractsBasicModel.isActive)" Title="Active" TextAlign="TextAlign.Left" >
+                            <Template Context="data">
+                                @(data.isActive ? "Yes" : "No")
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn Property="@nameof(ContractsBasicModel.isActive)" Title="Actions" TextAlign="TextAlign.Center" Width="120px" >
+                            <Template Context="data">
+
+                                @if (data.ContractsUUID == null)
+                                {
+                                    @if (data.isActive)
+                                    {
+                                        <RadzenButton Icon="add" title="Create New Contract" class="employee-edit-button"></RadzenButton>
+                                    }
+                                }
+                                else
+                                {
+                                    <RadzenButton Icon="gavel" title="Edit Contract" class="employee-edit-button"></RadzenButton>
+                                }
+                            </Template>
+                        </RadzenDataGridColumn> 
+                    </Columns>
+                </RadzenDataGrid>
+
+            </RadzenCard>
+        }
+
+        <RadzenCard>
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenStack class="header-subs" Style="width: 100%">Positions Connected To Template</RadzenStack>
+                <RadzenStack AlignItems="AlignItems.End" Style="width: 100%">
+                    <RadzenButton Icon="add" title="Connect employee to the current template" Click="Click_Open_Modal"></RadzenButton>
+                </RadzenStack>
+            </RadzenStack>
+
+            <div class="header-underline mb-4"></div>
+
+            @if (template.BusinessUnitDepartmentPositions != null)
+            {
+                <RadzenDataGrid Data="@template.BusinessUnitDepartmentPositions.OrderByDescending(x => x.EmployeeBusinessUnitsUUID).ThenBy(x => x.EmployeeDepartments).ThenBy(x => x.EmployeeJobs)"
+                                AllowSorting="true"
+                                AllowFiltering="true"
+                                AllowPaging="false"
+                                PageSize="10"
+                                PagerHorizontalAlign="HorizontalAlign.Center">
+                    <Columns>
+                        <RadzenDataGridColumn Property="@nameof(TemplateBusinessUnitDepartmentPositionsModel.EmployeeBusinessUnits)" Title="Business Units" />
+                        <RadzenDataGridColumn Property="@nameof(TemplateBusinessUnitDepartmentPositionsModel.EmployeeDepartmentsUUID)" Title="Departments" />
+                        <RadzenDataGridColumn Property="@nameof(TemplateBusinessUnitDepartmentPositionsModel.EmployeeJobs)" Title="Positions" />
+                        <RadzenDataGridColumn Property="@nameof(TemplateBusinessUnitDepartmentPositionsModel.EmployeeLevels)" Title="Levels" />
+                        <RadzenDataGridColumn Title="Actions" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="120px">
+                            <Template Context="data">
+                                <RadzenButton Icon="delete" title="Remove position template Link" class="employee-edit-button"></RadzenButton>
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            }
+        </RadzenCard>
+
+
+        <RadzenCard>
+            <RadzenStack Orientation="Orientation.Horizontal" >
+                <RadzenStack class="header-subs" Style="width: 100%">Employees Connected To Template</RadzenStack>
+                <RadzenStack AlignItems="AlignItems.End" Style="width: 100%">
+                    <RadzenButton Icon="add" title="Connect employee to the current template" Click="Click_Open_Modal"></RadzenButton>
+                </RadzenStack>
+            </RadzenStack>
+
+            <div class="header-underline mb-4"></div>
+
+            @if (template.Employees != null)
+            {
+                <RadzenDataGrid Data="@template.Employees.OrderByDescending(x => x.FirstName).ThenBy(x => x.LastName)"
+                AllowSorting="true"
+                AllowFiltering="true"
+                AllowPaging="false"
+                PageSize="5"
+                PagerHorizontalAlign="HorizontalAlign.Center"
+                >
+                    <Columns>
+                        <RadzenDataGridColumn Property="@nameof(EmployeeBasicModel.FirstName)" Title="First Name"  />
+                        <RadzenDataGridColumn Property="@nameof(EmployeeBasicModel.LastName)" Title="Last Name"  />
+                        <RadzenDataGridColumn Property="@nameof(EmployeeBasicModel.IDNumber)" Title="ID Number" />
+                        <RadzenDataGridColumn Property="@nameof(EmployeeBasicModel.EmployeeNumber)" Title="Employee Number" />
+                        <RadzenDataGridColumn Title="Actions" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="120px">
+                            <Template Context="data">
+                                <RadzenButton Icon="delete" title="Remove employee template Link" class="employee-edit-button"></RadzenButton>
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            }
+        </RadzenCard>
+
+
+
+
+
+    </RadzenStack>
+
+    <div class="@ModalVisible"  id="employee-modal">
+        <div class="modal-content" style="width: 800px;">
+            <EmployeeSearchSelector OnClose="Click_Close_Modal" 
+            OnSubmit="Submit_Employees" />
+        </div>
+    </div>
+}
+
+
+@code {
+
+    [Inject] public ITemplatesService _templatesService { get; set; }
+    [Inject] public IContractsService _contractService { get; set; }
+    [Parameter] public bool isNew { get; set; } = false;
+    [Parameter] public TemplatesModel? template { get; set; } = new();
+    [CascadingParameter] public RightSidebarService rightSidebarService { get; set; }
+
+    private List<PeriodModels>? _periods;
+    private string? _periodUUID;
+
+    private string ModalVisible = "modal-pop";
+
+    //save the template
+    private async Task Click_SaveTemplate()
+    {
+        if (_templatesService == null) return;
+        if (template == null) template = new TemplatesModel();
+        TemplateBasicModel Template = template.FromTemplatesModelToTemplateBasicModel();
+        await _templatesService.Save(Template);
+    }
+
+
+
+
+    #region "Events"
+
+    private void Click_Close_Modal()
+    {
+        ModalVisible = "modal-pop";
+    }
+
+    private void Click_Open_Modal()
+    {
+        ModalVisible = "modal-pop show";
+    }
+
+    private async Task Submit_Employees(List<Library.API.Base.Models.Employees.EmployeesModel> employees)
+    {
+        Click_Close_Modal();
+        if (employees == null && template == null) return;
+        List<string> employeeList = new();
+
+        foreach(var item in employees)
+        {
+            if (template.Employees == null || template.Employees.Where(x => x.UUID == item.UsersUUID).Count() > 0 ) continue;
+
+            Library.API.Goals.Models.BASE.EmployeeBasicModel employee = item.MapToEmployeeBasicModelFromGoals();
+            template.Employees.Add(employee);
+            //TODO: Trigger event to duplicate contract for template for the submitted employees 
+        }
+
+        ContractsCloneModel contractsClone = new()
+            {
+                TemplatesUUID = template.TemplatesUUID,
+                UsersUUIDs = employees.Select(x => x.UsersUUID).ToList()
+            };
+        var results = await _contractService.CloneContract(contractsClone);
+        StateHasChanged();
+
+    }
+
+#endregion
+
+}

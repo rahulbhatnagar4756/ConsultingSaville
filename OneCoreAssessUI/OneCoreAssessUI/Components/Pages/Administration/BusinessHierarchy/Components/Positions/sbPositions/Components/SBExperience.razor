@@ -1,0 +1,296 @@
+﻿@using Library.API.Base.Models
+@using Library.API.Base.Models.BusinessHierarchy.Jobs
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using OneCoreAssessUI.Services
+
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem">
+    
+    @* Status Messages *@
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+        <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+            <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+            <span>@_logMessage.Message</span>
+        </div>
+    }
+
+    @* Loading Indicator *@
+    @if (_isLoading)
+    {
+        <RadzenCard class="rz-text-align-center rz-p-4">
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                <RadzenText Text="Loading experience requirements..." />
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        @* Experience Requirements Grid *@
+        <RadzenText Text="Experience" Style="font-weight: 600; font-size: 16px; margin-bottom: 1rem;" />
+
+        @if (_experienceList == null || !_experienceList.Any())
+        {
+            <RadzenText Text="No experience requirements found for this position." Style="font-style: italic; color: #666; text-align: center; padding: 2rem;" />
+        }
+        else
+        {
+            <RadzenDataGrid Data="@_experienceList"
+                            TItem="EmployeeJobExperienceBaseModel"
+                            AllowPaging="false"
+                            AllowSorting="true"
+                            AllowFiltering="false"
+                            EmptyText="No experience requirements found."
+                            Style="min-height: 200px;">
+                <Columns>
+                    <RadzenDataGridColumn TItem="EmployeeJobExperienceBaseModel"
+                                          Property="Information"
+                                          Title="Requirements"
+                                          Sortable="true">
+                        <Template Context="experience">
+                            <RadzenText Text="@experience.Information" Style="word-wrap: break-word; white-space: normal; overflow-wrap: break-word;" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                                        
+                    <RadzenDataGridColumn TItem="EmployeeJobExperienceBaseModel"
+                                          Title="Actions"
+                                          Width="15%"
+                                          Sortable="false"
+                                          TextAlign="TextAlign.Center">
+                        <Template Context="experience">
+                            <RadzenButton Icon="delete"
+                                          Variant="Variant.Text"
+                                          Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Danger"
+                                          Click="@(() => DeleteExperience(experience))"
+                                          Tooltip="Delete Experience Requirement"
+                                          Disabled="_isSaving" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        }
+
+        @* Add New Experience Section *@
+        <RadzenText Text="Add Experience Requirement" Style="font-weight: 600; font-size: 16px; margin-bottom: 1rem;" />
+
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenAutoComplete @bind-Value="_newExperienceText"
+                                Data="@_experienceSuggestions"
+                                LoadData="@LoadExperienceSuggestions"
+                                Placeholder="Enter experience requirement (e.g., 3+ years in management, SQL Server experience...)"
+                                Style="width: 100%;"
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                FilterOperator="StringFilterOperator.Contains"
+                                AllowClear="true"
+                                Disabled="_isSaving" />
+       
+            <RadzenButton Icon="add"
+                          Click="@AddExperience"
+                          Style="width: 40px;"
+                          IsBusy="_isSaving"
+                          title="Add Experience"
+                          BusyText="Adding..." />
+        </RadzenStack>
+    }
+</RadzenStack>
+
+@code {
+    [Inject] private IPositionExperienceService PositionExperienceService { get; set; }
+
+    [Parameter] public string? PositionUUID { get; set; }
+    [Parameter] public EventCallback OnExperienceChanged { get; set; }
+
+    private List<EmployeeJobExperienceBaseModel> _experienceList = new();
+    private string _newExperienceText = string.Empty;
+    private int _newExperienceOrder = 1;
+    private List<string> _experienceSuggestions = new();
+    
+    private ResultsModel? _logMessage = null;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+
+    // Common experience suggestions for auto-complete
+    private readonly List<string> _commonExperienceRequirements = new()
+    {
+        "1-2 years experience in related field",
+        "3-5 years experience in related field",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _experienceSuggestions = _commonExperienceRequirements.ToList();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(PositionUUID))
+        {
+            await LoadExperienceData();
+        }
+        else
+        {
+            _experienceList = new();
+            _isLoading = false;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadExperienceData()
+    {
+        try
+        {
+            _isLoading = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var data = await PositionExperienceService.GetPositionExperienceByJobUUID(PositionUUID!);
+            _experienceList = data?.OrderBy(x => x.OrderVal).ThenBy(x => x.Information).ToList() ?? new();
+
+            // Update the order for the next new item
+            _newExperienceOrder = _experienceList.Any() ? (_experienceList.Max(x => x.OrderVal) ?? 0) + 1 : 1;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading experience data: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = "Error loading experience requirements. Please try again." };
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void LoadExperienceSuggestions(LoadDataArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(args.Filter))
+        {
+            _experienceSuggestions = _commonExperienceRequirements.ToList();
+        }
+        else
+        {
+            _experienceSuggestions = _commonExperienceRequirements
+                .Where(x => x.ToLower().Contains(args.Filter.ToLower()))
+                .ToList();
+        }
+    }
+
+    private async Task AddExperience()
+    {
+        if (string.IsNullOrWhiteSpace(_newExperienceText) || string.IsNullOrEmpty(PositionUUID))
+            return;
+
+        try
+        {
+            _isSaving = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var newExperience = new EmployeeJobExperienceBaseModel
+            {
+                EmployeeJobsUUID = PositionUUID,
+                Information = _newExperienceText.Trim(),
+                OrderVal = _newExperienceOrder
+            };
+
+            var result = await PositionExperienceService.SavePositionExperience(newExperience);
+
+            if (result?.isValid == true)
+            {
+                _logMessage = new ResultsModel { isValid = true, Message = "Experience requirement added successfully." };
+                
+                // Clear the form
+                _newExperienceText = string.Empty;
+                _newExperienceOrder = (_experienceList.Max(x => x.OrderVal) ?? 0) + 1;
+                
+                // Reload the data
+                await LoadExperienceData();
+                
+                // Notify parent component
+                await OnExperienceChanged.InvokeAsync();
+            }
+            else
+            {
+                _logMessage = result ?? new ResultsModel { isValid = false, Message = "Failed to add experience requirement." };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding experience: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error adding experience requirement: {ex.Message}" };
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteExperience(EmployeeJobExperienceBaseModel experience)
+    {
+        if (experience?.UUID == null)
+            return;
+
+        string message = $"Are you sure you want to delete the experience requirement:\n\"{experience.Information}\"?";
+        string title = "Delete Experience Requirement";
+
+        var result = await DialogService.Confirm(message, title, new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "Cancel"
+        });
+
+        if (result.HasValue && result.Value)
+        {
+            try
+            {
+                _isSaving = true;
+                _logMessage = null;
+                StateHasChanged();
+
+                var deleteResult = await PositionExperienceService.DeletePositionExperience(experience.UUID);
+
+                if (deleteResult?.isValid == true)
+                {
+                    _logMessage = new ResultsModel { isValid = true, Message = "Experience requirement deleted successfully." };
+                    
+                    // Reload the data
+                    await LoadExperienceData();
+                    
+                    // Notify parent component
+                    await OnExperienceChanged.InvokeAsync();
+                }
+                else
+                {
+                    _logMessage = deleteResult ?? new ResultsModel { isValid = false, Message = "Failed to delete experience requirement." };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting experience: {ex.Message}");
+                _logMessage = new ResultsModel { isValid = false, Message = $"Error deleting experience requirement: {ex.Message}" };
+            }
+            finally
+            {
+                _isSaving = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Public method to refresh experience data from parent component
+    /// </summary>
+    public async Task RefreshExperienceData()
+    {
+        if (!string.IsNullOrEmpty(PositionUUID))
+        {
+            await LoadExperienceData();
+        }
+    }
+}

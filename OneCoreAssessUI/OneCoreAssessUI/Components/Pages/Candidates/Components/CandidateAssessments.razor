@@ -1,0 +1,301 @@
+﻿@using Library.API.Assess.Models
+@using Library.API.Assess.Models.Projects
+@using Library.API.Assess.Services.Projects
+@using Library.API.Base.Services.Users
+@using OneCoreAssessUI.Services
+
+
+<div class="candidate-assessments-container">
+    @* Header with candidate info and dropdown menu *@
+    <div class="candidate-header">
+        <RadzenStack Orientation="Orientation.Horizontal" 
+                     AlignItems="AlignItems.Center" 
+                     JustifyContent="JustifyContent.SpaceBetween">
+            
+            @* Left side - Candidate info *@
+            <RadzenStack Orientation="Orientation.Horizontal" 
+                         AlignItems="AlignItems.Center" 
+                         Gap="1rem">
+                
+                @* Candidate Avatar *@
+                <div class="candidate-avatar">
+                    @if (!string.IsNullOrEmpty(_candidateImageUrl))
+                    {
+                        <img src="@_candidateImageUrl" alt="@_candidateName" class="candidate-avatar" />
+                    }
+                    else
+                    {
+                        @_candidateInitials
+                    }
+                </div>
+
+                @* Candidate Name and Project *@
+                <RadzenStack Gap="0.25rem">
+                    <RadzenText Text="@_candidateWelcome" 
+                                TextStyle="TextStyle.H5" 
+                                class="candidate-welcome" />
+                    <RadzenText Text="@_projectName" 
+                                TextStyle="TextStyle.Body2" 
+                                class="candidate-subtitle" />
+                </RadzenStack>
+            </RadzenStack>
+
+            @* Right side - Dropdown menu *@
+            <RadzenDropDown Data="_menuItems"
+                            @bind-Value="_selectedMenuItem"
+                            ValueProperty="Value"
+                            TextProperty="Text"
+                            Placeholder="☰"
+                            AllowClear="false" 
+                            class="header-dropdown"
+                            Change="@OnMenuItemSelected">
+                <Template Context="item">
+                    <div style=" white-space: nowrap;">
+                        @((item as MenuItemModel)?.Text)
+                    </div>
+                </Template>
+            </RadzenDropDown>
+        </RadzenStack>
+    </div>
+
+    @* Main content area *@
+    <div class="candidate-content">
+        @if (_isLoading)
+        {
+            <div class="loading-container">
+                <RadzenProgressBarCircular ShowValue="false"
+                                           Mode="ProgressBarMode.Indeterminate"
+                                           Size="ProgressBarCircularSize.Large" />
+            </div>
+        }
+        else if (_hasError)
+        {
+            <div class="error-container">
+                <RadzenIcon Icon="error" Style="font-size: 3rem; margin-bottom: 1rem;" />
+                <RadzenText Text="Unable to Load Tests" TextStyle="TextStyle.H5" />
+                <RadzenText Text="@_errorMessage" TextStyle="TextStyle.Body1" />
+                <RadzenButton Text="Retry" 
+                              Icon="refresh" 
+                              Click="@LoadCandidateTests" 
+                              Style="margin-top: 1rem;" />
+            </div>
+        }
+        else if (_tests == null || !_tests.Any())
+        {
+            <div class="no-tests-message">
+                <RadzenIcon Icon="quiz" Style="font-size: 4rem; margin-bottom: 1rem;" />
+                <RadzenText Text="No Tests Available" TextStyle="TextStyle.H4" />
+                <RadzenText Text="There are currently no tests assigned to you." TextStyle="TextStyle.Body1" />
+            </div>
+        }
+        else
+        {
+            @* Tests Grid *@
+            <RadzenRow class="tests-grid">
+                @foreach (var test in _tests)
+                {
+                    <RadzenColumn Size="12" SizeXS="12" SizeSM="6" SizeMD="4" SizeLG="3">
+                        <RadzenCard class="test-card" @onclick="@(() => OnTestSelected(test))">
+                            
+                            @* Status Badge *@
+                            <div class="test-status-badge @GetStatusClass(test.Status)">
+                                @test.Status
+                            </div>
+
+                            @* Card Body - Image/Icon *@
+                            <div class="test-card-body">
+                                @if (test.IsImageUrl)
+                                {
+                                    <img src="@test.ImageURL" 
+                                         alt="@test.TestName" 
+                                         class="test-image" />
+                                }
+                                else
+                                {
+                                    <RadzenIcon Icon="@test.TestImage" 
+                                                class="test-icon" />
+                                }
+
+                                @* Test metadata *@
+                                @if (!string.IsNullOrEmpty(test.AverageTime))
+                                {
+                                    <RadzenText Text="@test.AverageTime" 
+                                                TextStyle="TextStyle.Caption" 
+                                                Style="color: var(--sc-secondary-color4);" />
+                                }
+                                
+                                @if (test.isTimed)
+                                {
+                                    <RadzenText Text="@test.TimeLimit" 
+                                                TextStyle="TextStyle.Caption" 
+                                                Style="color: var(--sc-secondary-color2);" />
+                                }
+                            </div>
+
+                            @* Card Footer - Test Name *@
+                            <div class="test-card-footer">
+                                <div class="test-name">@test.TestName</div>
+                                @if (!string.IsNullOrEmpty(test.Header))
+                                {
+                                    <div class="test-details">@test.Header</div>
+                                }
+                            </div>
+                        </RadzenCard>
+                    </RadzenColumn>
+                }
+            </RadzenRow>
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] private IAssessmentUsersService _assessmentUsersService { get; set; }
+    [Inject] private IUsersService _usersService { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+
+    [CascadingParameter] public RightSidebarService? _rightSidebarService { get; set; }
+
+    //event to logout
+    [Parameter] public EventCallback Logout { get; set; }
+
+    [Parameter] public string CompanyUUID { get; set; } = string.Empty;
+    [Parameter] public string ProjectsUUID { get; set; } = string.Empty;
+    [Parameter] public string UsersUUID { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private bool _hasError = false;
+    private string _errorMessage = string.Empty;
+    private List<CandidateTestModel>? _tests;
+
+    // Candidate info
+    private string _candidateName = "Candidate";
+    private string _candidateImageUrl = string.Empty;
+    private string _candidateInitials = "CA";
+    private string _candidateWelcome = "Welcome";
+    private string _projectName = "Assessment Project";
+
+    // Menu items
+    private List<MenuItemModel> _menuItems = new()
+    {
+        new MenuItemModel { Text = "☰", Value = "" },
+        new MenuItemModel { Text = "Profile", Value = "edit" },
+        new MenuItemModel { Text = "Logout", Value = "logout" }
+    };
+    private string _selectedMenuItem = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCandidate();
+        if (!_hasError)
+        {
+            await LoadCandidateTests();
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadCandidate()
+    {
+        var user = await _usersService.GetUserByUUID(UsersUUID);
+        // Set candidate info from first test
+        if( user == null)
+        {
+            _hasError = true;
+            _errorMessage = "User not found.";
+            _isLoading = false;
+            return;
+        }
+
+        _candidateName = user.FullName;
+        _candidateWelcome = $"Welcome, {user.FirstName}";
+        _candidateInitials = GetInitials(user.FirstName, user.LastName);
+    }
+
+    private async Task LoadCandidateTests()
+    {
+        _isLoading = true;
+        _hasError = false;
+        _errorMessage = string.Empty;
+
+        try
+        {
+
+            BasicGetWithProjectModel basicGetWithProjectModel = new BasicGetWithProjectModel
+            {
+                CompanyUUID = CompanyUUID,
+                ProjectsUUID = ProjectsUUID,
+                UsersUUID = UsersUUID
+            };
+
+            _tests = await _assessmentUsersService.GetCandidateTestsAsync(basicGetWithProjectModel);
+
+            if (_tests?.Any() == true)
+            {
+                // Set candidate info from first test
+                var firstTest = _tests.First();
+                // _candidateName = firstTest.FullName;
+                // _candidateWelcome = $"Welcome, {firstTest.Firstname}";
+                _projectName = firstTest.Projects;
+                // _candidateInitials = GetInitials(firstTest.Firstname, firstTest.Lastname);
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = "Failed to load your tests. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnTestSelected(CandidateTestModel test)
+    {
+        // Navigate to test or show test details
+        // TODO: Implement test navigation logic
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Candidate_TestInstructions, test);
+    }
+
+    private void OnMenuItemSelected()
+    {
+        switch (_selectedMenuItem)
+        {
+            case "edit":
+                // TODO: Navigate to edit profile
+                _rightSidebarService.Open(Enumerables.ControlTypes.sb_Candidate_Profile, true);
+                break;
+            case "logout":
+                // TODO: Implement logout logic
+                Logout.InvokeAsync();
+                break;
+        }
+        
+        // Reset selection
+        _selectedMenuItem = "";
+    }
+
+    private string GetStatusClass(string status)
+    {
+        return status.ToLower() switch
+        {
+            "pending" => "status-pending",
+            "completed" => "status-completed",
+            "in progress" => "status-in-progress",
+            _ => "status-pending"
+        };
+    }
+
+    private string GetInitials(string firstName, string lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName.Substring(0, 1) : "";
+        var last = !string.IsNullOrEmpty(lastName) ? lastName.Substring(0, 1) : "";
+        return (first + last).ToUpper();
+    }
+
+    public class MenuItemModel
+    {
+        public string Text { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+}

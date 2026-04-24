@@ -1,0 +1,256 @@
+﻿@using Library.API.Goals.Models.EnterpriseStructures
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using OneCoreAssessUI.Components.Pages.Tools
+@implements IDisposable
+ 
+
+@* Loading Indicator *@
+@if (_isLoading)
+{
+    <RadzenCard class="rz-text-align-center rz-p-4">
+        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+            <RadzenText Text="Loading enterprise structure types..." />
+        </RadzenStack>
+    </RadzenCard>
+}
+else if (_filteredEnterpriseStructureTypes != null)
+{
+
+
+    <RadzenStack class="container">
+        <RadzenStack>
+            <RadzenText Text="Enterprise Structures" Style="font-weight: 700; font-size: 25px;" />
+        </RadzenStack>
+        
+            <MultiListExtra Data=@_filteredEnterpriseStructureTypes
+                            TItem="EnterpriseStructureTypesModel"
+                            Name="Enterprise Structures"
+                        OnAddNew="OnAddNew"
+                        OnItemSelect="OnItemSelect"
+                            isStats=false
+                            isIcon=false
+                            ShowCategories=false>
+            </MultiListExtra>
+
+        <RadzenCard class="rz-mt-3">
+            <RadzenText Text="@($"Total: {_filteredEnterpriseStructureTypes.Count} enterprise structures")" Style="font-weight: 500;" />
+        </RadzenCard>
+    </RadzenStack>
+
+
+    
+
+    @* Summary *@
+   
+}
+else
+{
+    <RadzenCard class="rz-text-align-center rz-p-4">
+        <RadzenText Text="No enterprise structure types available." />
+    </RadzenCard>
+}
+
+@code {
+    [Inject] private IEnterpriseStructuresServices EnterpriseStructuresService { get; set; }
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<EnterpriseStructureTypesModel>? _enterpriseStructureTypes = null;
+    private List<EnterpriseStructureTypesModel>? _filteredEnterpriseStructureTypes = null;
+    private string _searchTerm = string.Empty;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the OnDataRefresh event if using sidebar
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+        await LoadData();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _enterpriseStructureTypes = await EnterpriseStructuresService.GetEnterpriseStructureTypes();
+            
+            // Map Icons to Icon property for MultiListExtra compatibility
+            if (_enterpriseStructureTypes != null)
+            {
+                foreach (var item in _enterpriseStructureTypes)
+                {
+                    item.Icon = item.Icons;
+                    item.IconColor = item.Color;
+                }
+            }
+            
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading enterprise structure types: {ex.Message}");
+            // Handle error as needed - could show a notification
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadEnterpriseStructureTypes()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _enterpriseStructureTypes = await EnterpriseStructuresService.GetEnterpriseStructureTypes();
+            
+            // Map Icons to Icon property for MultiListExtra compatibility
+            if (_enterpriseStructureTypes != null)
+            {
+                foreach (var item in _enterpriseStructureTypes)
+                {
+                    item.Icon = item.Icons;
+                    item.IconColor = item.Color;
+                }
+            }
+            
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading enterprise structure types: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (_enterpriseStructureTypes == null)
+        {
+            _filteredEnterpriseStructureTypes = null;
+            return;
+        }
+
+        var filtered = _enterpriseStructureTypes.AsEnumerable();
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            var searchLower = _searchTerm.ToLower();
+            filtered = filtered.Where(e =>
+                (e.Name?.ToLower().Contains(searchLower) ?? false) ||
+                (e.Description?.ToLower().Contains(searchLower) ?? false)
+            );
+        }
+
+        _filteredEnterpriseStructureTypes = filtered.OrderBy(e => e.Name).ToList();
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        _searchTerm = string.Empty;
+        ApplyFilter();
+    }
+
+    private string TruncateText(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text))
+            return "-";
+
+        return text.Length <= maxLength ? text : $"{text[..maxLength]}...";
+    }
+
+    private async Task OnAddNew()
+    {
+        await EditEnterpriseStructureType(new EnterpriseStructureTypesModel());
+    }
+
+    private async Task OnItemSelect(EnterpriseStructureTypesModel? enterpriseStructureType)
+    {
+        if (enterpriseStructureType != null)
+        {
+            await EditEnterpriseStructureType(enterpriseStructureType);
+        }
+    }
+
+    private async Task EditEnterpriseStructureType(EnterpriseStructureTypesModel enterpriseStructureType)
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.SharedContext = enterpriseStructureType;
+            _rightSidebarService.Open(Enumerables.ControlTypes.sb_Goals_Administration_EnterpriseStructureTypes);
+        }
+    }
+
+    private async Task DeleteEnterpriseStructureType(EnterpriseStructureTypesModel enterpriseStructureType)
+    {
+        try
+        {
+            var result = await EnterpriseStructuresService.DeleteEnterpriseStructureType(enterpriseStructureType.UUID);
+            if (result?.isValid == true)
+            {
+                await LoadEnterpriseStructureTypes(); // Refresh the list
+                // Show success notification
+            }
+            else
+            {
+                // Show error notification
+                Console.WriteLine($"Delete failed: {result?.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting enterprise structure type: {ex.Message}");
+        }
+    }
+
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Only respond to refresh events for enterprise structure types
+        if (controlType == Enumerables.ControlTypes.sb_Goals_Administration_EnterpriseStructureTypes)
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadEnterpriseStructureTypes();
+            });
+        }
+    }
+
+    public async Task RefreshData()
+    {
+        await LoadData();
+    }
+
+    public void Dispose()
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+        }
+    }
+}

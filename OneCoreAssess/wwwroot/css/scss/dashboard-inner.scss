@@ -1,0 +1,11 @@
+
+@import "dashboard-settings.scss";
+@import "dashboard-sidebar.scss";
+
+.radzen-sidebar {
+    text-align: center;
+}
+
+.radzen-sidebar .fa-solid {
+    margin-right: 8px; /* Adjust this to space the icon from text */
+}

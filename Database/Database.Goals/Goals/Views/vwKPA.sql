@@ -1,0 +1,37 @@
+﻿
+
+
+
+CREATE VIEW [Goals].[vwKPA] 
+AS
+SELECT  kpa.[Id]
+, kpa.[UUID]
+, kpa.[CompanyId]
+, c.[UUID] [CompanyUUID]
+, c.[Name] [Company]
+, kpa.[Usersid]
+, u.[UUID] [UsersUUID]
+, u.[Firstname]
+, u.[Lastname]
+, u.[IDNumber]
+, u.[EmployeeNumber]
+, u.[Email]
+, kpa.[Statusid]
+, s.[UUID] [StatusUUID]
+, s.[Name] [Status]
+, kpa.[RatingPeriodsid]
+, p.[UUID] [RatingPeriodsUUID]
+, p.[Name] [RatingPeriods]
+, p.[DisplayName] [RatingPeriodsDisplay]
+, kpa.[DateCreated]
+, kpa.[DateEnded]
+, kpa.[Name]
+, kpa.[Description]
+, kpa.[DateLastActive]
+, kpa.[isActive]
+, kpa.[isDeleted]
+FROM [Goals].[KPA] kpa
+INNER JOIN [Base].[Companies] c ON c.[recordID] = kpa.[Companyid] 
+INNER JOIN [Base].[Users] u ON u.[Id] = kpa.[Usersid]
+LEFT OUTER JOIN [Goals].[Status] s ON s.[Id] = kpa.[Statusid] 
+LEFT OUTER JOIN [Goals].[RatingPeriods] p ON p.[Id] = kpa.[RatingPeriodsid]

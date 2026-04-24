@@ -1,0 +1,440 @@
+﻿@using Library.API.Base.Models
+@using Library.API.Base.Models.Users
+@using Library.API.Base.Services.Users
+@using OneCoreAssessUI.Services
+@using Radzen
+@using Radzen.Blazor
+@inject IUsersService _usersService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject NotificationService NotificationService
+
+<PageTitle>User Management</PageTitle>
+
+<RadzenStack Gap="20px">
+ 
+
+    
+        <RadzenStack Gap="20px" class="p-4">
+            <!-- Image Upload Section -->
+           @*  <RadzenFieldset Text="Profile Image" class="rz-mb-4">
+                <RadzenStack Gap="10px" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" class="rz-p-3">
+                    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="10px">
+                        <RadzenImage src="@GetImageSource()" Style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--rz-primary);" />
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="10px">
+                            <RadzenFileInput @ref="fileInput"
+                                             TValue="IBrowserFile"
+                                             Accept="image/*"
+                                             MaxFileSize="512000"
+                                             Change="OnImageSelected"
+                                             Style="display: none;" />
+
+                            <RadzenButton Text="Upload Image"
+                                      Icon="upload"
+                                      Click="TriggerFileDialog"
+                                      Size="ButtonSize.Small"
+                                         
+                                          ButtonStyle="ButtonStyle.Secondary" />
+                            @if (!string.IsNullOrEmpty(_user.UsersImageURL))
+                            {
+                                <RadzenButton Text="Remove" Icon="delete" Size="ButtonSize.Small" 
+                                            Click="@RemoveImage" ButtonStyle="ButtonStyle.Danger" />
+                            }
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenFieldset> *@
+
+            <!-- User Information Form -->
+            <RadzenTemplateForm TItem="UserBasicInformationModel" Data="@_user" Submit="@OnSubmit">
+            <RadzenStack Gap="20px">
+
+                 <RadzenRow Gap="20px">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="ID Number" Variant="@_radzenVariant" class="rz-w-100" />
+                        <RadzenTextBox @bind-Value="_user.IDNumber" Placeholder="Enter ID number" class="rz-w-100" />
+                    </RadzenColumn>
+                 </RadzenRow>
+
+                <RadzenRow Gap="20px">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="First Name *" Variant="@_radzenVariant" class="rz-w-100" />
+                        <RadzenTextBox @bind-Value="_user.FirstName" Placeholder="Enter first name" class="rz-w-100" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Last Name *" Variant="@_radzenVariant" class="rz-w-100" />
+                        <RadzenTextBox @bind-Value="_user.LastName" Placeholder="Enter last name" class="rz-w-100" />
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenRow Gap="20px">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Email *" Variant="@_radzenVariant" class="rz-w-100" />
+                        <RadzenTextBox @bind-Value="_user.Email" Placeholder="Enter email address" class="rz-w-100" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Mobile" Variant="@_radzenVariant" class="rz-w-100" />
+                        <RadzenTextBox @bind-Value="_user.Mobile" Placeholder="Enter mobile number" class="rz-w-100" />
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenRow Gap="20px">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Date of Birth" Variant="@_radzenVariant" class="rz-w-100" />
+                        <RadzenDatePicker @bind-Value="_user.DateOfBirth" DateFormat="dd MMMM yyyy"
+                                          AllowClear="true" Placeholder="Select date of birth" class="rz-w-100" />
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenRow Gap="20px">
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Gender" Variant="@_radzenVariant" class="rz-w-100" />
+                        <RadzenDropDown @bind-Value="_user.Gender"
+                                        Data="@_genderList"
+                                        TextProperty="Name"
+                                        ValueProperty="Name"
+                                        Placeholder="Select gender"
+                                        AllowClear="true"
+                                        class="rz-w-100" />
+
+                    </RadzenColumn>
+                    <RadzenColumn Size="12" SizeMD="6">
+                        <RadzenText Text="Ethnicity" Variant="@_radzenVariant" class="rz-w-100" />
+                        <RadzenDropDown @bind-Value="_user.Ethnicity"
+                                        Data="@_ethnicityList" TextProperty="Name"
+                                        ValueProperty="Name"
+                                        Placeholder="Select ethnicity"
+                                        AllowClear="true"
+                                        class="rz-w-100" />
+                    </RadzenColumn>
+                </RadzenRow>
+
+                <RadzenColumn Size="12" class="mt-5">
+                    @* Status Messages *@
+                    @if (_logMessage != null && _logMessage.isValid.HasValue)
+                    {
+                        <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+                            <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+                            <span>@_logMessage.Message</span>
+                        </div>
+                    }
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                        <RadzenButton style="flex: 1;"
+                                      Icon="save"
+                                      IsBusy="_isSaving"
+                                      Text="Save"
+                                      Click="OnSubmit"
+                                      BusyText="@(_isEditing ? "Updating..." : "Creating...")" />
+
+                        @if (!string.IsNullOrEmpty(_user?.UUID))
+                        {
+                            <RadzenButton Icon="delete"
+                                          Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                          IsBusy="_isSaving"
+                                          Click="@DeleteUser" />
+                        }
+                    </RadzenStack>
+                </RadzenColumn>
+
+
+            </RadzenStack>
+            </RadzenTemplateForm>
+        </RadzenStack>
+     
+</RadzenStack>
+
+@code {
+    [Parameter] public string? UsersUUID { get; set; }
+    [CascadingParameter] private LoggedInInformationModel? _loggedInInformation { get; set; }
+
+    private UserBasicInformationModel _user = new();
+    private List<LookupBasicModel> _genderList = new();
+    private List<LookupBasicModel> _ethnicityList = new();
+    private RadzenFileInput<IBrowserFile> fileInput;
+    private byte[]? _selectedImageBytes;
+    
+    private bool _isEditing => !string.IsNullOrEmpty(UsersUUID);
+    private bool _isSaving = false;
+    private bool _isDeleting = false;
+    private readonly Radzen.Variant _radzenVariant = Variant.Outlined;
+
+    // Local status message shown above the Save button
+    private LogMessageModel? _logMessage;
+    private class LogMessageModel
+    {
+        public bool? isValid { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDropdownData();
+        await LoadUserData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_isEditing)
+        {
+            await LoadUserData();
+        }
+        else
+        {
+            _user = new UserBasicInformationModel();
+        }
+    }
+
+    private async Task TriggerFileDialog()
+    {
+        // Programmatically open the hidden input file dialog
+        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{fileInput}').click()");
+    }
+
+    private async Task LoadDropdownData()
+    {
+        try
+        {
+            var genderTask = _usersService.GetGender();
+            var ethnicityTask = _usersService.GetEthnicity();
+
+            await Task.WhenAll(genderTask, ethnicityTask);
+
+            _genderList = await genderTask ?? new();
+            _ethnicityList = await ethnicityTask ?? new();
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error loading dropdown data", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task LoadUserData()
+    {
+        if (!_isEditing) return;
+
+        try
+        {
+            _user = await _usersService.GetUserBasicInformationByUUID(UsersUUID!) ?? new();
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error loading user data", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task OnImageSelected(object arg)
+    {
+        try{
+
+            //change arg to ChangeEventArgs
+            var args = (UploadChangeEventArgs)arg;
+
+            var file = args.Files.FirstOrDefault();
+            if (file != null)
+            {
+                // Validate file size (1MB max)
+                if (file.Size > 1 * 1024 * 1024)
+                {
+                    ShowNotification("Image size must be less than 5MB", NotificationSeverity.Warning);
+                    return;
+                }
+
+                // Validate file type
+                var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
+                if (!allowedTypes.Contains(file.ContentType.ToLower()))
+                {
+                    ShowNotification("Only JPEG, PNG, and GIF images are allowed", NotificationSeverity.Warning);
+                    return;
+                }
+
+                // Read file bytes
+                using var stream = file.OpenReadStream(5 * 1024 * 1024);
+                var buffer = new byte[file.Size];
+                await stream.ReadAsync(buffer);
+                _selectedImageBytes = buffer;
+
+                // Update image URL for preview
+                var base64 = Convert.ToBase64String(_selectedImageBytes);
+                _user.UsersImageURL = $"data:{file.ContentType};base64,{base64}";
+
+                StateHasChanged();
+                ShowNotification("Image selected successfully", NotificationSeverity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("Error uploading image", NotificationSeverity.Error);
+        }
+    }
+
+    private async Task RemoveImage()
+    {
+        _user.UsersImageURL = null;
+        _selectedImageBytes = null;
+        StateHasChanged();
+        ShowNotification("Image removed", NotificationSeverity.Info);
+    }
+
+    private string GetImageSource()
+    {
+        if (!string.IsNullOrEmpty(_user.UsersImageURL))
+        {
+            return _user.UsersImageURL;
+        }
+        return "/Images/Avatars/anonymous-avatar.jpg"; // Default avatar
+    }
+
+    private async Task OnSubmit()
+    {
+        if (!ValidateForm()) return;
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            // Save user basic information
+            var result = await _usersService.SaveBasic(_user);
+            
+            if (result?.isValid == true)
+            {
+                // If we have a new image, save it
+                if (_selectedImageBytes != null && !string.IsNullOrEmpty(result.UUID))
+                {
+                    var imageModel = new UserImageModel
+                    {
+                        UsersUUID = result.UUID,
+                        UsersImageBytes = _selectedImageBytes
+                    };
+
+                    var imageResult = await _usersService.SaveImage(imageModel);
+                    if (imageResult?.isValid != true)
+                    {
+                        ShowNotification("User saved but image upload failed: " + imageResult?.Message, NotificationSeverity.Warning);
+                    }
+                }
+
+                ShowNotification($"User {(_isEditing ? "updated" : "created")} successfully", NotificationSeverity.Success);
+                
+                if (!_isEditing)
+                {
+                    // Navigate to edit mode with the new UUID
+                    Navigation.NavigateTo($"/Administration/Users/Basic/{result.UUID}");
+                }
+            }
+            else
+            {
+                ShowNotification(result?.Message ?? "An error occurred while saving", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("An unexpected error occurred", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteUser()
+    {
+        if (!_isEditing) return;
+
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"Are you sure you want to delete {_user.FullName}? This action cannot be undone.");
+        
+        if (!confirmed) return;
+
+        _isDeleting = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await _usersService.Delete(UsersUUID!);
+            
+            if (result?.isValid == true)
+            {
+                ShowNotification("User deleted successfully", NotificationSeverity.Success);
+                Navigation.NavigateTo("/Administration/Users");
+            }
+            else
+            {
+                ShowNotification(result?.Message ?? "An error occurred while deleting", NotificationSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowNotification("An unexpected error occurred", NotificationSeverity.Error);
+        }
+        finally
+        {
+            _isDeleting = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(_user.FirstName))
+            errors.Add("First name is required");
+
+        if (string.IsNullOrWhiteSpace(_user.LastName))
+            errors.Add("Last name is required");
+
+        if (string.IsNullOrWhiteSpace(_user.Email))
+            errors.Add("Email is required");
+        else if (!IsValidEmail(_user.Email))
+            errors.Add("Please enter a valid email address");
+
+        if (errors.Any())
+        {
+            ShowNotification($"Please fix the following errors:\n{string.Join("\n", errors)}", NotificationSeverity.Error);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void ShowNotification(string message, NotificationSeverity severity)
+    {
+        // Map success => isValid = true, all others => isValid = false (for visual class selection)
+        var isValidFlag = severity == NotificationSeverity.Success;
+        _logMessage = new LogMessageModel { isValid = isValidFlag, Message = message };
+
+        // NotificationService.Notify(new NotificationMessage 
+        // { 
+        //     Severity = severity, 
+        //     Summary = "User Management", 
+        //     Detail = message, 
+        //     Duration = 4000 
+        // });
+
+        StateHasChanged();
+
+        // Clear the inline status message after the notification duration
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(4000);
+            _logMessage = null;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+}

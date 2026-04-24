@@ -1,0 +1,642 @@
+﻿@using Library.API.Base.Models.Employees
+@using Library.API.Base.Services
+@using Library.API.TalentManagement.Models
+@using Library.API.TalentManagement.Services
+@using Library.API.TalentManagement.Enumerables 
+@using Library.API.Base.Validators
+@using Library.Security.Services
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+
+<div style="width: 20px; height: 20px">
+
+</div>
+<EmployeeSearch SearchClick="@OnSearch_Click" />
+
+
+@if (_talentManagementStatistic != null)
+{
+
+    @if (Search9BoxEmployees != null && (Search9BoxEmployees.UsersUUID == null || Search9BoxEmployees.UsersUUID.Count == 0))
+    {
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="2">
+                <RadzenRow>
+                    <RadzenColumn Size="6" SizeMD="12">
+                        <RadzenButton Click="OnFilterAll_Click" class="w-100" Style="background-color: var(--sc-primary-colour1);">
+                            <RadzenCard style="background-color: var(--sc-primary-colour1); color: var(--rz-white); box-shadow: none; padding: 0;">
+                                <RadzenStack AlignItems="AlignItems.Center">
+                                    Total Employees
+                                </RadzenStack>
+                                <RadzenStack AlignItems="AlignItems.Center">
+                                    <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                                        @if (_isLoading)
+                                        {
+                                            <div class="spinner"></div>
+                                        }
+                                        else
+                                        {
+                                            @_talentManagementStatistic.TotalEmployeeStats
+                                        }
+                                    </RadzenText>
+                                </RadzenStack>
+                            </RadzenCard>
+                        </RadzenButton>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="6" SizeMD="12">
+                        <RadzenButton Click="OnFilterTalentPool_Click" class="w-100" style="background-color: var(--sc-secondary-color4)!important;">
+                            <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white); box-shadow: none; padding: 0;">
+                                <RadzenStack AlignItems="AlignItems.Center">
+                                    Talent Pool
+                                </RadzenStack>
+                                <RadzenStack AlignItems="AlignItems.Center">
+                                    <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                                        @if (_isLoading)
+                                        {
+                                            <div class="spinner"></div>
+                                        }
+                                        else
+                                        {
+                                            @_talentManagementStatistic.TalentPoolStats
+                                        }
+                                    </RadzenText>
+                                </RadzenStack>
+                            </RadzenCard>
+                        </RadzenButton>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="6" SizeMD="12">
+                        <RadzenButton Click="OnFilter9BoxPlotted_Click" class="w-100" Style="background-color: var(--sc-primary-colour2);">
+                            <RadzenCard style="background-color: var(--sc-primary-colour2); color: var(--rz-white); box-shadow: none; padding: 0;">
+                                <RadzenStack AlignItems="AlignItems.Center">
+                                    9-box Plotted
+                                </RadzenStack>
+                                <RadzenStack AlignItems="AlignItems.Center">
+                                    <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                                        @if (_isLoading)
+                                        {
+                                            <div class="spinner"></div>
+                                        }
+                                        else
+                                        {
+                                            @_talentManagementStatistic.Box9PlottedStats
+                                        }
+                                    </RadzenText>
+                                </RadzenStack>
+                            </RadzenCard>
+                        </RadzenButton>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="6" SizeMD="12">
+                        <RadzenButton Click="OnFilterOutStanding_Click" class="w-100" Style="background-color: var(--sc-secondary-color1);">
+                            <RadzenCard style="background-color: var(--sc-secondary-color1); color: var(--rz-white); box-shadow: none; padding: 0;">
+                                <RadzenStack AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+                                    Outstanding
+                                </RadzenStack>
+                                <RadzenStack AlignItems="AlignItems.Center">
+                                    <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                                        @if (_isLoading)
+                                        {
+                                            <div class="spinner"></div>
+                                        }
+                                        else
+                                        {
+                                            @_talentManagementStatistic.OutStandingStats
+                                        }
+                                    </RadzenText>
+                                </RadzenStack>
+                            </RadzenCard>
+                        </RadzenButton>
+                    </RadzenColumn>
+
+
+
+                </RadzenRow>
+            </RadzenColumn>
+
+            <RadzenColumn>
+                @* build the 9 box matrix*@
+
+                <RadzenCard class="box9 ">
+                    <RadzenRow>
+
+                        <RadzenColumn Size="1">
+                            <RadzenCard class="potential">
+                                <RadzenText TextAlign="TextAlign.Center" Text="Potential" class="vertical-text" />
+                            </RadzenCard>
+                        </RadzenColumn>
+                        <RadzenColumn>
+                            <RadzenRow>
+                                <RadzenColumn>
+                                    <RadzenRow class="rz-mb-2">
+                                        <RadzenColumn Size="1">
+                                            <RadzenCard class="potential-box-3">
+                                                <RadzenText TextAlign="TextAlign.Center" Text="High" class="vertical-text " />
+                                            </RadzenCard>
+                                        </RadzenColumn>
+
+                                        <RadzenColumn Size="11">
+                                            <RadzenRow Gap="5px">
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level1" style="" onclick="@(async() => await On9Box_Click(Box9Types.UninspiredJobIncongruence))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.UninspiredJobIncongruenceLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.UninspiredJobIncongruenceStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level3" onclick="@(async() => await On9Box_Click(Box9Types.DynamicTalent))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.DynamicTalentLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.DynamicTalentStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level4" onclick="@(async() => await On9Box_Click(Box9Types.TopPerformer))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.TopPerformerLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.TopPerformerStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+                                            </RadzenRow>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+
+                                    <RadzenRow class="rz-mb-2">
+                                        <RadzenColumn Size="1">
+                                            <RadzenCard class="potential-box-3">
+                                                <RadzenText TextAlign="TextAlign.Center" Text="Medium" class="vertical-text " />
+                                            </RadzenCard>
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="11">
+                                            <RadzenRow Gap="5px">
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level1" onclick="@(async() => await On9Box_Click(Box9Types.InconsistentPassivePerformer))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.InconsistentPassivePerformerLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.InconsistentPassivePerformerStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level2" onclick="@(async() => await On9Box_Click(Box9Types.KeySolidEmployee))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.KeySolidEmployeeLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.KeySolidEmployeeStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level3" onclick="@(async() => await On9Box_Click(Box9Types.TalentedFuturePotential))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.TalentedFuturePotentialLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.TalentedFuturePotentialStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+                                            </RadzenRow>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+
+                                    <RadzenRow class="rz-mb-2">
+                                        <RadzenColumn Size="1">
+                                            <RadzenCard class="potential-box-3">
+                                                <RadzenText TextAlign="TextAlign.Center" Text="Low" class="vertical-text " />
+                                            </RadzenCard>
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="11">
+                                            <RadzenRow Gap="5px">
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level1" onclick="@(async() => await On9Box_Click(Box9Types.MismatchedEmployee))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.MismatchedEmployeeLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.MismatchedEmployeeStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level2" onclick="@(async() => await On9Box_Click(Box9Types.StableEmployee))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.StableEmployeeLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.StableEmployeeStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="box box-level2" onclick="@(async() => await On9Box_Click(Box9Types.TrustedProfessional))">
+                                                        <RadzenStack class="rz-mb-2 box-card">
+                                                            @_talentManagementStatistic.TrustedProfessionalLabel
+                                                        </RadzenStack>
+                                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                                            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white); line-height: 80px;">
+                                                                @if (_isLoading)
+                                                                {
+                                                                    <div class="spinner"></div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    @_talentManagementStatistic.TrustedProfessionalStats
+                                                                }
+                                                            </RadzenText>
+                                                        </RadzenStack>
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+                                            </RadzenRow>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+
+                                    <RadzenRow class="rz-mb-2">
+                                        <RadzenColumn Size="1">
+
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="11">
+                                            <RadzenRow Gap="5px">
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="potential-box-3-horizontal">
+                                                        <RadzenText TextAlign="TextAlign.Center" Text="Poor" />
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="potential-box-3-horizontal">
+                                                        <RadzenText TextAlign="TextAlign.Center" Text="Good" />
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+                                                <RadzenColumn Size="4" SizeXL="3">
+
+                                                    <RadzenCard class="potential-box-3-horizontal">
+                                                        <RadzenText TextAlign="TextAlign.Center" Text="High" />
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+
+                                            </RadzenRow>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+
+                                    <RadzenRow class="rz-mb-2">
+                                        <RadzenColumn Size="1">
+
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="11">
+                                            <RadzenRow>
+                                                <RadzenColumn Size="12" SizeXL="9">
+
+                                                    <RadzenCard class="Performance">
+                                                        <RadzenText TextAlign="TextAlign.Center" Text="Performance" />
+                                                    </RadzenCard>
+
+                                                </RadzenColumn>
+                                            </RadzenRow>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                        </RadzenColumn>
+
+                    </RadzenRow>
+
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+
+        @if (_isLoadingEmployees)
+        {
+            <RadzenStack class="align-content-center w-100 mt-5">
+                <RadzenCard class="align-content-center w-100" style="background-color: var(--rz-white)">
+                    <div class="spinner" style="margin-left:auto;margin-right:auto;"></div>
+                </RadzenCard>
+            </RadzenStack>
+        }
+        else
+        {
+            //check if _employee has data then display the data in a radzen grid
+            if (_employees != null && _employees.Count() > 0)
+            {
+                <RadzenStack class=" pt-5">
+
+                    <RadzenDataGrid AllowFiltering="true" AllowPaging="true" PageSize="100" AllowSorting="true" Data="@_employees">
+                        <Columns>
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.Fullname)" Title="Name" />
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.Email)" Title="Email" />
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.IDNumber)" Title="Id #" />
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeNumber)" Title="Emp #" />
+
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeBusinessUnits)" Title="BU" />
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeDepartments)" Title="Dept" />
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeJobs)" Title="Position" />
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeLevels)" Title="Level" />
+
+                            <RadzenDataGridColumn Property="@nameof(EmployeesModel.Box9Name)" Title="9 Box" />
+
+                            <RadzenDataGridColumn Sortable="false" Filterable="false" Width="60px">
+                                <Template Context="data">
+                                    <RadzenButton click="(async () => await OnEmployeeClick(data))" Icon="person_edit" class="employee-edit-button"></RadzenButton>
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenStack>
+            }
+        }
+    }
+    else
+    {
+        <TalentManagementEmployee UsersUUID=@Search9BoxEmployees.UsersUUID.FirstOrDefault() 
+                                  SuccessionStatusChanged="OnSuccessionStatusChanged" />
+    }
+}
+
+@code {
+    [Inject] IBox9Service _box9Service { get; set; }
+    [Inject] IEmployeeService _employeeService { get; set; }
+
+    [CascadingParameter] OneCoreAssessUI.Services.RightSidebarService RightSideBar { get; set; } = default;
+    [CascadingParameter] LayoutCascadeMenuModel MenuNav { get; set; } = default;
+
+    //private EmployeeSearchModel _Search9BoxEmployees;
+    /// <summary>
+    /// this is used for search criteria with the 9box selected
+    /// </summary>
+    [Parameter] public EmployeeSearchModel Search9BoxEmployees { get; set; } = new();
+    [Parameter] public EventCallback<EmployeeSearchModel> Search9BoxEmployeesChanged { get; set; }
+
+    /// <summary>
+    /// this is used for search criteria used with the filter
+    /// </summary>
+    [Parameter] public EmployeeSearchModel SearchFilter { get; set; } = new();
+    [Parameter] public EventCallback<EmployeeSearchModel> SearchFilterChanged { get; set; }
+
+    [Parameter] public EventCallback<string?> SuccessionStatusChanged { get; set; }
+
+    //create a isMaster bool that is full data bind
+    [Parameter] public bool IsMasterPage { get; set; } = true;
+    [Parameter] public EventCallback<bool> IsMasterPageChanged { get; set; }
+
+
+
+    private EmployeeSearchModel _searchEmployee = new();
+    private TalentManagementStatisticModel _talentManagementStatistic = new();
+    private List<EmployeesModel>? _employees = null;
+    private bool _isLoading = true;
+    private bool _isLoadingEmployees = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //if (_employeeService != null) _employees = await _employeeService.GetEmployees(_searchEmployee);
+        if (_box9Service!= null)
+        {
+            _talentManagementStatistic = await _box9Service.GetBox9Statistics(SearchFilter);
+            _isLoading = false;
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+
+        if (MenuNav.isMasterDashboard){ 
+            Search9BoxEmployees.UsersUUID = null;
+            MenuNav.SetMasterDashboardOff(); 
+        }
+
+        if ((SearchFilter.Box9 != null && SearchFilter.Box9.Count() == 0)
+             || SearchFilter != _searchEmployee)
+        {
+            if (!_searchEmployee.CompareEmployeeSearchModels(SearchFilter) && _box9Service != null)
+            {
+                _employees = null;
+                _searchEmployee = (EmployeeSearchModel)SearchFilter.Clone();
+                _searchEmployee.UsersUUID = null;
+                _searchEmployee.UsersUUID = new();
+                _talentManagementStatistic = await _box9Service.GetBox9Statistics(_searchEmployee);
+            }
+        }
+        await base.OnParametersSetAsync();
+    }
+
+
+    private async Task OnSearch_Click(OneCoreAssessUI.Models.SearchModel args)
+    {
+        _searchEmployee.Search = args.Search;
+        _searchEmployee.isIncludeTeam = args.isTeam;
+        _searchEmployee.UsersUUID = null;
+        _searchEmployee.UsersUUID = new();
+        Search9BoxEmployees.UsersUUID = null;
+
+        if (_box9Service!= null) _talentManagementStatistic = await _box9Service.GetBox9Statistics(_searchEmployee);
+        await SearchFilterChanged.InvokeAsync(_searchEmployee);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task On9Box_Click(Box9Types box)
+    {
+        if (_searchEmployee == null) _searchEmployee = new();
+        Search9BoxEmployees = (EmployeeSearchModel)_searchEmployee.Clone();
+        if (Search9BoxEmployees.Box9 == null) Search9BoxEmployees.Box9 = new(); 
+        Search9BoxEmployees.Box9.Clear();
+        Search9BoxEmployees.Box9.Add((int)box);
+        await Search9BoxEmployeesChanged.InvokeAsync(Search9BoxEmployees);
+
+        RightSideBar.Open(Enumerables.ControlTypes.sb_9Box_Employee_levels);
+    }
+
+    /// <summary>
+    /// filter clicks for the 9 box filter
+    /// </summary>
+    /// <param name="isFilterOnlyTalentpool"></param>
+    /// <param name="isFilterOnlyOutStanding"></param>
+    /// <param name="isFilterOnly9BoxPlotted"></param>
+    /// <param name="isFilterOnlySuccessionReadiness"></param>
+    /// <returns></returns>
+    private async Task FilterClicks(bool isFilterOnlyTalentpool = false, bool isFilterOnlyOutStanding = false, bool isFilterOnly9BoxPlotted = false, bool isFilterOnlySuccessionReadiness = false)
+    {
+        _isLoadingEmployees = true;
+        _isLoading = true;
+        EmployeeSearchModel Search = (EmployeeSearchModel)_searchEmployee.Clone();
+        Search.isFilterOnlyTalentpool = isFilterOnlyTalentpool;
+        Search.isFilterOnlyOutStanding = isFilterOnlyOutStanding;
+        Search.isFilterOnly9BoxPlotted  = isFilterOnly9BoxPlotted;
+        Search.isFilterOnlySuccessionReadiness = isFilterOnlySuccessionReadiness;
+
+        TalentManagementStatisticModel talent = (TalentManagementStatisticModel)_talentManagementStatistic.Clone();
+
+        if (isFilterOnlyTalentpool || isFilterOnly9BoxPlotted || (!isFilterOnlyTalentpool && !isFilterOnlyOutStanding && !isFilterOnly9BoxPlotted && !isFilterOnlySuccessionReadiness))
+        {
+            _talentManagementStatistic = await _box9Service.GetBox9Statistics(Search);
+            if (_talentManagementStatistic == null) _talentManagementStatistic = talent;
+
+            _talentManagementStatistic.TotalEmployeeStats = talent.TotalEmployeeStats;
+            _talentManagementStatistic.TalentPoolStats = talent.TalentPoolStats;
+            _talentManagementStatistic.Box9PlottedStats = talent.Box9PlottedStats;
+            _talentManagementStatistic.OutStandingStats = talent.OutStandingStats;
+        }
+
+        _employees = await _employeeService.GetEmployees(Search);
+        //if _employee is not null the sort by 9box, level, name
+        if (_employees != null) _employees.OrderBy(x => x.Box9Name).ThenBy(x => x.LevelOrder).ThenBy(x => x.FirstName).ThenBy(x => x.LastName);
+
+        _isLoadingEmployees = false;
+        _isLoading = false;
+    }
+
+    private async Task OnFilterTalentPool_Click() =>
+        await FilterClicks(isFilterOnlyTalentpool: true);
+
+    private async Task OnFilterOutStanding_Click() =>
+        await FilterClicks(isFilterOnlyOutStanding: true);
+
+    private async Task OnFilter9BoxPlotted_Click() =>
+        await FilterClicks(isFilterOnly9BoxPlotted: true);
+
+    private async Task OnFilterSuccessionReadiness_Click() =>
+        await FilterClicks(isFilterOnlySuccessionReadiness: true);
+
+    private async Task OnFilterAll_Click() =>
+       await FilterClicks();
+
+    private async Task OnEmployeeClick(EmployeesModel employee)
+    {
+        if (employee == null || employee.UsersUUID == null) return;
+
+        Search9BoxEmployees.UsersUUID = null;
+        Search9BoxEmployees.UsersUUID = new();
+        Search9BoxEmployees.UsersUUID.Add(employee.UsersUUID);
+    }
+
+    private async Task OnSuccessionStatusChanged(string? value) =>
+        await SuccessionStatusChanged.InvokeAsync(value);
+
+}

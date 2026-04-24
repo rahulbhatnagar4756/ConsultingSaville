@@ -1,0 +1,64 @@
+﻿@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+
+<RadzenMenu>
+    <RadzenMenuItem Text="Dashboard" Icon="dashboard" Click="(async() => await ChangeMenuItem(MenuItemTypes.PerformanceManagement360))"></RadzenMenuItem>
+    <RadzenMenuItem Text="360° Project" Icon="360" Click="(async() => await ChangeMenuItem(MenuItemTypes.PerformanceManagement360))"></RadzenMenuItem>
+
+    <RadzenMenuItem Text="Contract Templates" Icon="widget_medium" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.ContractGoalsTemplates))"></RadzenMenuItem>
+
+    <RadzenMenuItem Text="Employees" Icon="groups" Click="(async () =>  await ChangeMenuItemSub(MenuItemSubTypes.ContractGoalsEmployees))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Robot Dashboard" Icon="traffic" Click="(async () => await ChangeMenuItem(MenuItemTypes.PerformanceManagementGoals))"></RadzenMenuItem>
+
+    <RadzenMenuItem Text="Settings" Icon="settings">
+        <RadzenMenuItem Text="Periods" Icon="calendar_month">
+            <RadzenMenuItem Text="Contract" Icon="calendar_month" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationGoalsContractPeriods))"></RadzenMenuItem>
+            <RadzenMenuItem Text="Rating" Icon="date_range" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.GoalRatingPeriods))"></RadzenMenuItem>
+            <RadzenMenuItem Text="Scoring" Icon="event_repeat" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.GoalScoringPeriods))"></RadzenMenuItem>
+        </RadzenMenuItem>
+        <RadzenMenuItem Text="Pillars" Icon="account_balance" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationGoalsPillars))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Employee Goals" Icon="account_balance" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.EmployeeGoals))"></RadzenMenuItem>
+
+        <RadzenMenuItem Text="Goal Status" Icon="clock_loader_40" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationGoalsStatus))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Tolerances" Icon="sensors" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationGoalsTolerances))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Enterprise" Icon="account_tree">
+            <RadzenMenuItem Text="Structures" Icon="category" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationGoalsEnterpriseStructureTypes))"></RadzenMenuItem>
+            <RadzenMenuItem Text="Structures Weights" Icon="balance" Click="(async () => await ChangeMenuItemSub(MenuItemSubTypes.AdministrationGoalsEnterpriseStructureWeights))"></RadzenMenuItem>
+        </RadzenMenuItem>
+
+    </RadzenMenuItem>
+</RadzenMenu>
+
+
+@code {
+
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+
+    [Parameter] public Enumerables.MenuItemTypes Item { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemTypes> ItemChanged { get; set; }
+
+    [Parameter] public Enumerables.MenuItemSubTypes ItemSub { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemSubTypes> ItemSubChanged { get; set; }
+
+    private async Task ChangeMenuItem(MenuItemTypes Option)
+    {
+        // Update the cascading parameter directly
+        if (_menuNav != null)
+        {
+            _menuNav.MenuItemType = Option;
+        }
+        await ItemChanged.InvokeAsync(Option);
+    }
+
+    private async Task ChangeMenuItemSub(MenuItemSubTypes Option)
+    {
+        // Update the cascading parameter directly
+        if (_menuNav != null)
+        {
+            _menuNav.MenuItemSubType = Option;
+        }
+        await ItemSubChanged.InvokeAsync(Option);
+        await InvokeAsync(StateHasChanged);
+    }
+
+}

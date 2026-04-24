@@ -1,0 +1,362 @@
+﻿@using Library.API.Base.AddOns
+@using Library.API.Base.Models
+@using Library.API.Base.Models.BusinessHierarchy.EmployeeCriteria
+@using Library.API.Base.Models.BusinessHierarchy.Jobs
+@using Library.API.Base.Services
+
+
+
+<RadzenStack class="rz-mx-auto dashboard-search rz-p-4"  >
+
+    @if (_employeeSearchResults == null)
+    {
+        <RadzenLabel Text="Loading..."></RadzenLabel>
+    }
+    else
+    {
+        @if (_employeeSearchResults.BusinessUnitTypes != null && _employeeSearchResults.BusinessUnitTypes.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Business Unit types"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.BusinessUnitTypes)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected
+                                TValue="bool?"
+                                Change="@(async() => await FilterTypes_Click(Library.API.Base.Enumerables.EmployeeFilterTypes.BusinessUnitTypes))" />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+        @if (_employeeSearchResults.BusinessUnits != null && _employeeSearchResults.BusinessUnits.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Business Units"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.BusinessUnits)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected
+                                TValue="bool?"
+                                Change="@(async() => await FilterTypes_Click(Library.API.Base.Enumerables.EmployeeFilterTypes.BusinessUnits))" />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+        @if (_employeeSearchResults.Departments != null && _employeeSearchResults.Departments.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Departments"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Vertical" Wrap="FlexWrap.Wrap" Gap="5px" class="db-listbox-outer rz-pb-4">
+                        <RadzenListBox @bind-Value=@_selectedDepartments
+                        Data=@_employeeSearchResults.Departments
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        FilterOperator="StringFilterOperator.Contains"
+                        AllowFiltering="true"
+                        TextProperty="@nameof(TypesModel.FullName)"
+                        ValueProperty="@nameof(TypesModel.UUID)"
+                        Multiple=true
+                        AllowClear=true
+                        Placeholder="Select products"
+                        Change="@(async() => await FilterTypes_Click(Library.API.Base.Enumerables.EmployeeFilterTypes.Departments))"
+                        InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "select products" }})" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+        @if (_employeeSearchResults.CriticalRoles != null && _employeeSearchResults.CriticalRoles.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Critical Roles"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.CriticalRoles)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected
+                                TValue="bool?"
+                                Change="@(async() => await FilterTypes_Click(Library.API.Base.Enumerables.EmployeeFilterTypes.CriticalRoles))" />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+        @if (_employeeSearchResults.Disciplines != null && _employeeSearchResults.Disciplines.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Disciplines"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.Disciplines)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected
+                                TValue="bool?"
+                                Change="@(async() => await FilterTypes_Click(Library.API.Base.Enumerables.EmployeeFilterTypes.Disciplines))" />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+        @if (_employeeSearchResults.Level != null && _employeeSearchResults.Level.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Levels"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.Level)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected
+                                TValue="bool?"
+                                Change="@(async() => await FilterTypes_Click(Library.API.Base.Enumerables.EmployeeFilterTypes.Level))" />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+
+        <RadzenStack>
+            <RadzenStack class="db-header">
+                <RadzenLabel Text="Positions"></RadzenLabel>
+            </RadzenStack>
+            <RadzenStack>
+
+                @if (_employeeSearchResults.Position != null && _employeeSearchResults.Position.Count() > 0)
+                {
+
+                    <RadzenStack Orientation="Orientation.Vertical" Wrap="FlexWrap.Wrap" Gap="5px" class="db-listbox-outer rz-pb-4">
+                        <RadzenListBox @bind-Value=@_selectedPositions
+                        Data=@_employeeSearchResults.Position
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        FilterOperator="StringFilterOperator.Contains"
+                        AllowFiltering="true"
+                        TextProperty="@nameof(EmployeeJobsModel.FullName)"
+                        ValueProperty="@nameof(EmployeeJobsModel.UUID)"
+                        Multiple=true
+                        AllowClear=true
+                        Placeholder="Select products"
+                        InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "select products" }})" />
+
+                    </RadzenStack>
+                }
+                else
+                {
+                    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="5px" class="db-listbox-outer rz-pb-4">
+                        <RadzenLabel Text="No Positions Found" class="db-text-not-found"></RadzenLabel>
+                    </RadzenStack>
+                }
+            </RadzenStack>
+        </RadzenStack>
+
+        @if (_employeeSearchResults.Gender != null && _employeeSearchResults.Gender.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Gender"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.Gender)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+        @if (_employeeSearchResults.Ethnicity != null && _employeeSearchResults.Ethnicity.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Ethnicity"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.Ethnicity)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+        @if (_employeeSearchResults.YearsOfExperience != null && _employeeSearchResults.YearsOfExperience.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Years Of Experience"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.YearsOfExperience)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+        @if (_employeeSearchResults.Age != null && _employeeSearchResults.Age.Count() > 0)
+        {
+            <RadzenStack>
+                <RadzenStack class="db-header">
+                    <RadzenLabel Text="Age"></RadzenLabel>
+                </RadzenStack>
+                <RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="5px" class="rz-pb-4">
+                        @foreach (TypesModel Item in _employeeSearchResults.Age)
+                        {
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" class="db-checkbox-outer">
+                                <RadzenCheckBox @bind-Value=@Item.isSelected />
+                                <RadzenLabel Text=@Item.Name></RadzenLabel>
+                            </RadzenStack>
+
+                        }
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        }
+
+        <RadzenStack Gap="5px" class="rz-background-color-base-700 rz-p-4 sidebar-footer-fixed">
+            <RadzenRow Gap="1rem">
+
+                <RadzenColumn>
+                    <RadzenButton Text="Filter" Click="Click_Filter" class="rz-w-100" />
+                </RadzenColumn>
+                <RadzenColumn Size="1">
+                    <RadzenButton Icon="restart_alt" Click="Click_refresh" />
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenStack>
+
+    }
+
+</RadzenStack>
+
+
+@code {
+    [Inject] IEmployeeService _employeeService { get; set; }
+
+    [Parameter] public EventCallback<Library.API.Base.Models.Employees.EmployeeSearchModel> OnFilterClick { get; set; }
+
+    EmployeeCriteriaResultsModel? _employeeSearchResults;
+    EmployeeCriteriaResultsModel? _employeeSearchResultsOriginal;
+
+    private List<string> _selectedDepartments = new List<string>();
+    private List<string> _selectedPositions = new List<string>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _employeeSearchResultsOriginal = await _employeeService.GetEmployeeFilteringCriteria();
+            _employeeSearchResults = (EmployeeCriteriaResultsModel?)_employeeSearchResultsOriginal?.Clone();
+            if (_employeeSearchResults != null) StateHasChanged();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+
+    private async Task FilterTypes_Click(Library.API.Base.Enumerables.EmployeeFilterTypes FilterTypes)
+    {
+        MapperListDataToEmployeeCriteriaResultsModel();
+        _employeeService.FilterEmployeeCriteria(FilterTypes, _employeeSearchResultsOriginal, _employeeSearchResults);
+    }
+
+
+
+    private async Task Click_Filter()
+    {
+        MapperListDataToEmployeeCriteriaResultsModel();
+
+        var Data = _employeeSearchResults.ConvertToEmployeeSearchModel();
+        await OnFilterClick.InvokeAsync(Data);
+    }
+
+    private void MapperListDataToEmployeeCriteriaResultsModel()
+    {
+        if (_employeeSearchResults == null) return;
+
+        //gets the data from the Radzen list view that's saved in a List<string> then match's it up to the models Department and position
+        SyncSelection<Library.API.Base.Models.TypesModel>(_employeeSearchResults.Departments, _selectedDepartments);
+        SyncSelection<EmployeeJobsModel>(_employeeSearchResults.Position, _selectedPositions);
+    }
+
+    private void SyncSelection<T>(List<T>? Data, List<string> selections) where T : ISelection
+    {
+        if (Data == null || selections.Count() == 0) return;
+        foreach (T Item in Data)
+        {
+            Item.isSelected = Item.UUID == null ? false : selections.Contains(Item.UUID);
+        }
+    }
+
+
+    private async Task Click_refresh()
+    {
+        _employeeSearchResults = (EmployeeCriteriaResultsModel?)_employeeSearchResultsOriginal.Clone();
+    }
+}

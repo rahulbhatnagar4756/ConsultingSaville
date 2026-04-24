@@ -1,0 +1,249 @@
+﻿@using Library.API.Base.Models.Employees
+@using Library.API.Base.Services
+@using Library.API.Base.Services.Users
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Components.Pages.Employees
+@using OneCoreAssessUI.Services
+
+
+<EmployeeSearch SearchClick="@ClickSearch" />
+
+@if (_employees != null)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" class="mb-4">
+        <RadzenCard style="background-color: var(--rz-warning-light); color: var(--rz-white)">
+            <RadzenStack AlignItems="AlignItems.Center" >
+                <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                    @_employees.Count()
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                Total Employees
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard style="background-color: var(--rz-success-light); color: var(--rz-white)">
+            <RadzenStack AlignItems="AlignItems.Center"   style="width:115px" >
+                <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                    @_9boxTotal
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                9 Box
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard style="background-color: var(--rz-danger-light); color: var(--rz-white)">
+            <RadzenStack AlignItems="AlignItems.Center" style="width:115px">
+                <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                    @_ccpTotal
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                Total CPPs
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard style="background-color: var(--rz-info-light); color: var(--rz-white)">
+            <RadzenStack AlignItems="AlignItems.Center" style="width:115px">
+                <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                    @_personalTotal
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" style="width:115px; text-align: center; ">
+                Total Wave Personalities
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard style="background-color: var(--rz-secondary-light); color: var(--rz-white)">
+            <RadzenStack AlignItems="AlignItems.Center" style="width:115px">
+                <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                    @_finalGoalTotal 
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                Total Final Goals
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard style="background-color: var(--rz-primary-light); color: var(--rz-white)">
+            <RadzenStack AlignItems="AlignItems.Center" style="width:115px">
+                <RadzenText TextStyle="TextStyle.H3" style="color: var(--rz-white)">
+                    @_idpTotals
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                Total IDP
+            </RadzenStack>
+        </RadzenCard>
+
+
+
+        <RadzenCard class="employee-add" @onclick="OnEmployeeClick2">
+            <RadzenStack AlignItems="AlignItems.Center" style="width:115px">
+                <RadzenIcon Icon="add" class="employee-plus" ></RadzenIcon>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center" class="employee-footer">
+                Add Employee
+            </RadzenStack>
+        </RadzenCard>
+
+
+
+    </RadzenStack>
+
+
+    <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" 
+    FilterMode="FilterMode.Advanced" 
+    AllowSorting="true" 
+    PageSize="50"
+    AllowPaging="true" 
+    PagerHorizontalAlign="HorizontalAlign.Left" 
+    ShowPagingSummary="true" 
+    Data="@_employees" 
+    LogicalFilterOperator="LogicalFilterOperator.Or" 
+    SelectionMode="DataGridSelectionMode.Single">
+        <Columns>
+
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeBusinessUnits)" Title="Business Units"  />
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeDepartments)" Title="Departments"  />
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeJobs)" Title="Positions"  />
+
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.FirstName)" Title="First Name"  />
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.LastName)" Title="Last Name"  />
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.IDNumber)" Title="ID Number"  Filterable=false  Sortable=false/>
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeNumber)" Title="Employee No"  Filterable=false  Sortable=false/>
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.isPersonality)" Title="Personality" Filterable=false  Sortable=false width="92px"/>
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.isCPP)" Title="CPP"  Filterable=false  Sortable=false width="92px"/>
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.isGoalFinalScore)" Title="Final Score"  Filterable=false  Sortable=false width="92px"/>
+            <RadzenDataGridColumn Property="@nameof(EmployeesModel.UsersUUID)" Title="Action" TextAlign="TextAlign.Center" Filterable=false Sortable=false Width="80px">
+                <Template Context="data">
+
+                    <RadzenButton click="(async() => await OnEmployeeClick(data.UsersUUID))" Icon="person_edit" class="employee-edit-button"></RadzenButton>
+
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+
+<Employee @ref=_employee  @bind-UsersUUID="_selectedEmployee" />
+<EmployeeInformation @bind-UsersUUID="_selectedEmployee" /> 
+
+@code {
+
+    [Inject] IEmployeeService _employeeService { get; set; }
+    [Inject] IUsersService _usersService { get; set; }
+
+    
+
+    [Parameter] public EmployeeSearchModel Search { get; set; } = new(); 
+    [Parameter] public EventCallback<EmployeeSearchModel> SearchChanged { get; set; }
+
+    private EmployeeSearchModel _searchEmployee = new();
+    private List<EmployeesModel> _employees;
+
+    private int _ccpTotal = 0;
+    private int _personalTotal = 0;
+    private int _9boxTotal = 0;
+    private int _finalGoalTotal = 0;
+    private int _idpTotals = 0;
+    private string _selectedEmployee = "";
+
+    private OneCoreAssessUI.Components.Pages.Employees.Employee _employee;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_employeeService != null) _employees = await _employeeService.GetEmployees(_searchEmployee);
+        calculateTotals();
+        await base.OnInitializedAsync();
+    }
+
+    private void calculateTotals()
+    {
+        if (_employees == null) return; 
+        _ccpTotal = _employees.Where(x => x.CPP == true).Count();
+        _personalTotal = _employees.Where(x => x.Personality == true).Count();
+        //9box count where Box9score is not null
+        _9boxTotal = _employees.Where(x => x.Box9Score != null).Count();
+        _finalGoalTotal = _employees.Where(x => x.GoalFinalScore != null).Count();
+        _idpTotals = _employees.Where(x => x.FormsUUIDPDP != null).Count();
+
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+
+        if (!CheckEmployeeModels() && _employeeService != null)
+        {
+            SyncEmployeeModels();
+            _employees = await _employeeService.GetEmployees(_searchEmployee);
+            calculateTotals();
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task ClickSearch(SearchModel args)
+    {
+        _searchEmployee.Search = args.Search;
+        _searchEmployee.isIncludeTeam = args.isTeam;
+        _employees = await _employeeService.GetEmployees(_searchEmployee);
+        calculateTotals();
+        StateHasChanged();
+    }
+
+    private void SyncEmployeeModels()
+    {
+        _searchEmployee.Position = Search.Position;
+        _searchEmployee.Departments = Search.Departments;
+        _searchEmployee.BusinessUnits = Search.BusinessUnits;
+        _searchEmployee.BusinessUnitTypes = Search.BusinessUnitTypes;
+        _searchEmployee.Level = Search.Level;
+        _searchEmployee.CriticalRoles = Search.CriticalRoles;
+        _searchEmployee.Disciplines = Search.Disciplines;
+        _searchEmployee.YearsOfExperience = Search.YearsOfExperience;
+        _searchEmployee.Age = Search.Age;
+    }
+
+
+    private bool CheckEmployeeModels() =>
+       _searchEmployee.Position == Search.Position
+       && _searchEmployee.Departments == Search.Departments
+       && _searchEmployee.BusinessUnits == Search.BusinessUnits
+       && _searchEmployee.BusinessUnitTypes == Search.BusinessUnitTypes
+       && _searchEmployee.Level == Search.Level
+       && _searchEmployee.CriticalRoles == Search.CriticalRoles
+       && _searchEmployee.Disciplines == Search.Disciplines
+       && _searchEmployee.YearsOfExperience == Search.YearsOfExperience
+       && _searchEmployee.Age == Search.Age;
+
+    private async Task OnEmployeeClick2()
+    {
+        await _employee.Save();
+    }
+
+    private async Task OnEmployeeClick(string selectedEmployee)
+    {
+        _selectedEmployee = selectedEmployee; 
+    }
+
+    private void HandleAction(EmployeesModel data)
+    {
+        
+    }
+
+    
+    private async Task HandleDelete(EmployeesModel data)
+    {
+
+
+
+    }
+}

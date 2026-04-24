@@ -1,0 +1,154 @@
+﻿@page "/MenuTest"
+
+@inject ContextMenuService ContextMenuService
+
+@layout BlankLayout
+
+<h3>Radzen DropZone with Right-Click Context Menu Demo</h3>
+
+<RadzenDropZoneContainer TItem="MyTask" Data="@tasks" Drop="@OnDrop" CanDrop="@CanDrop"
+                         ItemSelector="@((task, zone) => task.Status == GetZoneStatus(zone))">
+    <Template Context="task">
+        <div class="rz-card rz-my-2"
+             @oncontextmenu="@(args => ShowContextMenu(args, task))"
+             @oncontextmenu:preventDefault="true">
+            @task.Title (@task.Status)
+        </div>
+    </Template>
+    <ChildContent>
+        <div class="rz-flex-grow-1 rz-mr-4">
+            <RadzenText Text="Not Started" TextStyle="TextStyle.Subtitle1" />
+            <RadzenDropZone @ref="notStartedZone" TItem="MyTask" Class="my-dropzone" AllowDrop="true" />
+        </div>
+        <div class="rz-flex-grow-1 rz-mr-4">
+            <RadzenText Text="In Progress" TextStyle="TextStyle.Subtitle1" />
+            <RadzenDropZone @ref="inProgressZone" TItem="MyTask" Class="my-dropzone" AllowDrop="true" />
+        </div>
+        <div class="rz-flex-grow-1">
+            <RadzenText Text="Completed" TextStyle="TextStyle.Subtitle1" />
+            <RadzenDropZone @ref="completedZone" TItem="MyTask" Class="my-dropzone" AllowDrop="true" />
+        </div>
+    </ChildContent>
+</RadzenDropZoneContainer>
+
+@code {
+    class MyTask
+    {
+        public string Title { get; set; }
+        public string Status { get; set; } // "Not Started", "In Progress", "Completed"
+    }
+
+    List<MyTask> tasks;
+
+    RadzenDropZone<MyTask> notStartedZone;
+    RadzenDropZone<MyTask> inProgressZone;
+    RadzenDropZone<MyTask> completedZone;
+
+    protected override void OnInitialized()
+    {
+        tasks = new List<MyTask>
+        {
+            new MyTask { Title = "Task 1", Status = "Not Started" },
+            new MyTask { Title = "Task 2", Status = "Not Started" },
+            new MyTask { Title = "Task 3", Status = "In Progress" },
+            new MyTask { Title = "Task 4", Status = "Completed" },
+            new MyTask { Title = "Task 5", Status = "Not Started" }
+        };
+    }
+
+    void OnDrop(RadzenDropZoneItemEventArgs<MyTask> args)
+    {
+        if (args.ToZone != null) // Ensure it's dropped onto a zone
+        {
+            // Update the status of the dropped item
+            args.Item.Status = GetZoneStatus(args.ToZone);
+            StateHasChanged(); // Re-render to update the item's display in the new zone
+        }
+    }
+
+    bool CanDrop(RadzenDropZoneItemEventArgs<MyTask> args)
+    {
+        // Example: Prevent moving "Completed" tasks back to "Not Started"
+        if (args.Item.Status == "Completed" && args.ToZone == notStartedZone)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    string GetZoneStatus(RadzenDropZone<MyTask> zone)
+    {
+        if (zone == notStartedZone) return "Not Started";
+        if (zone == inProgressZone) return "In Progress";
+        if (zone == completedZone) return "Completed";
+        return string.Empty; // Should not happen
+    }
+
+    void ShowContextMenu(MouseEventArgs args, MyTask task)
+    {
+        // Open the context menu at the mouse click position
+        ContextMenuService.Open(args, new List<ContextMenuItem>
+        {
+            new ContextMenuItem() { Text = $"Edit \"{task.Title}\"", Value = task, Icon = "edit" },
+            new ContextMenuItem() { Text = $"Delete \"{task.Title}\"", Value = task, Icon = "delete" },
+            new ContextMenuItem() { Text = "---" }, // Separator
+            new ContextMenuItem() { Text = "View Details", Value = task, Icon = "info" }
+        }, OnMenuItemClick);
+    }
+
+    void OnMenuItemClick(MenuItemEventArgs args)
+    {
+        if (args.Value is MyTask clickedTask)
+        {
+            switch (args.Text)
+            {
+                case var text when text.StartsWith("Edit"):
+                    // Implement your edit logic here, e.g., open a dialog to edit the task
+                    Console.WriteLine($"Editing task: {clickedTask.Title}");
+                    // Example: you might open a RadzenDialog here
+                    // DialogService.Open<EditTaskDialog>("Edit Task", new Dictionary<string, object>() { { "Task", clickedTask } });
+                    break;
+                case var text when text.StartsWith("Delete"):
+                    // Implement your delete logic
+                    tasks.Remove(clickedTask); // Remove from the main list
+                    StateHasChanged(); // Re-render the UI
+                    Console.WriteLine($"Deleting task: {clickedTask.Title}");
+                    break;
+                case "View Details":
+                    // Implement view details logic
+                    Console.WriteLine($"Viewing details for task: {clickedTask.Title}");
+                    break;
+            }
+        }
+    }
+}
+
+<style>
+    .my-dropzone {
+        min-height: 150px;
+        border: 2px dashed #ccc;
+        padding: 10px;
+        background-color: #f8f8f8;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .rz-card {
+        cursor: grab; /* Indicate draggable */
+    }
+
+    .rz-can-drop {
+        border-color: #4CAF50 !important;
+        background-color: #e8f5e9 !important;
+    }
+
+    .rz-no-drop {
+        border-color: #F44336 !important;
+        background-color: #ffebee !important;
+    }
+
+    .rz-dragging {
+        opacity: 0.5;
+        border: 1px solid #007bff;
+    }
+</style>

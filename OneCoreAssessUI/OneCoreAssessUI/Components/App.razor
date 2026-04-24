@@ -1,0 +1,40 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <RadzenTheme @rendermode="@InteractiveServer" Theme="material" />
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["OneCoreAssessUI.styles.css"]" />
+    <link rel="stylesheet" href="css/scss/dashboard-inner.css" />
+    <link rel="stylesheet" href="css/scss/Controls/main-control.css" />
+    <link rel="stylesheet" href="css/scss/Candidates/Candidates.css" />
+    <link rel="stylesheet" href="css/scss/Comments.css" />
+
+    <ImportMap />
+    <link rel="icon" type="image/png" href="/images/Icon/CognitiveWhite.png" />
+    <HeadOutlet />
+
+</head>
+
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=@(typeof(Radzen.Colors).Assembly.GetName().Version)"></script>
+
+    <script src="https://kit.fontawesome.com/cafa647736.js" crossorigin="anonymous"></script>
+    <script src="Scripts/CookieScript.js"></script>
+    <script src="Scripts/FileDownloader.js"></script>
+    <script>
+        window.downloadFileFromBase64 = (base64, fileName) => {
+            const link = document.createElement('a');
+            link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + base64;
+            link.download = fileName;
+            link.click();
+        };
+    </script>
+</body>
+</html>

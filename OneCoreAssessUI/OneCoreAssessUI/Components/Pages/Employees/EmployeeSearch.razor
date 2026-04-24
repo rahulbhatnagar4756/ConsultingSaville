@@ -1,0 +1,75 @@
+﻿@using Library.API.Base.Services 
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+
+  
+    <RadzenCard class="rz-mx-auto"  style="margin-bottom: 15px !important;">
+
+        <RadzenStack>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" placeholder="Search Employees" 
+                aria-label="Search Employees" 
+                aria-describedby="button-addon2"
+                @bind-value="@Search">
+                <button class="btn btn-outline-secondary" type="button" id="button-addon2" @onclick="Click_Search">Search</button>
+                <Radzen.Blazor.RadzenButton Click="Click_Filter">
+                    <ChildContent>
+                        <RadzenIcon Icon="tune" />
+                    </ChildContent>
+                </Radzen.Blazor.RadzenButton>
+
+            <RadzenButton class="draw-button" Click="Click_Shelf">
+                <ChildContent>
+                    <RadzenIcon Icon="shelves"></RadzenIcon>
+                </ChildContent>
+            </RadzenButton>
+            </div>
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenSwitch @bind-Value=@isTeam   />
+            <RadzenLabel Text="Include Team" ></RadzenLabel>
+        </RadzenStack>
+
+
+    </RadzenCard>
+ 
+
+
+@code {
+    [Inject] IEmployeeService _employeeService { get; set; }
+
+    [CascadingParameter]  OneCoreAssessUI.Services.RightSidebarService RightSideBar { get; set; } = default;
+    [Parameter] public EventCallback<SearchModel> SearchClick { get; set; }
+    //[Parameter] public EventCallback SearchClick { get; set; }
+
+    public string? Search = ""; 
+    //[Parameter] public EventCallback<string?> SearchChange { get; set; } 
+    public bool isTeam = false;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var employees = await _employeeService.GetEmployeeFilteringCriteria();
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task Click_Search()
+    {
+        var Search2 = new SearchModel
+            {
+                Search = Search?.ToString() ?? "",
+                isTeam = isTeam
+            };
+
+        Console.WriteLine("Child Click_Search triggered");
+        await SearchClick.InvokeAsync(Search2);
+    }
+
+    private void Click_Filter() =>
+        RightSideBar.Open(Enumerables.ControlTypes.sb_employee_filter);
+
+    private void Click_Shelf() =>
+        RightSideBar.Open();
+     
+}

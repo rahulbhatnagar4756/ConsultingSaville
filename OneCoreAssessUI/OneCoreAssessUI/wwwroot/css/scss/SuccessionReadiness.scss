@@ -1,0 +1,88 @@
+
+.successionreadiness {
+
+    .jobs-name {
+        color: var(--rz-base-800);
+        padding: 10px 0;
+        font-size: 16px;
+        font-weight: 900;
+    }
+
+    .jobs-level {
+        background-color: var( --sc-secondary-color3);
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid darkgrey;
+        min-width: 50px;
+    }
+
+    .jobs-total {
+        background-color: var( --sc-secondary-color4);
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid darkgrey;
+        min-width: 50px;
+    }
+
+    .jobs-employees {
+        background-color: var( --sc-secondary-color4);
+    }
+
+    .header-subs {
+        font-weight: 700;
+        font-size: 18px;
+    }
+
+    .header-underline {
+        border: 2px solid var(--sc-secondary-color2);
+        width: 90px;
+        margin-bottom: 10px;
+    }
+
+    .employee-information-cell {
+        min-height: 30px;
+        padding: 10px;
+        background-color: var(--rz-white);
+    }
+
+    .rz-tick-text {
+        color: var(--rz-text-color);
+        fill: var(--rz-text-color);
+    }
+}
+
+.card-base-400 {
+    .rz-card {
+        background-color: var(--rz-base-400);
+    }
+
+    .mt-plus-100 {
+        margin-top: 100px;
+    
+
+        .round-image-container{
+            border: 7px solid var(--rz-base-400);
+            margin-top: -90px;
+        }
+
+    }
+}
+
+.card-base-200 {
+
+    .rz-card {
+        background-color: var(--rz-base-300);
+    }
+
+    .mt-plus-100 {
+        margin-top: 100px;
+
+
+        .round-image-container {
+            border: 7px solid var(--rz-base-300);
+            margin-top: -90px;
+        }
+    }
+}
+
+

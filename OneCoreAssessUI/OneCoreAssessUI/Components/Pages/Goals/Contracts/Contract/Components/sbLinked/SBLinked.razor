@@ -1,0 +1,343 @@
+﻿@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Models.Employee
+@using Library.API.Goals.Services.Contracts
+@using Library.API.Goals.Models
+@using Library.API.Service
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+
+<RadzenStack class="header-custom">
+    <RadzenStack class="header-outer">
+        <RadzenStack>
+            <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Linked" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenStack>
+
+
+<RadzenStack Style="height: calc(100vh - 192px);">
+    <RadzenStack Gap="20px" class="p-4" Style="flex: 1; overflow-y: auto;">
+
+
+        <!-- Error/Success Message -->
+        @if (_logMessage != null && _logMessage.isValid.HasValue)
+        {
+            <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+                <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+                <span>@_logMessage.Message</span>
+            </div>
+        }
+
+		<!-- Employee Selection Dropdown -->
+		<RadzenStack Gap="10px">
+			<RadzenText Text="Select Employee" class="rz-font-weight-medium" />
+			<RadzenDropDown @bind-Value="_selectedEmployeeUUID"
+							Data="@(_employees?.OrderBy(x => x.Fullname)??null)"
+							TextProperty="@nameof(Employee.Fullname)"
+							ValueProperty="@nameof(Employee.UsersUUID)"
+							Placeholder="Select an employee"
+							AllowClear="true"
+							class="rz-w-100"
+							AllowFiltering="true"
+							FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" />
+		</RadzenStack>
+
+		<!-- Load Button -->
+		<RadzenStack>
+			<RadzenButton Text="Load Contract"
+						  Icon="download"
+						  Click="LoadEmployeeContract"
+						  Disabled="@(string.IsNullOrEmpty(_selectedEmployeeUUID))"
+						  class="rz-w-100" />
+		</RadzenStack>
+
+		@if (_isLoading)
+		{
+			<RadzenStack AlignItems="AlignItems.Center" class="rz-p-4">
+				<RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary"
+										   Value="100"
+										   ShowValue="false"
+										   Mode="ProgressBarMode.Indeterminate" />
+				<RadzenText Text="Loading contract..." />
+			</RadzenStack>
+		}
+
+		@if (_contractData != null && (_contractData.EnterpriseStructures?.Any() ?? false))
+		{
+			<!-- Filter Buttons -->
+			<RadzenStack Orientation="Orientation.Horizontal" Gap="10px" Wrap="FlexWrap.Wrap">
+				<RadzenButton Text="All"
+							  Click="@(() => SetFilter("ALL"))"
+							  ButtonStyle="@(_currentFilter == "ALL" ? ButtonStyle.Primary : ButtonStyle.Secondary)"
+							  Size="ButtonSize.Small" />
+				<RadzenButton Text="KPA"
+							  Click="@(() => SetFilter("KPA"))"
+							  ButtonStyle="@(_currentFilter == "KPA" ? ButtonStyle.Primary : ButtonStyle.Secondary)"
+							  Size="ButtonSize.Small" />
+			</RadzenStack>
+
+
+			<RadzenStack class="rz-pt-2">
+				<RadzenTabs>
+					<Tabs>
+						<!-- Contract Items Display -->
+						@foreach (var enterpriseStructure in _contractData.EnterpriseStructures)
+						{
+							@if (enterpriseStructure.Pillars?.Any() ?? false)
+							{
+								<RadzenTabsItem Text=@enterpriseStructure.Name>
+
+
+									@foreach (var pillar in enterpriseStructure.Pillars)
+									{
+										@if (pillar.KPA?.Any() ?? false)
+										{
+											<RadzenStack Gap="10px" class="rz-mb-3">
+												<RadzenText TextStyle="TextStyle.H6" Text="@pillar.Name" class="rz-font-weight-bold" />
+
+												@foreach (var kpa in pillar.KPA.Where(k => ShouldShowItem("KPA")))
+												{
+
+													<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px" class="rz-p-2 rz-border-radius-2" Style="border: 1px solid var(--rz-border-color);">
+														<RadzenCheckBox @bind-Value="@kpa.isSelected"
+																		TValue="bool" />
+														<RadzenText Text="KPA" class="rz-badge rz-badge-info rz-font-size-xs" />
+														<RadzenText Text="@kpa.Name" class="rz-flex-grow-1" />
+													</RadzenStack>
+
+													@if (kpa.KPI?.Any() ?? false)
+													{
+														@foreach (var kpi in kpa.KPI.Where(k => ShouldShowItem("KPI")))
+														{
+															<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px" class="rz-p-2 rz-border-radius-2 rz-ml-4" Style="border: 1px solid var(--rz-border-color); margin-left: 2rem;">
+																<RadzenCheckBox @bind-Value="@kpi.isSelected"
+																				TValue="bool" />
+																<RadzenText Text="KPI" class="rz-badge rz-badge-success rz-font-size-xs" />
+																<RadzenText Text="@kpi.Name" class="rz-flex-grow-1" />
+															</RadzenStack>
+														}
+
+													}
+
+												}
+											</RadzenStack>
+										}
+									}
+								</RadzenTabsItem>
+							}
+						}
+					</Tabs>
+				</RadzenTabs>
+			</RadzenStack>
+
+			<!-- Save Button -->
+			<RadzenStack>
+				<RadzenButton Text="Link Selected"
+							  Icon="save"
+							  Click="SaveSelectedItems"
+							  ButtonStyle="ButtonStyle.Success"
+							  Size="ButtonSize.Large" 
+							  class="rz-w-100" />
+			</RadzenStack>
+		}
+	</RadzenStack>
+</RadzenStack>
+@code {
+    [Inject] IEmployeesService EmployeesService { get; set; } = default!;
+    [Inject] IContractsService ContractsService { get; set; } = default!;
+    [Inject] IKPALinksService KPALinksService { get; set; } = default!;
+
+    [CascadingParameter] private LoggedInInformationModel? _loggedInInformation { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private ResultsModel? _logMessage = null;
+
+    private string? _contractPeriodsUUID { get; set; }
+    private ContractLinkedSaveModel? _contractLinked;
+    private ContractLinkedSaveModel? _contractLinkedCurrent;
+    private List<Employee>? _employees;
+    private string? _selectedEmployeeUUID;
+    private ContractsModel? _contractData;
+    private Dictionary<string, bool> _selectedItems = new();
+    private string _currentFilter = "ALL";
+    private bool _isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _contractLinked = _rightSidebarService.GetSharedContext<ContractLinkedSaveModel>();
+        if (_contractLinked != _contractLinkedCurrent)
+        {
+            _contractLinkedCurrent = _contractLinked;
+            _contractPeriodsUUID = _contractLinked.ContractPeriodsUUID;
+            // Clear previous data when contract period changes
+            _contractData = null;
+            _selectedItems.Clear();
+            _selectedEmployeeUUID = null;
+        }
+    }
+
+    private async Task LoadEmployees()
+    {
+        try
+        {
+            _employees = await EmployeesService.GetEmployees();
+        }
+        catch (Exception ex)
+        {
+            // Handle error - could show notification or log
+            _employees = new List<Employee>();
+        }
+    }
+
+    private async Task LoadEmployeeContract()
+    {
+        if (string.IsNullOrEmpty(_selectedEmployeeUUID) || string.IsNullOrEmpty(_contractPeriodsUUID))
+            return;
+
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var contractUsersPeriodsModel = new ContractUsersPeriodsModel
+            {
+                UsersUUID = _selectedEmployeeUUID,
+                ContractPeriodsUUID = _contractPeriodsUUID
+            };
+
+            _contractData = await ContractsService.GetContractByUserContractPeriod(contractUsersPeriodsModel);
+            RemoveContractLinkedKPA();
+            // Initialize selection dictionary
+            _selectedItems.Clear();
+            if (_contractData?.EnterpriseStructures != null)
+            {
+                foreach (var structure in _contractData.EnterpriseStructures)
+                {
+                    if (structure.Pillars != null)
+                    {
+                        foreach (var pillar in structure.Pillars)
+                        {
+                            if (pillar.KPA != null)
+                            {
+                                foreach (var kpa in pillar.KPA)
+                                {
+                                    _selectedItems[GetItemKey("KPA", kpa.UUID)] = false;
+
+                                    if (kpa.KPI != null)
+                                    {
+                                        foreach (var kpi in kpa.KPI)
+                                        {
+                                            _selectedItems[GetItemKey("KPI", kpi.UUID)] = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error - could show notification or log
+            _contractData = null;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SetFilter(string filter)
+    {
+        _currentFilter = filter;
+        StateHasChanged();
+    }
+
+    private bool ShouldShowItem(string itemType)
+    {
+        return _currentFilter == "ALL" || _currentFilter == itemType;
+    }
+
+    private void RemoveContractLinkedKPA()
+    {
+        if (_contractData == null) return;
+        //remove the KPA if 
+    }
+
+    private string GetItemKey(string type, string? uuid)
+    {
+        return $"{type}_{uuid ?? "unknown"}";
+    }
+
+    private string GetEmployeeDisplayName(Employee employee)
+    {
+        return $"{employee.FirstName} {employee.LastName} ({employee.Email})";
+    }
+
+    private async Task SaveSelectedItems()
+    {
+
+        List<string> KPAs = new();
+        List<string> KPIs = new();
+
+
+        foreach (var structure in _contractData.EnterpriseStructures)
+        {
+            if (structure.Pillars != null)
+            {
+                foreach (var pillar in structure.Pillars)
+                {
+                    if (pillar.KPA != null)
+                    {
+                        foreach (var kpa in pillar.KPA)
+                        {
+                            if (kpa.isSelected) KPAs.Add(kpa.UUID);
+
+                            if (kpa.KPI != null)
+                            {
+                                foreach (var kpi in kpa.KPI)
+                                {
+                                    if (kpi.isSelected) KPIs.Add(kpi.UUID);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        List<ContractLinkedSaveModel> linkedSaveModels = new();
+
+        foreach (var item in KPAs)
+        {
+            ContractLinkedSaveModel Link = (ContractLinkedSaveModel)_contractLinkedCurrent.Clone();
+            Link.LinkedUUID = item;
+            Link.KPALinkTypesid = Library.API.Goals.Enumerables.Contracts.KPALinkTypes.KPA;
+            linkedSaveModels.Add(Link);
+        }
+
+        foreach (var item in KPIs)
+        {
+            ContractLinkedSaveModel Link = (ContractLinkedSaveModel)_contractLinkedCurrent.Clone();
+            Link.LinkedUUID = item;
+            Link.KPALinkTypesid = Library.API.Goals.Enumerables.Contracts.KPALinkTypes.KPI;
+            linkedSaveModels.Add(Link);
+        }
+
+        var result = await KPALinksService.BulkSave(linkedSaveModels);
+        _logMessage = result;
+        _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_Contracts_Linked);
+        await InvokeAsync(StateHasChanged);
+        // You could add a notification service call here
+        //NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Success, Summary = "Success", Detail = "Selected items saved successfully." });
+    }
+}

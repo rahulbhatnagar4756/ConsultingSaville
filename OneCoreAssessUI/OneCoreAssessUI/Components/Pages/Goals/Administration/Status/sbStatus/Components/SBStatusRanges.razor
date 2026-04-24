@@ -1,0 +1,595 @@
+﻿@using Library.API.Admin.Models
+@using Library.API.Goals.Models
+@using Library.API.Goals.Models.Status
+@using Library.API.Goals.Services
+@using Library.API.Admin.Services
+@using OneCoreAssessUI.Services
+
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem">
+    @* Status Messages *@
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+        <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+            <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+            <span>@_logMessage.Message</span>
+        </div>
+    }
+
+    @* Loading Indicator *@
+    @if (_isLoading)
+    {
+        <RadzenCard class="rz-text-align-center rz-p-4">
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                <RadzenText Text="Loading status ranges..." />
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        @* Status Ranges Grid with Inline Editing *@
+        <RadzenText Text="Status Ranges" Style="font-weight: 600; font-size: 16px; margin-bottom: 1rem;" />
+
+        @if (_statusRanges == null || !_statusRanges.Any())
+        {
+            <RadzenText Text="No status ranges found for this status." Style="font-style: italic; color: #666; text-align: center; padding: 2rem;" />
+        }
+        else
+        {
+            <RadzenDataGrid @ref="_dataGrid"
+                            Data="@_statusRanges"
+                            TItem="StatusRangesModel"
+                            AllowPaging="false"
+                            AllowSorting="true"
+                            AllowFiltering="false"
+                            EmptyText="No status ranges found."
+                            Style="min-height: 200px;">
+                <Columns>
+                    <RadzenDataGridColumn TItem="StatusRangesModel"
+                                          Property="Name"
+                                          Title="Name"
+                                          Width="160px"
+                                          Sortable="true">
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenTextBox @bind-Value="range.Name"
+                                               Style="width: 100%;"
+                                               Disabled="_isSaving" />
+                            }
+                            else
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                    <RadzenText Text="@range.Name" />
+                                </RadzenStack>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="StatusRangesModel"
+                                          Property="Icons"
+                                          Title="Icon"
+                                          Width="160px"
+                                          Sortable="false">
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenDropDown @bind-Value="range.Icons"
+                                                Data="_icons"
+                                                Style="width: 100%;"
+                                                TextProperty="@nameof(NameOnlyModel.Name)"
+                                                ValueProperty="@nameof(NameOnlyModel.Name)"
+                                                Placeholder="Select icon..."
+                                                Disabled="_isSaving">
+                                    <Template Context="icon">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <RadzenIcon Icon="@icon.Name" Style="@($"color: {range.Color};")" />
+                                            <span>@icon.Name</span>
+                                        </div>
+                                    </Template>
+                                </RadzenDropDown>
+                            }
+                            else
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                    <RadzenIcon Icon="@range.Icons" Style="@($"color: {range.Color};")" />
+                                    <RadzenText Text="@range.Icons" Style="font-size: 12px;" />
+                                </RadzenStack>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="StatusRangesModel"
+                                          Property="RangeStart"
+                                          Title="Range Start"
+                                          Width="120px"
+                                          Sortable="true"
+                                          TextAlign="TextAlign.Center"      >
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenNumeric @bind-Value="range.RangeStart"
+                                               Style="width: 100%;"
+                                               Step="0.01"
+                                               Format="F2"
+                                               Disabled="_isSaving" />
+                            }
+                            else
+                            {
+                                <RadzenText Text="@(range.RangeStart?.ToString("F2") ?? "-")" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="StatusRangesModel"
+                                          Property="RangeEnd"
+                                          Title="Range End"
+                                          Width="120px"
+                                          Sortable="false"
+                                          TextAlign="TextAlign.Center">
+                        <Template Context="range">
+                            <RadzenText Text="@(range.RangeEnd?.ToString("F2") ?? "∞")" />
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="StatusRangesModel"
+                                          Property="Color"
+                                          Title="Color"
+                                          Width="100px"
+                                          Sortable="false">
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenColorPicker @bind-Value="range.Color"
+                                                   ShowButton="true"
+                                                   Style="width: 100%;"
+                                                   Disabled="_isSaving" />
+                            }
+                            else
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                    <div style="@($"width: 30px; height: 20px; background-color: {range.Color}; border: 1px solid #ccc; border-radius: 3px;")"></div>
+                                </RadzenStack>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="StatusRangesModel"
+                                          Property="isNegative"
+                                          Title="Alert"
+                                          Width="90px"
+                                          Sortable="true">
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenCheckBox Value="@GetIsNegativeValue(range)" 
+                                                ValueChanged="@((bool value) => SetIsNegativeValue(range, value))"
+                                                Disabled="_isSaving" />
+                            }
+                            else
+                            {
+                                <RadzenIcon Icon="@(range.isNegative == 1 ? "check" : "close")" 
+                                           Style="@($"color: {(range.isNegative == 1 ? "green" : "red")};")" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="StatusRangesModel"
+                                          Title="Actions"
+                                          Width="150px"
+                                          Sortable="false"
+                                          TextAlign="TextAlign.Center">
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.Center">
+                                    <RadzenButton Icon="save"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@(() => SaveInlineEdit(range))"
+                                                  Tooltip="Save Changes"
+                                                  IsBusy="_isSaving"
+                                                  ButtonStyle="ButtonStyle.Success" />
+                                    <RadzenButton Icon="close"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@(() => CancelInlineEdit(range))"
+                                                  Tooltip="Cancel Edit"
+                                                  Disabled="_isSaving"
+                                                  ButtonStyle="ButtonStyle.Light" />
+                                </RadzenStack>
+                            }
+                            else
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.Center">
+                                    <RadzenButton Icon="edit"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@(() => StartInlineEdit(range))"
+                                                  Tooltip="Edit Range"
+                                                  Disabled="_isSaving || _editingRangeUUID != null" />
+                                    <RadzenButton Icon="delete"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Danger"
+                                                  Click="@(() => DeleteRange(range))"
+                                                  Tooltip="Delete Range"
+                                                  Disabled="_isSaving || _editingRangeUUID != null" />
+                                </RadzenStack>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        }
+
+        @* Add New Range Section *@
+        <RadzenText Text="Add New Range" Style="font-weight: 600; font-size: 16px; margin-bottom: 1rem;" />
+
+        <RadzenStack Gap="1rem">
+            @* Name Row *@
+            <RadzenRow>
+                <RadzenColumn Size="12">
+                    <RadzenText Text="Name" />
+                    <RadzenTextBox @bind-Value="_newRange.Name"
+                                   Style="width: 100%;"
+                                   Placeholder="Range name..."
+                                   Disabled="_isSaving || _editingRangeUUID != null" />
+                </RadzenColumn>
+            </RadzenRow>
+
+            @* Range Start Row *@
+            <RadzenRow>
+                <RadzenColumn Size="12">
+                    <RadzenText Text="Range Start" />
+                    <RadzenNumeric @bind-Value="_newRange.RangeStart"
+                                   Style="width: 100%;"
+                                   Step="0.01"
+                                   Format="F2"
+                                   Placeholder="0.00"
+                                   Disabled="_isSaving || _editingRangeUUID != null" />
+                </RadzenColumn>
+            </RadzenRow>
+
+            @* Color and Icon Row *@
+            <RadzenRow>
+                <RadzenColumn Size="6">
+                    <RadzenText Text="Color" />
+                    <RadzenColorPicker @bind-Value="_newRange.Color"
+                                       ShowButton="true"
+                                       Style="width: 100%;"
+                                       Disabled="_isSaving || _editingRangeUUID != null" />
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenText Text="Icon" />
+                    <RadzenDropDown @bind-Value="_newRange.Icons"
+                                    Data="_icons"
+                                    Style="width: 100%;"
+                                    TextProperty="@nameof(NameOnlyModel.Name)"
+                                    ValueProperty="@nameof(NameOnlyModel.Name)"
+                                    Placeholder="Select icon..."
+                                    Disabled="_isSaving || _editingRangeUUID != null">
+                        <Template Context="icon">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <RadzenIcon Icon="@icon.Name" Style="@($"color: {_newRange.Color};")" />
+                                <span>@icon.Name</span>
+                            </div>
+                        </Template>
+                    </RadzenDropDown>
+                </RadzenColumn>
+            </RadzenRow>
+
+            @* Negative Row *@
+            <RadzenRow>
+                <RadzenColumn Size="12">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenCheckBox Value="@GetNewRangeIsNegative()" 
+                                        ValueChanged="@((bool value) => SetNewRangeIsNegative(value))"
+                                        Disabled="_isSaving || _editingRangeUUID != null" />
+                        <RadzenText Text="Negative" />
+                    </RadzenStack>
+                </RadzenColumn>
+            </RadzenRow>
+
+            @* Button Row *@
+            <RadzenRow>
+                <RadzenColumn Size="12">
+                    <RadzenButton Icon="add"
+                                  Click="@AddRange"
+                                  Style="width: 100%;"
+                                  IsBusy="_isSaving"
+                                  Text="Add Range"
+                                  BusyText="Adding..."
+                                  Disabled="_editingRangeUUID != null" />
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenStack>
+    }
+</RadzenStack>
+
+@code {
+    [Inject] private IStatusService StatusService { get; set; }
+    [Inject] private IIconsService IconsService { get; set; }
+
+    [Parameter] public string? StatusUUID { get; set; }
+    [Parameter] public EventCallback OnRangeChanged { get; set; }
+
+    private RadzenDataGrid<StatusRangesModel>? _dataGrid;
+    private List<StatusRangesModel> _statusRanges = new();
+    private StatusRangesModel _newRange = new();
+    private string? _editingRangeUUID = null;
+    private StatusRangesModel? _originalRange = null;
+    private List<NameOnlyModel>? _icons; // Added this line
+
+    private ResultsModel? _logMessage = null;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadIcons(); // Added this line
+        await base.OnInitializedAsync();
+    }
+
+    // Add this method
+    private async Task LoadIcons()
+    {
+        try
+        {
+            _icons = await IconsService.GetIcons();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading icons: {ex.Message}");
+            _icons = new List<NameOnlyModel>();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(StatusUUID))
+        {
+            await LoadStatusRanges();
+        }
+        else
+        {
+            _statusRanges = new();
+            _isLoading = false;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadStatusRanges()
+    {
+        try
+        {
+            _isLoading = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var data = await StatusService.GetStatusRanges(StatusUUID!);
+            _statusRanges = data?.OrderBy(x => x.RangeStart).ToList() ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading status ranges: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = "Error loading status ranges. Please try again." };
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddRange()
+    {
+        if (string.IsNullOrWhiteSpace(_newRange.Name))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Please enter a name for the range." };
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var result = await StatusService.SaveStatusRange(StatusUUID!, _newRange);
+
+            if (result?.isValid == true)
+            {
+                _logMessage = new ResultsModel { isValid = true, Message = "Status range added successfully." };
+
+                // Clear the form
+                _newRange = new StatusRangesModel();
+
+                // Reload the data
+                await LoadStatusRanges();
+
+                // Notify parent component
+                await OnRangeChanged.InvokeAsync();
+            }
+            else
+            {
+                _logMessage = result ?? new ResultsModel { isValid = false, Message = "Failed to add status range." };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding status range: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error adding status range: {ex.Message}" };
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void StartInlineEdit(StatusRangesModel range)
+    {
+        // Store original values for potential cancel
+        _originalRange = new StatusRangesModel
+        {
+            UUID = range.UUID,
+            Name = range.Name,
+            Icons = range.Icons,
+            Color = range.Color,
+            RangeStart = range.RangeStart, 
+            isNegative = range.isNegative,
+            StatusUUID = range.StatusUUID, 
+            RangeEnd = range.RangeEnd
+        };
+
+        _editingRangeUUID = range.UUID;
+        _logMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task SaveInlineEdit(StatusRangesModel range)
+    {
+        try
+        {
+            _isSaving = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var result = await StatusService.SaveStatusRange(StatusUUID!, range);
+
+            if (result?.isValid == true)
+            {
+                _logMessage = new ResultsModel { isValid = true, Message = "Status range updated successfully." };
+
+                // Clear edit mode
+                _editingRangeUUID = null;
+                _originalRange = null;
+
+                // Reload the data to get updated range ends
+                await LoadStatusRanges();
+
+                // Notify parent component
+                await OnRangeChanged.InvokeAsync();
+            }
+            else
+            {
+                _logMessage = result ?? new ResultsModel { isValid = false, Message = "Failed to update status range." };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating status range: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error updating status range: {ex.Message}" };
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelInlineEdit(StatusRangesModel range)
+    {
+        if (_originalRange != null)
+        {
+            // Restore original values
+            range.Name = _originalRange.Name;
+            range.Icons = _originalRange.Icons;
+            range.Color = _originalRange.Color;
+            range.RangeStart = _originalRange.RangeStart; 
+            range.isNegative = _originalRange.isNegative;
+        }
+
+        _editingRangeUUID = null;
+        _originalRange = null;
+        _logMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task DeleteRange(StatusRangesModel range)
+    {
+        if (range?.UUID == null) return;
+
+        string message = $"Are you sure you want to delete the status range '{range.Name}'?";
+        string title = "Delete Status Range";
+
+        var result = await DialogService.Confirm(message, title, new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "Cancel"
+        });
+
+        if (result.HasValue && result.Value)
+        {
+            try
+            {
+                _isSaving = true;
+                _logMessage = null;
+                StateHasChanged();
+
+                var deleteResult = await StatusService.DeleteStatusRange(range.UUID);
+
+                if (deleteResult?.isValid == true)
+                {
+                    _logMessage = new ResultsModel { isValid = true, Message = "Status range deleted successfully." };
+
+                    // Reload the data
+                    await LoadStatusRanges();
+
+                    // Notify parent component
+                    await OnRangeChanged.InvokeAsync();
+                }
+                else
+                {
+                    _logMessage = deleteResult ?? new ResultsModel { isValid = false, Message = "Failed to delete status range." };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting status range: {ex.Message}");
+                _logMessage = new ResultsModel { isValid = false, Message = $"Error deleting status range: {ex.Message}" };
+            }
+            finally
+            {
+                _isSaving = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    // Helper methods for checkbox binding
+    private bool GetIsNegativeValue(StatusRangesModel range)
+    {
+        return range.isNegative == 1;
+    }
+
+    private void SetIsNegativeValue(StatusRangesModel range, bool value)
+    {
+        range.isNegative = value ? 1 : 0;
+    }
+
+    private bool GetNewRangeIsNegative()
+    {
+        return _newRange.isNegative == 1;
+    }
+
+    private void SetNewRangeIsNegative(bool value)
+    {
+        _newRange.isNegative = value ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Public method to refresh ranges data from parent component
+    /// </summary>
+    public async Task RefreshRangesData()
+    {
+        if (!string.IsNullOrEmpty(StatusUUID))
+        {
+            await LoadStatusRanges();
+        }
+    }
+}

@@ -1,0 +1,792 @@
+﻿@using Library.API.Assess.Models.Jobs
+@using Library.API.Assess.Services.Jobs
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using Library.API.Goals.Models.Templates
+@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Services.Contracts
+@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy
+@using OneCoreAssessUI.Services
+@using OneCoreAssessUI.Enumerables
+
+<RadzenStack Gap="1rem">
+   
+    <RadzenStack class="header-custom">
+        <RadzenStack class="header-outer">
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Template Details" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenStack>
+
+
+    <div class="header-underline mb-4"></div>
+
+    @if (_isLoading)
+    {
+        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem" class="rz-p-4">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+            <RadzenText Text="Loading..." />
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenTabs @bind-SelectedIndex="_selectedTabIndex" TabPosition="TabPosition.Top">
+            <Tabs>
+                <RadzenTabsItem Text="Template">
+                    <RadzenStack Gap="1rem" class="rz-p-3">
+                        <RadzenStack>
+                            <RadzenText Text="Template Name *" />
+                            <RadzenTextBox @bind-Value="_template.Name" 
+                                          Style="width: 100%;" 
+                                          Placeholder="Enter template name" />
+                        </RadzenStack>
+
+                        <RadzenStack>
+                            <RadzenText Text="Template Code" />
+                            <RadzenTextBox @bind-Value="_template.Code" 
+                                          Style="width: 100%;" 
+                                          Placeholder="Enter template code" />
+                        </RadzenStack>
+
+                        <RadzenStack>
+                            <RadzenText Text="Description" />
+                            <RadzenTextArea @bind-Value="_template.Description" 
+                                           Style="width: 100%; min-height: 100px;" 
+                                           Placeholder="Enter description" />
+                        </RadzenStack>
+
+                        @if (!string.IsNullOrEmpty(_statusMessage))
+                        {
+                            <RadzenAlert AlertStyle="@(_isSuccessMessage ? AlertStyle.Success : AlertStyle.Danger)" 
+                                        Variant="Variant.Flat" 
+                                        Shade="Shade.Lighter" 
+                                        AllowClose="false">
+                                @_statusMessage
+                            </RadzenAlert>
+                        }
+
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" class="rz-mt-4">
+                            <RadzenButton Text="Save" 
+                                         Click="@SaveTemplate" 
+                                         ButtonStyle="ButtonStyle.Primary" 
+                                         IsBusy="_isSaving"
+                                         BusyText="Saving..." 
+                                         Style="flex: 1;" />
+                             
+                            @if (!_isAddMode)
+                            {
+                                <RadzenButton Icon="delete" 
+                                             Click="@DeleteTemplate" 
+                                             ButtonStyle="ButtonStyle.Danger" 
+                                             Style="width: 40px; min-width: 40px;"
+                                             IsBusy="_isSaving" />
+                            }
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Business" Visible="@(!_isAddMode)">
+                    <RadzenStack Gap="0rem" class="rz-p-3">
+                        @* Business Unit Department Positions DataGrid *@
+                        @if (!_isAddMode && _templateCurrent?.BusinessUnitDepartmentPositions != null && _templateCurrent.BusinessUnitDepartmentPositions.Any())
+                        {
+                            
+                                <RadzenStack class="header-subs">
+                                    <RadzenText Text="Current Business Unit Department Positions" Style="font-weight: 500;" />
+                                </RadzenStack>
+                                <div class="header-underline mb-3"></div>
+
+                                <RadzenDataGrid Data="@_templateCurrent.BusinessUnitDepartmentPositions"
+                                                TItem="TemplateBusinessUnitDepartmentPositionsModel"
+                                                AllowPaging="true"
+                                                PageSize="10"
+                                                AllowSorting="true"
+                                                AllowFiltering="true"
+                                                FilterMode="FilterMode.Advanced"
+                                                LogicalFilterOperator="LogicalFilterOperator.Or">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="TemplateBusinessUnitDepartmentPositionsModel"
+                                                              Property="EmployeeBusinessUnits"
+                                                              Title="Business Unit"
+                                                              Width="150px">
+                                            <Template Context="position">
+                                                <RadzenText Text="@(position.EmployeeBusinessUnits ?? "-")" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+
+                                        <RadzenDataGridColumn TItem="TemplateBusinessUnitDepartmentPositionsModel"
+                                                              Property="EmployeeDepartments"
+                                                              Title="Department"
+                                                              Width="150px">
+                                            <Template Context="position">
+                                                <RadzenText Text="@(position.EmployeeDepartments ?? "-")" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+
+                                        <RadzenDataGridColumn TItem="TemplateBusinessUnitDepartmentPositionsModel"
+                                                              Property="EmployeeJobs"
+                                                              Title="Position"
+                                                              Width="150px">
+                                            <Template Context="position">
+                                                <RadzenText Text="@(position.EmployeeJobs ?? "-")" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+ 
+
+                                        <RadzenDataGridColumn TItem="TemplateBusinessUnitDepartmentPositionsModel"
+                                                              Title="Actions"
+                                                              Width="60px"
+                                                              Sortable="false"
+                                                              Filterable="false">
+                                            <Template Context="position">
+                                                <RadzenButton Icon="delete"
+                                                              Size="ButtonSize.Small"
+                                                              ButtonStyle="ButtonStyle.Danger"
+                                                              Tooltip="Delete Position"
+                                                              Click="@(() => DeleteBusinessUnitPosition(position))"
+                                                              IsBusy="_isSaving" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                    </Columns>
+                                </RadzenDataGrid>
+
+                                <RadzenStack class="rz-mt-3">
+                                    <RadzenText Text="@($"Total: {_templateCurrent.BusinessUnitDepartmentPositions.Count} positions")"
+                                                Style="font-weight: 500; font-size: 14px;" />
+                                </RadzenStack>
+                            
+                        }
+                        else if (!_isAddMode)
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Info"
+                                         Variant="Variant.Flat"
+                                         Shade="Shade.Lighter"
+                                         class="rz-mt-4">
+                                No business unit department positions found for this template.
+                            </RadzenAlert>
+                        }
+
+                        @* Add Business Position Form *@
+                        <RadzenCard>
+                            <RadzenStack Gap="1rem">
+                                <RadzenText Text="Add New Position" Style="font-weight: 500;" />
+                                
+                                <RadzenStack>
+                                    <RadzenText Text="Business Unit *" />
+                                    <RadzenDropDown @bind-Value="_newPosition.EmployeeBusinessUnitsUUID" 
+                                                   Data="@_businessUnits" 
+                                                   TextProperty="Name" 
+                                                   ValueProperty="UUID" 
+                                                   Placeholder="Select business unit..."
+                                                   Style="width: 100%;"
+                                                   Change="@OnBusinessUnitChanged" />
+                                </RadzenStack>
+
+                                <RadzenStack>
+                                    <RadzenText Text="Department" />
+                                    <RadzenDropDown @bind-Value="_newPosition.EmployeeDepartmentsUUID" 
+                                                   Data="@_filteredDepartments" 
+                                                   TextProperty="Name" 
+                                                   ValueProperty="UUID" 
+                                                   Placeholder="Select department..."
+                                                   Style="width: 100%;"
+                                                   Disabled="@(string.IsNullOrEmpty(_newPosition.EmployeeBusinessUnitsUUID))"
+                                                   Change="@OnDepartmentChanged" />
+                                </RadzenStack>
+
+                                <RadzenStack>
+                                    <RadzenText Text="Position" />
+                                    <RadzenDropDown @bind-Value="_newPosition.EmployeeJobsUUID" 
+                                                   Data="@_filteredJobs" 
+                                                   TextProperty="Name" 
+                                                   ValueProperty="UUID" 
+                                                   Placeholder="Select position..."
+                                                   Style="width: 100%;"
+                                                   Disabled="@(string.IsNullOrEmpty(_newPosition.EmployeeDepartmentsUUID))" />
+                                </RadzenStack>
+
+                                <RadzenButton Text="Add Position" 
+                                             Click="@AddBusinessPosition" 
+                                             ButtonStyle="ButtonStyle.Primary" 
+                                             IsBusy="_isSaving"
+                                             Disabled="@(string.IsNullOrEmpty(_newPosition.EmployeeBusinessUnitsUUID))" />
+                            </RadzenStack>
+                        </RadzenCard>
+
+                        @* Display Current Business Positions *@
+                        @if (_templatePositions != null && _templatePositions.Any())
+                        {
+                            <RadzenCard>
+                                <RadzenStack class="header-subs">
+                                    <RadzenText Text="Current Positions" />
+                                </RadzenStack>
+                                <RadzenDataGrid Data="@_templatePositions" 
+                                               TItem="TemplateBusinessUnitDepartmentPositionsModel"
+                                               AllowPaging="false"
+                                               AllowSorting="true">
+                                    <Columns>
+                                        <RadzenDataGridColumn TItem="TemplateBusinessUnitDepartmentPositionsModel" 
+                                                             Property="EmployeeBusinessUnits" 
+                                                             Title="Business Unit" />
+                                        <RadzenDataGridColumn TItem="TemplateBusinessUnitDepartmentPositionsModel" 
+                                                             Property="EmployeeDepartments" 
+                                                             Title="Department" />
+                                        <RadzenDataGridColumn TItem="TemplateBusinessUnitDepartmentPositionsModel" 
+                                                             Property="EmployeeJobs" 
+                                                             Title="Position" />
+                                        <RadzenDataGridColumn TItem="TemplateBusinessUnitDepartmentPositionsModel" 
+                                                             Title="Actions" 
+                                                             Width="80px" 
+                                                             Sortable="false">
+                                            <Template Context="position">
+                                                <RadzenButton Icon="delete" 
+                                                             Size="ButtonSize.Small" 
+                                                             ButtonStyle="ButtonStyle.Danger" 
+                                                             Click="@(() => RemoveBusinessPosition(position))" />
+                                            </Template>
+                                        </RadzenDataGridColumn>
+                                    </Columns>
+                                </RadzenDataGrid>
+                            </RadzenCard>
+                        }
+                    </RadzenStack>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Contract History" Visible="@(!_isAddMode)">
+                    <RadzenStack Gap="1rem" class="rz-p-3">
+                        <RadzenStack class="header-subs">
+                            <RadzenText Text="Contract History" />
+                        </RadzenStack>
+
+                        @if (_template.Contracts != null && _template.Contracts.Any())
+                        {
+                            <RadzenDataGrid Data="@_template.Contracts.OrderByDescending(x => x.DateStart)" 
+                                           TItem="ContractsBasicModel"
+                                           AllowPaging="false"
+                                           AllowSorting="true">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="ContractsBasicModel" 
+                                                         Property="ContractPeriods" 
+                                                         Title="Period"   />
+                                    <RadzenDataGridColumn TItem="ContractsBasicModel" 
+                                                         Property="DateStart" 
+                                                         Title="Start Date"
+                                                          FormatString="{0:d}"
+                                                          Width="120px" />
+                                    <RadzenDataGridColumn TItem="ContractsBasicModel" 
+                                                         Property="DateEnd" 
+                                                         Title="End Date"
+                                                          FormatString="{0:d}"
+                                                          Width="120px" />
+                                    <RadzenDataGridColumn TItem="ContractsBasicModel" 
+                                                         Title="Status" 
+                                                         Width="100px">
+                                        <Template Context="contract">
+                                            @if (contract.isActive)
+                                            {
+                                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Active" />
+                                            }
+                                            else
+                                            {
+                                                <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="Inactive" />
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="ContractsBasicModel" 
+                                                         Title="Has Contract" 
+                                                         Width="130px">
+                                        <Template Context="contract">
+                                            @if (!string.IsNullOrEmpty(contract.ContractsUUID))
+                                            {
+                                                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Yes" />
+                                            }
+                                            else
+                                            {
+                                                <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="No" />
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="ContractsBasicModel" 
+                                                         Title="Actions" 
+                                                         Width="140px" 
+                                                         Sortable="false">
+                                        <Template Context="contract">
+                                            @if (string.IsNullOrEmpty(contract.ContractsUUID))
+                                            {
+                                                @if (contract.isActive)
+                                                {
+                                                    <RadzenButton Icon="add" 
+                                                                 Size="ButtonSize.Small" 
+                                                                 ButtonStyle="ButtonStyle.Primary" 
+                                                                 Text="Create" 
+                                                                 Click="@(() => CreateContract(contract))" />
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.25rem">
+                                                    <RadzenButton Icon="edit" 
+                                                                 Size="ButtonSize.Small" 
+                                                                 ButtonStyle="ButtonStyle.Secondary" 
+                                                                 Text="Edit" 
+                                                                 Click="@(() => EditContract(contract))" />
+                                                    <RadzenButton Icon="content_copy" 
+                                                                 Size="ButtonSize.Small" 
+                                                                 ButtonStyle="ButtonStyle.Light" 
+                                                                 Tooltip="Copy Contract"
+                                                                 Click="@(() => CopyContract(contract))" />
+                                                </RadzenStack>
+                                            }
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        }
+                        else
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter">
+                                No contract history available for this template.
+                            </RadzenAlert>
+                        }
+                    </RadzenStack>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    }
+</RadzenStack>
+
+@code {
+    [Inject] private ITemplatesService TemplatesService { get; set; }
+    [Inject] private IBusinessUnitsService BusinessUnitsService { get; set; }
+    [Inject] private IDepartmentService DepartmentService { get; set; }
+    [Inject] private IPositionService PositionsService { get; set; }
+    [Inject] private DialogService DialogService { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private TemplatesModel _template = new();
+    private TemplatesModel? _templateCurrent;
+    private TemplateBusinessUnitDepartmentPositionsSaveModel _newPosition = new();
+    private List<TemplateBusinessUnitDepartmentPositionsModel>? _templatePositions = new();
+
+    // Dropdown data
+    private List<EmployeeBaseModel>? _businessUnits = new();
+    private List<EmployeeDepartmentBaseModel>? _departments = new();
+    private List<EmployeeDepartmentBaseModel>? _filteredDepartments = new();
+    private List<PositionsModel>? _jobs = new();
+    private List<PositionsModel>? _filteredJobs = new();
+
+    // Track the selected tab index
+    private int _selectedTabIndex = 0;
+
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private bool _isAddMode = true;
+    private string _statusMessage = string.Empty;
+    private bool _isSuccessMessage = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDropdownData();
+        LoadTemplateData();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Get data if it's sent to the right sidebar area
+        _templateCurrent = _rightSidebarService.GetSharedContext<TemplatesModel>();
+
+        if (_template != null && _templateCurrent == null) _template = new();
+
+        if (_templateCurrent != null && _template != _templateCurrent)
+        {
+            _statusMessage = string.Empty;
+            _template = new TemplatesModel
+            {
+                TemplatesUUID = _templateCurrent.TemplatesUUID,
+                Name = _templateCurrent.Name,
+                Code = _templateCurrent.Code,
+                Description = _templateCurrent.Description,
+                Contracts = _templateCurrent.Contracts,
+                BusinessUnitDepartmentPositions = _templateCurrent.BusinessUnitDepartmentPositions,
+                Employees = _templateCurrent.Employees
+            };
+            _isAddMode = string.IsNullOrEmpty(_template.TemplatesUUID);
+
+            if (!_isAddMode)
+            {
+                await LoadTemplatePositions();
+            }
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadDropdownData()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            // Load all dropdown data in parallel
+            var businessUnitsTask = BusinessUnitsService.GetBusinessUnits();
+            var departmentsTask = DepartmentService.GetDepartments();
+            var jobsTask = PositionsService.GetPositions();
+
+            await Task.WhenAll(businessUnitsTask, departmentsTask, jobsTask);
+
+            _businessUnits = await businessUnitsTask;
+            _departments = await departmentsTask;
+            _jobs = await jobsTask;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dropdown data: {ex.Message}");
+            _statusMessage = "Error loading form data. Please try again.";
+            _isSuccessMessage = false;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void LoadTemplateData()
+    {
+        if (_rightSidebarService?.SharedContext is TemplatesModel existingTemplate)
+        {
+            _template = existingTemplate;
+            _isAddMode = string.IsNullOrEmpty(_template.TemplatesUUID);
+        }
+        else
+        {
+            _template = new TemplatesModel();
+            _isAddMode = true;
+        }
+    }
+
+    private async Task LoadTemplatePositions()
+    {
+        if (string.IsNullOrEmpty(_template.TemplatesUUID)) return;
+
+        try
+        {
+            // TODO: Implement service call to get template positions
+            // _templatePositions = await TemplateBusinessUnitDepartmentPositionsService.GetByTemplate(_template.TemplatesUUID);
+
+            // For now, use the positions from the template model
+            _templatePositions = _template.BusinessUnitDepartmentPositions ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading template positions: {ex.Message}");
+        }
+    }
+
+    private void OnBusinessUnitChanged()
+    {
+        if (string.IsNullOrEmpty(_newPosition.EmployeeBusinessUnitsUUID))
+        {
+            _filteredDepartments = new();
+            return;
+        }
+
+        // Filter departments by selected business unit
+        var selectedBusinessUnit = _businessUnits?.FirstOrDefault(bu => bu.UUID == _newPosition.EmployeeBusinessUnitsUUID);
+        if (selectedBusinessUnit != null)
+        {
+            _filteredDepartments = _departments?.Where(d => d.EmployeeBusinessUnitsUUID == selectedBusinessUnit.UUID).ToList() ?? new();
+        }
+        else
+        {
+            _filteredDepartments = new();
+        }
+
+        // Reset department selection
+        _newPosition.EmployeeDepartmentsUUID = null;
+        StateHasChanged();
+    }
+
+    private void OnDepartmentChanged()
+    {
+        if (string.IsNullOrEmpty(_newPosition.EmployeeDepartmentsUUID))
+        {
+            _filteredJobs = new();
+            return;
+        }
+
+        // Filter departments by selected business unit
+        var selectedDepartment = _departments?.FirstOrDefault(bu => bu.UUID == _newPosition.EmployeeDepartmentsUUID);
+        if (selectedDepartment != null)
+        {
+            _filteredJobs = _jobs?.Where(d => d.EmployeeDepartmentsUUID == selectedDepartment.UUID).ToList() ?? new();
+        }
+        else
+        {
+            _filteredJobs = new();
+        }
+
+        // Reset department selection
+        _newPosition.EmployeeJobsUUID = null;
+        StateHasChanged();
+    }
+
+    private async Task SaveTemplate()
+    {
+        try
+        {
+            _isSaving = true;
+            _statusMessage = string.Empty;
+            StateHasChanged();
+
+            if (string.IsNullOrWhiteSpace(_template.Name))
+            {
+                _statusMessage = "Template name is required.";
+                _isSuccessMessage = false;
+                return;
+            }
+
+            // TODO: Implement save method in the service
+            // var result = await TemplatesService.SaveTemplate(_template);
+            
+            _statusMessage = "Template saved successfully!";
+            _isSuccessMessage = true;
+            
+            // Trigger data refresh and close sidebar
+            _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Goals_Contracts_Templates);
+            
+            // Don't close sidebar immediately, let user see success message
+            await Task.Delay(1500);
+            _rightSidebarService.Close();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving template: {ex.Message}");
+            _statusMessage = "Error saving template. Please try again.";
+            _isSuccessMessage = false;
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteTemplate()
+    {
+        try
+        {
+            var confirmed = await DialogService.Confirm("Are you sure you want to delete this template?", "Delete Template", 
+                new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+            if (confirmed == true)
+            {
+                _isSaving = true;
+                StateHasChanged();
+
+                // TODO: Implement delete method in the service
+                // var result = await TemplatesService.DeleteTemplate(_template.TemplatesUUID);
+                
+                _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Goals_Contracts_Templates);
+                _rightSidebarService.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting template: {ex.Message}");
+            _statusMessage = "Error deleting template. Please try again.";
+            _isSuccessMessage = false;
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddBusinessPosition()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_newPosition.EmployeeBusinessUnitsUUID))
+            {
+                _statusMessage = "Business unit is required.";
+                _isSuccessMessage = false;
+                return;
+            }
+
+            _isSaving = true;
+            StateHasChanged();
+
+            // Set template UUID and other required fields
+            _newPosition.TemplatesUUID = _template.TemplatesUUID;
+            // TODO: Set CompanyUUID and UsersUUIDLoggedIn from authentication context
+
+            // TODO: Implement service call to add position
+            // var result = await TemplateBusinessUnitDepartmentPositionsService.Save(_newPosition);
+            
+            // Reset form
+            _newPosition = new TemplateBusinessUnitDepartmentPositionsSaveModel();
+            _filteredDepartments = new();
+            
+            // Reload positions
+            await LoadTemplatePositions();
+            
+            _statusMessage = "Position added successfully!";
+            _isSuccessMessage = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding position: {ex.Message}");
+            _statusMessage = "Error adding position. Please try again.";
+            _isSuccessMessage = false;
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveBusinessPosition(TemplateBusinessUnitDepartmentPositionsModel position)
+    {
+        try
+        {
+            var confirmed = await DialogService.Confirm("Are you sure you want to remove this position?", "Remove Position", 
+                new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+            if (confirmed == true)
+            {
+                // TODO: Implement service call to delete position
+                // var result = await TemplateBusinessUnitDepartmentPositionsService.Delete(position.TemplateBusinessUnitDepartmentPositionsUUID);
+                
+                // Reload positions
+                await LoadTemplatePositions();
+                
+                _statusMessage = "Position removed successfully!";
+                _isSuccessMessage = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error removing position: {ex.Message}");
+            _statusMessage = "Error removing position. Please try again.";
+            _isSuccessMessage = false;
+        }
+    }
+
+    private async Task CreateContract(ContractsBasicModel contract)
+    {
+        // TODO: Implement contract creation logic
+        _statusMessage = "Contract creation functionality coming soon.";
+        _isSuccessMessage = false;
+    }
+
+    private async Task EditContract(ContractsBasicModel contract)
+    {
+        // TODO: Implement contract editing logic
+        _statusMessage = "Contract editing functionality coming soon.";
+        _isSuccessMessage = false;
+    }
+
+    private async Task CopyContract(ContractsBasicModel contract)
+    {
+        try
+        {
+            var confirmed = await DialogService.Confirm("Are you sure you want to copy this contract?", "Copy Contract", 
+                new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+            if (confirmed == true)
+            {
+                // TODO: Implement contract copying logic
+                _statusMessage = "Contract copied successfully!";
+                _isSuccessMessage = true;
+                
+                // You can add logic here to:
+                // 1. Create a new contract based on the existing one
+                // 2. Refresh the contract list
+                // 3. Navigate to edit the new contract
+                
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error copying contract: {ex.Message}");
+            _statusMessage = "Error copying contract. Please try again.";
+            _isSuccessMessage = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        _rightSidebarService.Close();
+    }
+
+    private async Task DeleteBusinessUnitPosition(TemplateBusinessUnitDepartmentPositionsModel position)
+    {
+        try
+        {
+            var confirmed = await DialogService.Confirm(
+                $"Are you sure you want to delete the position '{position.EmployeeJobs}' in '{position.EmployeeBusinessUnits} - {position.EmployeeDepartments}'?", 
+                "Delete Position", 
+                new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+            if (confirmed == true)
+            {
+                _isSaving = true;
+                StateHasChanged();
+
+                // TODO: Implement service call to delete the business unit position
+                // var result = await TemplateBusinessUnitDepartmentPositionsService.Delete(
+                //     position.TemplateBusinessUnitDepartmentPositionsUUID, 
+                //     _template.CompanyUUID, 
+                //     _template.UsersUUIDLoggedIn);
+
+                // Remove from local collection for immediate UI feedback
+                if (_templateCurrent?.BusinessUnitDepartmentPositions != null)
+                {
+                    var itemToRemove = _templateCurrent.BusinessUnitDepartmentPositions
+                        .FirstOrDefault(p => p.TemplateBusinessUnitDepartmentPositionsUUID == position.TemplateBusinessUnitDepartmentPositionsUUID);
+                    
+                    if (itemToRemove != null)
+                    {
+                        _templateCurrent.BusinessUnitDepartmentPositions.Remove(itemToRemove);
+                    }
+                }
+
+                // Also update the template positions list used in the Business tab
+                if (_templatePositions != null)
+                {
+                    var itemToRemove = _templatePositions
+                        .FirstOrDefault(p => p.TemplateBusinessUnitDepartmentPositionsUUID == position.TemplateBusinessUnitDepartmentPositionsUUID);
+                    
+                    if (itemToRemove != null)
+                    {
+                        _templatePositions.Remove(itemToRemove);
+                    }
+                }
+
+                _statusMessage = "Position deleted successfully!";
+                _isSuccessMessage = true;
+
+                // Trigger data refresh for parent components
+                _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Goals_Contracts_Templates);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting business unit position: {ex.Message}");
+            _statusMessage = "Error deleting position. Please try again.";
+            _isSuccessMessage = false;
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+}

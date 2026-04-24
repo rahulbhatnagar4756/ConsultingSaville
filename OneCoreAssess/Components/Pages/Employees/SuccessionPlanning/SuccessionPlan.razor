@@ -1,0 +1,28 @@
+﻿@page "/Employee/SuccessionPlan/{UsersUUID}"
+@using Library.Security.Services
+@layout CleanLayout 
+
+<h3>SuccessionPlan</h3>
+
+@code {
+
+    [Inject] public ISecurityService Security { get; set; }
+
+    [Parameter] public string? UsersUUID { get; set; }
+
+    private string _UsersUUID = "0000-000-000-00000";
+    private string _CompanyUUID = "0000-000-000-00000";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var UserInfo = await Security.GetUserInformation();
+        if (UserInfo == null) return;
+        _UsersUUID = UserInfo.UsersUUID;
+        _CompanyUUID = UserInfo.CompanyUUID;
+
+    }
+
+
+
+
+}

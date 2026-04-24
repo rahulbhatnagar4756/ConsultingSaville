@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Name>Database.Base</Name>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectVersion>4.1</ProjectVersion>
+    <ProjectGuid>{ad457203-7775-4560-a85d-364ec3ac2b7c}</ProjectGuid>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql160DatabaseSchemaProvider</DSP>
+    <OutputType>Database</OutputType>
+    <RootPath>
+    </RootPath>
+    <RootNamespace>Database.Base</RootNamespace>
+    <AssemblyName>Database.Base</AssemblyName>
+    <ModelCollation>1033,CI</ModelCollation>
+    <DefaultFileStructure>BySchemaAndSchemaType</DefaultFileStructure>
+    <DeployToDatabase>True</DeployToDatabase>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <TargetLanguage>CS</TargetLanguage>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <SqlServerVerification>False</SqlServerVerification>
+    <IncludeCompositeObjects>True</IncludeCompositeObjects>
+    <TargetDatabaseSet>True</TargetDatabaseSet>
+    <DefaultCollation>SQL_Latin1_General_CP1_CI_AS</DefaultCollation>
+    <DefaultFilegroup>PRIMARY</DefaultFilegroup>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputPath>bin\Release\</OutputPath>
+    <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <OutputPath>bin\Debug\</OutputPath>
+    <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">11.0</VisualStudioVersion>
+    <!-- Default to the v11.0 targets path if the targets file for the current VS version is not found -->
+    <SSDTExists Condition="Exists('$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets')">True</SSDTExists>
+    <VisualStudioVersion Condition="'$(SSDTExists)' == ''">11.0</VisualStudioVersion>
+  </PropertyGroup>
+  <Import Condition="'$(SQLDBExtensionsRefPath)' != ''" Project="$(SQLDBExtensionsRefPath)\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
+  <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
+  <ItemGroup>
+    <Folder Include="Properties" />
+    <Folder Include="dbo\" />
+    <Folder Include="dbo\Tables\" />
+    <Folder Include="admin\" />
+    <Folder Include="admin\Tables\" />
+    <Folder Include="audit\" />
+    <Folder Include="audit\Tables\" />
+    <Folder Include="secure\" />
+    <Folder Include="secure\Tables\" />
+    <Folder Include="Base\" />
+    <Folder Include="Base\Tables\" />
+    <Folder Include="Base\Views\" />
+    <Folder Include="secure\Views\" />
+    <Folder Include="dbo\Views\" />
+    <Folder Include="Base\Functions\" />
+    <Folder Include="Base\Stored Procedures\" />
+    <Folder Include="admin\Stored Procedures\" />
+    <Folder Include="audit\Stored Procedures\" />
+    <Folder Include="secure\Stored Procedures\" />
+    <Folder Include="Security\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Build Include="dbo\Tables\Lookup.sql" />
+    <Build Include="dbo\Tables\LookupType.sql" />
+    <Build Include="dbo\Tables\Employees.sql" />
+    <Build Include="dbo\Tables\users.sql" />
+    <Build Include="admin\Tables\Icons.sql" />
+    <Build Include="dbo\Tables\CompanySettings.sql" />
+    <Build Include="audit\Tables\AuditLogActions.sql" />
+    <Build Include="dbo\Tables\CompanySettingtypes.sql" />
+    <Build Include="audit\Tables\AuditLogDetails.sql" />
+    <Build Include="audit\Tables\AuditLogs.sql" />
+    <Build Include="audit\Tables\AuditLogTableNames.sql" />
+    <Build Include="secure\Tables\SecurityRoles.sql" />
+    <Build Include="secure\Tables\SecurityUsersRoles.sql" />
+    <Build Include="secure\Tables\SecurityActions.sql" />
+    <Build Include="secure\Tables\SecurityCompanyRoles.sql" />
+    <Build Include="secure\Tables\SecurityRoleActions.sql" />
+    <Build Include="secure\Tables\SecurityRoleRoles.sql" />
+    <Build Include="dbo\Tables\UsersRoles.sql" />
+    <Build Include="dbo\Tables\UsersRolesLinks.sql" />
+    <Build Include="Base\Tables\Status.sql" />
+    <Build Include="secure\Tables\LogUserLogins.sql" />
+    <Build Include="dbo\Tables\Companies.sql" />
+    <Build Include="Base\Tables\EmployeesCorporateAccessLevels.sql" />
+    <Build Include="dbo\Tables\UsersCompanys.sql" />
+    <Build Include="dbo\Tables\EmployeeBusinessUnits.sql" />
+    <Build Include="dbo\Tables\EmployeeBusinessUnitTypes.sql" />
+    <Build Include="dbo\Tables\EmployeeDepartments.sql" />
+    <Build Include="dbo\Tables\EmployeeJobDisciplines.sql" />
+    <Build Include="dbo\Tables\EmployeeJobs.sql" />
+    <Build Include="dbo\Tables\EmployeeHierarchy.sql" />
+    <Build Include="dbo\Tables\EmployeeJobsCriticalRoleLevels.sql" />
+    <Build Include="dbo\Tables\EmployeeJobsCriticalRoles.sql" />
+    <Build Include="dbo\Tables\EmployeeLevels.sql" />
+    <Build Include="dbo\Tables\UserDataStore.sql" />
+    <Build Include="dbo\Tables\UserDataSets.sql" />
+    <Build Include="dbo\Tables\LableTypes.sql" />
+    <Build Include="dbo\Tables\Lables.sql" />
+    <Build Include="dbo\Tables\ControlInputTypes.sql" />
+    <Build Include="dbo\Tables\EmployeeJobsDescription.sql" />
+    <Build Include="dbo\Tables\TableNames.sql" />
+    <Build Include="Base\Views\Companies.sql" />
+    <Build Include="Base\Views\Users.sql" />
+    <Build Include="Base\Views\vwEmployeeBusinessUnitTypes.sql" />
+    <Build Include="Base\Views\vwEmployeeBusinessUnits.sql" />
+    <Build Include="Base\Views\vwEmployeeDepartments.sql" />
+    <Build Include="secure\Views\vwSecurityUsersRoles.sql" />
+    <Build Include="dbo\Views\vwUsersCompanys.sql" />
+    <Build Include="secure\Views\vwLogUserLogins.sql" />
+    <Build Include="Base\Views\vwEmployeeJobs.sql" />
+    <Build Include="Base\Views\vwEmployeesCorporateAccessLevels.sql" />
+    <Build Include="Base\Views\vwUserscompanys.sql" />
+    <Build Include="dbo\Views\Company_Processing_Year.sql" />
+    <Build Include="dbo\Views\vwUserDataStore_Dates.sql" />
+    <Build Include="Base\Views\vwEmployees.sql" />
+    <Build Include="dbo\Views\vwEmployeeHierarchy.sql" />
+    <Build Include="dbo\Views\vwUserDataFields.sql" />
+    <Build Include="Base\Functions\func_Tool_SAIDNumber_ReturnBirthDate.sql" />
+    <Build Include="Base\Stored Procedures\spCompanyByUUID.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeBusinessUnitDelete.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeBusinessUnits.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeBusinessUnitSave.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeBusinessUnitsUUID.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeBusinessUnitTypes.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeBusinessUnitTypesDelete.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeBusinessUnitTypesSave.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeBusinessUnitTypesUUID.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeDepartments.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeDepartments_Basic.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeDepartmentsDelete.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeDepartmentsSave.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeDepartmentsUUID.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeHierarchy_By_UsersUUID.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeHierarchy_Delete.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeHierarchy_Save.sql" />
+    <Build Include="Base\Stored Procedures\spEmployees_Basic_Information.sql" />
+    <Build Include="Base\Stored Procedures\spEmployees_Basic_Information_Save.sql" />
+    <Build Include="Base\Stored Procedures\spEmployees_Filter_Json.sql" />
+    <Build Include="Base\Stored Procedures\spLookup_Ethnicity.sql" />
+    <Build Include="Base\Stored Procedures\spLookup_Gender.sql" />
+    <Build Include="Base\Stored Procedures\spUserRolesByUUID.sql" />
+    <Build Include="admin\Stored Procedures\spIcons.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_Basic_ByUUID.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_Names_Search.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_Save_UUID.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_UUID_By_IDNumber.sql" />
+    <Build Include="Base\Stored Procedures\spUsersByUUID.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Delete.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Delete_UUID.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Insert.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Insert_UUID.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Update.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Update_UUID.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Save.sql" />
+    <Build Include="secure\Stored Procedures\spUsers_Login.sql" />
+    <Build Include="secure\Stored Procedures\spSecurityRoles_ByUsersidCompanyid.sql" />
+    <Build Include="secure\Stored Procedures\spSecurityUsersRoles_Has_Access.sql" />
+    <Build Include="Security\admin.sql" />
+    <Build Include="Security\audit.sql" />
+    <Build Include="Security\Base.sql" />
+    <Build Include="Security\secure.sql" />
+    <Build Include="Security\Security.sql" />
+    <Build Include="audit\Tables\AuditLogFieldNames.sql" />
+    <Build Include="dbo\Views\vwEmployeeJobs.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_Save_Basic.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_Basic_Save.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_Basic_Image_Save.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_Basic_Delete.sql" />
+    <Build Include="Base\Stored Procedures\spUsers_Basic.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeJobs.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogDetails_Save.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeJobs.sql" />
+    <Build Include="Base\Tables\Jobs.sql" />
+    <Build Include="dbo\Tables\Jobs.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeLevelsBase.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeHierarchy_GetTeam.sql" />
+  </ItemGroup>
+</Project>

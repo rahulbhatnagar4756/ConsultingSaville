@@ -1,0 +1,296 @@
+.box9 {
+
+    .vertical-text {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+    }
+
+    .potential {
+        height: 495px;
+        background-color: var(--sc-secondary-color1);
+    }
+
+    .potential p {
+        height: 472px;
+        font-weight: 700;
+        font-size: 22px;
+    }
+
+    @media (max-width: 425px) {
+        .potential p {
+            margin-left: -19px;
+        }
+    }
+
+    @media (min-width: 426px) AND (max-width: 1024px) {
+        .potential p {
+            margin-left: -12px;
+        }
+    }
+
+
+    .Performance {
+        height: 62px;
+        background-color: var(--sc-secondary-color1);
+    }
+
+    .Performance p {
+        font-weight: 700;
+        font-size: 22px;
+    }
+
+    .potential-box-3 {
+        height: 100%;
+        background-color: var(--sc-primary-colour2);
+        color: var(--rz-white);
+    }
+
+    .potential-box-3 p {
+        height: 128px;
+        font-weight: 500;
+        font-size: 19px;
+        color: var(--rz-white);
+    }
+
+
+    @media (max-width: 425px) {
+        .potential-box-3 p {
+            margin-left: -17px;
+        }
+    }
+
+    @media (min-width: 426px) AND (max-width: 1024px) {
+        .potential-box-3 p {
+            margin-left: -12px;
+        }
+    }
+
+
+    .potential-box-3-horizontal {
+        height: 62px;
+        background-color: var(--sc-primary-colour2);
+        color: var(--rz-white);
+    }
+
+    .potential-box-3-horizontal p {
+        color: var(--rz-white);
+        font-weight: 500;
+        font-size: 19px;
+    }
+
+
+    .box {
+        height: 160px;
+    }
+
+    .box-level1 {
+        background-color: var(--sc-secondary-color2);
+        color: var(--rz-white);
+        cursor: pointer;
+    }
+
+    .box-level2 {
+        background-color: var(--sc-secondary-color3);
+        color: var(--rz-white);
+        cursor: pointer;
+    }
+
+    .box-level3 {
+        background-color: var(--sc-secondary-color4);
+        color: var(--rz-white);
+        cursor: pointer;
+    }
+
+    .box-level4 {
+        background-color: var(--sc-primary-colour1);
+        color: var(--rz-white);
+        cursor: pointer;
+    }
+
+    .box-card {
+        text-align: center;
+        height: 40px;
+    }
+
+    @media (max-width: 425px) {
+        .box-card {
+            font-size: 12px;
+            margin-left: -10px;
+        }
+    }
+}
+
+
+.box9TM {
+    background-color: var(--sc-card-background-colour);
+
+    .vertical-text {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+    }
+
+    .potential {
+        height: 495px;
+        background-color: var(--sc-secondary-color1);
+
+        p {
+            height: 472px;
+            font-weight: 700;
+            font-size: 22px;
+            margin-left: -16px;
+        }
+    }
+
+    .action-outer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .action-bar {
+            height: 100%;
+            width: 150px;
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            background-color: var(--sc-primary-colour2);
+            border-radius: 5px;
+
+            p {
+                flex: 1;
+                margin: 0;
+                display: flex;
+                color: var(--rz-white);
+                align-items: center;
+                justify-content: center;
+                writing-mode: vertical-rl;
+                text-orientation: mixed;
+                transform: rotate(180deg);
+            }
+        }
+    }
+
+    action-outer .action-types {
+        font-size: 14px;
+    }
+
+    @media (max-width: 425px) {
+        .potential p {
+            margin-left: -19px;
+        }
+
+        .action-bar p {
+            margin-left: -19px;
+        }
+    }
+
+    @media (min-width: 426px) AND (max-width: 1024px) {
+        .potential p {
+            margin-left: -12px;
+        }
+
+        .action-bar p {
+            margin-left: -12px;
+        }
+    }
+
+
+    .Performance {
+        height: 29px;
+        background-color: var(--sc-secondary-color1);
+
+        p {
+            line-height: 0;
+            font-weight: 700;
+            font-size: 22px;
+        }
+    }
+
+    .potential-box-3 {
+        height: 100%;
+        background-color: var(--sc-primary-colour2);
+        color: var(--rz-white);
+
+        p {
+            margin-left: -13px;
+            height: 128px;
+            font-weight: 500;
+            font-size: 19px;
+            color: var(--rz-white);
+        }
+    }
+
+    @media (max-width: 425px) {
+        .potential-box-3 p {
+            margin-left: -17px;
+        }
+    }
+
+    @media (min-width: 426px) AND (max-width: 1024px) {
+        .potential-box-3 p {
+            margin-left: -12px;
+        }
+    }
+
+
+    .potential-box-3-horizontal {
+        height: 28px;
+        background-color: var(--sc-primary-colour2);
+        color: var(--rz-white);
+
+        p {
+            line-height: 0;
+            color: var(--rz-white);
+            font-weight: 500;
+            font-size: 19px;
+        }
+    }
+
+    .box {
+        height: 160px;
+
+        .scores {
+            text-align: center;
+            font-size: 10px;
+            width: 100%;
+        }
+    }
+
+    .box-level1 {
+        background-color: var(--sc-secondary-color2);
+        color: var(--rz-white);
+        cursor: pointer;
+    }
+
+    .box-level2 {
+        background-color: var(--sc-secondary-color3);
+        color: var(--rz-white);
+        cursor: pointer;
+    }
+
+    .box-level3 {
+        background-color: var(--sc-secondary-color4);
+        color: var(--rz-white);
+        cursor: pointer;
+    }
+
+    .box-level4 {
+        background-color: var(--sc-primary-colour1);
+        color: var(--rz-white);
+        cursor: pointer;
+    }
+
+    .box-card {
+        text-align: center;
+        height: 40px;
+        font-size: 14px;
+    }
+
+    @media (max-width: 425px) {
+        .box-card {
+            font-size: 12px;
+            margin-left: -10px;
+        }
+    }
+}

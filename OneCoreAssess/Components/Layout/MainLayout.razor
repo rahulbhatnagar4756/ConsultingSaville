@@ -1,0 +1,165 @@
+@using OneCoreAssess.Models
+@inherits LayoutComponentBase
+@inject CookieThemeService CookieThemeService
+
+<RadzenComponents />
+
+@if (_menuNav != null)
+{
+
+        <RadzenLayout style="grid-template-areas: 'rz-header rz-header rz-header' 'rz-sidebar rz-body rz-right-sidebar';">
+        <RadzenHeader>
+            <RadzenRow JustifyContent="JustifyContent.Start" AlignItems="AlignItems.Center" Gap="0">
+                <RadzenColumn Style="display: contents;" >
+                    <RadzenSidebarToggle Click="@SidebarToggleClick"></RadzenSidebarToggle>
+                   
+                        <RadzenImage Path="images/logo.png" style="max-width: 150px; height: 46px; margin-right: 10px;" AlternateText="Application logo"></RadzenImage>
+                    
+                    
+                    @if (_menuNav.MenuSectionId == 2)
+                    {
+                        <OneCoreAssess.Components.Layout.NavMenu.AssessmentMenu  @bind-Item="_menuNav.MenuSectionId" />
+                    }
+                    @if (_menuNav.MenuSectionId == 1)
+                    {
+                        <span>this is a test</span>
+                    }
+                </RadzenColumn>
+            <RadzenColumn >
+                <RadzenStack AlignItems="AlignItems.Center" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem" class="rz-px-2">
+                    <RadzenAppearanceToggle />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenHeader>
+    <RadzenBody Expanded="@sidebarExpanded">
+        <RadzenRow class="rz-mx-auto rz-px-4 rz-pb-2 rz-pb-lg-12" Style="max-width: 1440px;">
+            <RadzenColumn Size="12">
+                <CascadingValue Value="_menuNav">
+                    @Body
+                </CascadingValue>
+                  
+            </RadzenColumn>
+        </RadzenRow>
+         
+    </RadzenBody>
+    <RadzenSidebar Expanded="@sidebarExpanded" style="z-index: 2">
+        <RadzenStack AlignItems="Radzen.AlignItems.Center" class="rz-py-4 rz-py-lg-6" Style="padding: var(--rz-panel-menu-item-padding); border-bottom: var(--rz-panel-menu-item-border);">
+           
+        </RadzenStack>
+        <RadzenPanelMenu class="pt-4">
+                <div class="@SideBarCSSClass(1)" @onclick="NavigateToHome">
+                <div>
+                    <i class="fa-light fa-house"></i>
+                </div>
+                <div>
+                    <span>Home</span>
+                </div>
+            </div>
+        </RadzenPanelMenu>
+        <RadzenPanelMenu>
+                <div class="@SideBarCSSClass(2)" @onclick="NavigateToAssessment">
+                <div>
+                    <i class="fa-light fa-clipboard"></i>
+                </div>
+                <div>
+                    <span>Assessment</span>
+                </div>
+            </div>
+        </RadzenPanelMenu>
+         <RadzenPanelMenu>
+                <div class="sidebar-menu" @onclick="NavigateToUser">
+                <div>
+                    <i class="fa-light fa-list"></i>
+                </div>
+                <div>
+                    <span>Selection</span>
+                </div>
+            </div>
+        </RadzenPanelMenu>
+
+         <RadzenPanelMenu>
+            <div class="sidebar-menu">
+                <div>
+                    <i class="fa-light fa-person-digging"></i>
+                </div>
+                <div>
+                    <span>Leadership & Development</span>
+                </div>
+            </div>
+        </RadzenPanelMenu>
+
+         <RadzenPanelMenu>
+            <div class="sidebar-menu">
+                <div>
+                    <i class="fa-light fa-gauge"></i>
+                </div>
+                <div>
+                    <span>Preformance Management</span>
+                </div>
+            </div>
+        </RadzenPanelMenu>
+
+         <RadzenPanelMenu>
+            <div class="sidebar-menu">
+                <div>
+                    <i class="fa-light fa-gear"></i>
+                </div>
+                <div>
+                    <span>Administration</span>
+                </div>
+            </div>
+        </RadzenPanelMenu>
+        
+    </RadzenSidebar>
+        <RadzenStack AlignItems="Radzen.AlignItems.Center" Gap="0" class="rz-py-4 rz-py-lg-6 fixed-bottom-custom" Style="padding: var(--rz-panel-menu-item-padding);">
+            <RadzenText Text="Saville Consulting" TextStyle="Radzen.Blazor.TextStyle.Caption" TagName="Radzen.Blazor.TagName.P" TextAlign="Radzen.TextAlign.Center" />
+            <RadzenText Text=@string.Format("Copyright Ⓒ {0}", @DateTime.Now.ToString("yyyy")) TextStyle="Radzen.Blazor.TextStyle.Caption" class="rz-mb-0" TagName="Radzen.Blazor.TagName.P" TextAlign="Radzen.TextAlign.Center" />
+        </RadzenStack>
+</RadzenLayout>
+
+}
+
+@code {
+    private LayoutCascadeMenuModel _menuNav;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        _menuNav = new() { MenuSectionId = 1, MenuSubSectionId = 1 };
+    }
+
+    private async Task ChangeMenu(int code)
+    {
+        _menuNav = new() { MenuSectionId = code, MenuSubSectionId = code };
+    }
+
+    private void NavigateToHome()
+    {
+        _menuNav.MenuSectionId = 1;
+        NavigateTo("Index");
+    }
+
+    private void NavigateToAssessment()
+    {
+        _menuNav.MenuSectionId = 2;
+        NavigateTo("administration/assessments");
+    }
+
+     private void NavigateToUser()
+    {
+        _menuNav.MenuSectionId = 3;
+        NavigateTo("forms/SuccessionPlan/971E69C7-A976-4B60-9B1B-FDE0FCF6A451/B99CD3DE-1B13-4024-B737-18E4A5A0BE4E");
+    }
+
+    private void NavigateTo(string path)
+    {
+        //NavigationManager.NavigateTo(NavigationManager.Uri + path);
+        NavigationManager.NavigateTo(path);
+    }
+
+    private string SideBarCSSClass(int sectionid){
+        return sectionid == _menuNav.MenuSectionId ? " sidebar-menu sidebar-menu-active" : "sidebar-menu";
+    }
+
+}

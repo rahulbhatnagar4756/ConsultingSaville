@@ -1,0 +1,226 @@
+﻿@using Library.API.Admin.Models
+@using Library.API.Goals.Models
+@using Library.API.Goals.Models.EnterpriseStructures
+@using Library.API.Goals.Services
+@using Library.API.Admin.Services
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+
+@inject DialogService DialogService
+
+<RadzenStack class="header-custom">
+    <RadzenStack class="header-outer">
+        <RadzenStack>
+            <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Enterprise Structure Type" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenStack>
+
+@* Status Messages *@
+@if (_logMessage != null && _logMessage.isValid.HasValue)
+{
+    <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+        <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+        <span>@_logMessage.Message</span>
+    </div>
+}
+
+@if (_enterpriseStructureType != null)
+{
+    <RadzenStack class="p-4">
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Name</RadzenText>
+            <RadzenTextBox Placeholder="Enterprise Structure Type Name..."
+                           @bind-Value="_enterpriseStructureType.Name"
+                           Style="width: 100%"
+                           aria-label="Enterprise Structure Type Name" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Description</RadzenText>
+            <RadzenTextArea oninput="event.target.style.height = Math.max(event.target.clientHeight, event.target.scrollHeight) + 'px';"
+                            @bind-Value="_enterpriseStructureType.Description"
+                            Style="width: 100%"
+                            aria-label="Description" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Icon</RadzenText>
+            <RadzenDropDown @bind-Value="_enterpriseStructureType.Icons"
+                            Data="_icons"
+                            Style="width: 100%;"
+                            TextProperty="@nameof(NameOnlyModel.Name)"
+                            ValueProperty="@nameof(NameOnlyModel.Name)"
+                            Name="DropDownBindValue"
+                            Change="@OnIconChanged">
+                <Template Context="data">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <RadzenIcon Icon="@data.Name" />
+                        <span>@data.Name</span>
+                    </div>
+                </Template>
+            </RadzenDropDown>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12">
+            <RadzenText Text="Icon Color" />
+            <RadzenColorPicker @bind-Value="_enterpriseStructureType.Color"
+                               ShowHSV=true
+                               ShowRGBA=true
+                               ShowColors=true
+                               ShowButton=false />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" class="mt-5">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                <RadzenButton style="flex: 1;"
+                              Icon="save"
+                              BusyText="Saving..."
+                              IsBusy="_isSaving"
+                              Click="@OnSave_Click"
+                              Text="Save" />
+
+                @if (!string.IsNullOrEmpty(_enterpriseStructureType?.UUID))
+                {
+                    <RadzenButton Icon="delete"
+                                  Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                  IsBusy="_isSaving"
+                                  Click="OnDelete_Confirm" />
+                }
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenStack>
+}
+
+@code {
+    [Inject] public IIconsService _IconsService { get; set; }
+    [Inject] public IEnterpriseStructuresServices _EnterpriseStructuresService { get; set; }
+
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    [Parameter] public EnterpriseStructureTypesModel? EnterpriseStructureType { get; set; }
+    [Parameter] public EventCallback<EnterpriseStructureTypesModel> OnSaveComplete { get; set; }
+
+    private ResultsModel? _logMessage = null;
+    private EnterpriseStructureTypesModel? _enterpriseStructureType = null;
+    private EnterpriseStructureTypesModel? _enterpriseStructureTypeCurrent = null;
+    private bool _isSaving = false;
+    private List<NameOnlyModel>? _icons;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_enterpriseStructureType == null) _enterpriseStructureType = new EnterpriseStructureTypesModel() { Color = "#362f21" };
+        await LoadIcons();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //get data if its sent to the right sidebar area
+        _enterpriseStructureTypeCurrent = _rightSidebarService.GetSharedContext<EnterpriseStructureTypesModel>();
+
+        if (_enterpriseStructureType != null && _enterpriseStructureTypeCurrent == null)
+            _enterpriseStructureType = new EnterpriseStructureTypesModel() { Color = "#362f21" };
+
+        if (_enterpriseStructureTypeCurrent != null && _enterpriseStructureType != _enterpriseStructureTypeCurrent)
+        {
+            _logMessage = null;
+            _enterpriseStructureType = _enterpriseStructureTypeCurrent;
+            // Set the icon name based on Icons if available
+            if (_icons != null && !String.IsNullOrEmpty(_enterpriseStructureType.Icons))
+            {
+                var icon = _icons.FirstOrDefault(i => i.Name == _enterpriseStructureType.Icons);
+                if (icon != null)
+                {
+                    _enterpriseStructureType.Icons = icon.Name;
+                }
+            }
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadIcons()
+    {
+        _icons = await _IconsService.GetIcons();
+    }
+
+    private void OnIconChanged()
+    {
+        if (_icons != null && !string.IsNullOrEmpty(_enterpriseStructureType?.Icons))
+        {
+            var selectedIcon = _icons.FirstOrDefault(i => i.Name == _enterpriseStructureType.Icons);
+            if (selectedIcon != null)
+            {
+                _enterpriseStructureType.Icons = selectedIcon.Name ?? "business";
+            }
+        }
+    }
+
+    private async Task OnSave_Click()
+    {
+        if (_enterpriseStructureType == null || string.IsNullOrWhiteSpace(_enterpriseStructureType.Name))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Please enter a name for the enterprise structure type." };
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            _logMessage = await _EnterpriseStructuresService.SaveEnterpriseStructureType(_enterpriseStructureType);
+
+            if (_logMessage != null && _logMessage.isValid == true && _enterpriseStructureType.UUID == null)
+            {
+                _enterpriseStructureType.UUID = _logMessage.UUID;
+            }
+
+            await OnSaveComplete.InvokeAsync(_enterpriseStructureType);
+            _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Goals_Administration_EnterpriseStructureTypes);
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error saving enterprise structure type: {ex.Message}" };
+            Console.WriteLine($"Error saving enterprise structure type: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnDelete_Confirm()
+    {
+        var result = await DialogService.Confirm("Are you sure?", "Delete Enterprise Structure Type", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (result.HasValue && result.Value)
+        {
+            await OnDelete_Click();
+        }
+    }
+
+    private async Task OnDelete_Click()
+    {
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            _logMessage = await _EnterpriseStructuresService.DeleteEnterpriseStructureType(_enterpriseStructureType.UUID);
+            _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Goals_Administration_EnterpriseStructureTypes);
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error deleting enterprise structure type: {ex.Message}" };
+            Console.WriteLine($"Error deleting enterprise structure type: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

@@ -1,0 +1,435 @@
+﻿@using Library.API.TalentManagement.Models
+@using Library.API.TalentManagement.Services
+
+<RadzenCard class="box9TM " style="box-shadow: var(--rz-shadow-5)">
+    <RadzenRow>
+
+        <RadzenColumn Size="1">
+            <RadzenCard class="potential">
+                <RadzenText TextAlign="TextAlign.Center" Text="Potential" class="vertical-text" />
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn>
+            <RadzenRow>
+                <RadzenColumn>
+                    <RadzenRow class="rz-mb-2">
+                        <RadzenColumn Size="1">
+                            <RadzenCard class="potential-box-3">
+                                <RadzenText TextAlign="TextAlign.Center" Text="High" class="vertical-text " />
+                            </RadzenCard>
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="11">
+                            <RadzenRow Gap="5px">
+
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level1" style="">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.UninspiredJobIncongruenceLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.UninspiredJobIncongruence)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level3">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.DynamicTalentLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.DynamicTalent)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level4">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.TopPerformerLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.TopPerformer)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow class="rz-mb-2">
+                        <RadzenColumn Size="1">
+                            <RadzenCard class="potential-box-3">
+                                <RadzenText TextAlign="TextAlign.Center" Text="Medium" class="vertical-text " />
+                            </RadzenCard>
+                        </RadzenColumn>
+                        <RadzenColumn Size="11">
+                            <RadzenRow Gap="5px">
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level1">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.InconsistentPassivePerformerLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.InconsistentPassivePerformer)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level2">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.KeySolidEmployeeLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.KeySolidEmployee)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level3">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.TalentedFuturePotentialLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.TalentedFuturePotential)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow class="rz-mb-2">
+                        <RadzenColumn Size="1">
+                            <RadzenCard class="potential-box-3">
+                                <RadzenText TextAlign="TextAlign.Center" Text="Low" class="vertical-text " />
+                            </RadzenCard>
+                        </RadzenColumn>
+                        <RadzenColumn Size="11">
+                            <RadzenRow Gap="5px">
+
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level1">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.MismatchedEmployeeLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.MismatchedEmployee)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level2">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.StableEmployeeLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.StableEmployee)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="4">
+
+                                    <RadzenCard class="box box-level2">
+                                        <RadzenStack class="rz-mb-2 box-card">
+                                            @_talentManagementUserStatistic.TrustedProfessionalLabel
+                                        </RadzenStack>
+                                        <RadzenStack AlignItems="AlignItems.Center" class="pt-4 pt-md-0">
+                                            @if (_isLoading)
+                                            {
+                                                <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                                                    <div class="spinner"></div>
+                                                </RadzenText>
+                                            }
+                                            else
+                                            {
+                                                @if (_talentManagementUserStatistic.Box9Types == (int)Library.API.TalentManagement.Enumerables.Box9Types.TrustedProfessional)
+                                                {
+                                                    <RadzenStack class="scores">
+                                                        <RadzenStack AlignItems="AlignItems.Center">
+                                                            <RadzenIcon Icon="accessibility_new" Style="font-size:30px;"></RadzenIcon>
+                                                        </RadzenStack>
+                                                        @((MarkupString)_talentManagementUserStatistic.ToString())
+                                                    </RadzenStack>
+                                                }
+                                            }
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow class="rz-mb-2">
+                        <RadzenColumn Size="1">
+
+                        </RadzenColumn>
+                        <RadzenColumn Size="11">
+                            <RadzenRow Gap="5px">
+
+                                <RadzenColumn Size="4" >
+
+                                    <RadzenCard class="potential-box-3-horizontal">
+                                        <RadzenText TextAlign="TextAlign.Center" Text="Poor" />
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+
+                                <RadzenColumn Size="4" >
+
+                                    <RadzenCard class="potential-box-3-horizontal">
+                                        <RadzenText TextAlign="TextAlign.Center" Text="Good" />
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+                                <RadzenColumn Size="4" >
+
+                                    <RadzenCard class="potential-box-3-horizontal">
+                                        <RadzenText TextAlign="TextAlign.Center" Text="High" />
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+
+                            </RadzenRow>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow class="rz-mb-2">
+                        <RadzenColumn Size="1">
+
+                        </RadzenColumn>
+                        <RadzenColumn Size="11">
+                            <RadzenRow>
+                                <RadzenColumn Size="12" >
+
+                                    <RadzenCard class="Performance">
+                                        <RadzenText TextAlign="TextAlign.Center" Text="Performance" />
+                                    </RadzenCard>
+
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                </RadzenColumn>
+            </RadzenRow>
+
+        </RadzenColumn>
+
+    </RadzenRow>
+
+</RadzenCard>
+
+
+<RadzenCard class="box9TM mt-3" style="box-shadow: var(--rz-shadow-5)">
+    <RadzenStack>
+        <RadzenRow>
+            <RadzenColumn Size="1" class="action-outer">
+                <RadzenStack class="action-bar ">
+                    <RadzenText class=" ">
+                        Action
+                   </RadzenText>  
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn class="action-types">
+                @if (_talentManagementUserStatistic != null && _talentManagementUserStatistic.Box9TypeActions != null)
+                {
+                    @((MarkupString)_talentManagementUserStatistic.Box9TypeActions)
+                }
+            </RadzenColumn>
+        </RadzenRow>
+
+    </RadzenStack>
+
+</RadzenCard>
+
+
+
+@code {
+    [Inject] private IBox9Service _box9Service { get; set; }
+
+    [Parameter] public string? UsersUUID { get; set; }
+
+    private TalentManagementUsersStatisticModel _talentManagementUserStatistic = new();
+    private bool _isLoading = false;
+    private string? _UsersUUIDCurrent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        if (_UsersUUIDCurrent != UsersUUID)
+        {
+            _UsersUUIDCurrent = UsersUUID;
+            _talentManagementUserStatistic = await _box9Service.GetBox9StatisticsForUser(UsersUUID);
+            if (_talentManagementUserStatistic == null) _talentManagementUserStatistic = new();
+        }
+        _isLoading = false;
+        await base.OnParametersSetAsync();
+    }
+
+
+
+}

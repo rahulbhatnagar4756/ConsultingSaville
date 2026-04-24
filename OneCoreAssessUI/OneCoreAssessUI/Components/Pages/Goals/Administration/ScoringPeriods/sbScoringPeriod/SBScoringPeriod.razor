@@ -1,0 +1,365 @@
+﻿@using Library.API.Goals.Models
+@using Library.API.Goals.Models.ScoringPeriod
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@using Radzen
+
+
+
+<!-- Desktop Header -->
+<RadzenStack class="header-custom">
+	<RadzenStack class="header-outer">
+		<RadzenStack>
+			<RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Scoring Period Details" />
+		</RadzenStack>
+	</RadzenStack>
+</RadzenStack>
+
+<RadzenStack Class=" p-4 w-full max-w-2xl mx-auto">
+    <RadzenStack Gap="10px">
+
+      
+
+        <div class="header-underline mb-2 d-none d-lg-block"></div>
+
+        <!-- Error Message -->
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="error-alert">
+                <RadzenIcon Icon="exclamation-triangle" Style="color:#B91C1C;" />
+                @_errorMessage
+            </div>
+        }
+
+        <!-- Name -->
+        <RadzenLabel Text="Name" Component="TextBox" />
+        <RadzenTextBox @bind-Value="_period.Name" Placeholder="Enter scoring period name" Style="width:100%" />
+
+        <!-- Description -->
+        <RadzenLabel Text="Description" Component="TextArea" />
+        <RadzenTextArea @bind-Value="_period.Description" Placeholder="Optional description"
+                        Rows="3" Style="width:100%" />
+
+        <!-- Start Date -->
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="20px">
+            <div class="flex-1">
+                <RadzenLabel Text="Start Month" Component="DropDown" />
+                <RadzenDropDown @bind-Value="_period.StartMonth"
+                                Data="@_monthOptions"
+                                TextProperty="Name"
+                                ValueProperty="Value"
+                                Style="width:100%"
+                                Change="@OnStartMonthChange" />
+            </div>
+            <div class="flex-1">
+                <RadzenLabel Text="Start Day" Component="DropDown" />
+                <RadzenDropDown @bind-Value="_period.StartDay"
+                                Data="@_startDayOptions"
+                                Style="width:100%" />
+            </div>
+        </RadzenStack>
+
+        <!-- End Date -->
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="20px">
+            <div class="flex-1">
+                <RadzenLabel Text="End Month" Component="DropDown" />
+                <RadzenDropDown @bind-Value="_period.EndMonth"
+                                Data="@_monthOptions"
+                                TextProperty="Name"
+                                ValueProperty="Value"
+                                Style="width:100%"
+                                Change="@OnEndMonthChange" />
+            </div>
+            <div class="flex-1">
+                <RadzenLabel Text="End Day" Component="DropDown" />
+                <RadzenDropDown @bind-Value="_period.EndDay"
+                                Data="@_endDayOptions"
+                                Style="width:100%" />
+            </div>
+        </RadzenStack>
+
+        <!-- Actions -->
+        <RadzenColumn Size="12" class="mt-5">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                <RadzenButton style="flex: 1;"
+                              Icon="save"
+                              BusyText="Saving..."
+                              Click="@OnSave"
+                              Text="Save" />
+
+                @if (!string.IsNullOrEmpty(_period?.UUID))
+                {
+                    <RadzenButton Icon="delete"
+                                  Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                  Click="OnDelete" />
+                }
+            </RadzenStack>
+        </RadzenColumn>
+
+
+
+    </RadzenStack>
+</RadzenStack>
+
+<style>
+    .error-alert {
+        background-color: #FEE2E2;
+        color: #B91C1C;
+        border: 1px solid #FCA5A5;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+</style>
+
+@code {
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+    [Inject] public IScoringPeriodsService ScoringPeriodsService { get; set; }
+    [Inject] public DialogService DialogService { get; set; }
+
+    /// <summary>
+    /// Holds the scoring period being added or edited.
+    /// </summary>
+    private ScoringPeriodDto _period = new();
+
+    /// <summary>
+    /// Holds error message for display in the UI.
+    /// </summary>
+    private string? _errorMessage;
+
+    /// <summary>
+    /// Month options for dropdowns
+    /// </summary>
+    private List<MonthOption> _monthOptions = new List<MonthOption>
+    {
+        new MonthOption { Value = 1, Name = "January" },
+        new MonthOption { Value = 2, Name = "February" },
+        new MonthOption { Value = 3, Name = "March" },
+        new MonthOption { Value = 4, Name = "April" },
+        new MonthOption { Value = 5, Name = "May" },
+        new MonthOption { Value = 6, Name = "June" },
+        new MonthOption { Value = 7, Name = "July" },
+        new MonthOption { Value = 8, Name = "August" },
+        new MonthOption { Value = 9, Name = "September" },
+        new MonthOption { Value = 10, Name = "October" },
+        new MonthOption { Value = 11, Name = "November" },
+        new MonthOption { Value = 12, Name = "December" }
+    };
+
+    /// <summary>
+    /// Day options for start day dropdown
+    /// </summary>
+    private List<int> _startDayOptions = new List<int>();
+
+    /// <summary>
+    /// Day options for end day dropdown
+    /// </summary>
+    private List<int> _endDayOptions = new List<int>();
+
+    /// <summary>
+    /// Helper class for month dropdown options
+    /// </summary>
+    public class MonthOption
+    {
+        public int Value { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+
+    #region Methods
+    /// <summary>
+    /// Gets the number of days in a specific month using current year
+    /// </summary>
+    private int GetDaysInMonth(int month, int? year = null)
+    {
+        int currentYear = year ?? DateTime.Now.Year;
+        return DateTime.DaysInMonth(currentYear, month);
+    }
+
+    /// <summary>
+    /// Updates the day options based on the selected month
+    /// </summary>
+    private void UpdateStartDayOptions()
+    {
+        if (_period.StartMonth >= 1 && _period.StartMonth <= 12)
+        {
+            int daysInMonth = GetDaysInMonth(_period.StartMonth);
+            _startDayOptions = Enumerable.Range(1, daysInMonth).ToList();
+
+            // If current selected day is greater than available days, reset to last day of month
+            if (_period.StartDay > daysInMonth)
+            {
+                _period.StartDay = daysInMonth;
+            }
+        }
+        else
+        {
+            _startDayOptions = Enumerable.Range(1, 31).ToList();
+        }
+    }
+
+    /// <summary>
+    /// Updates the end day options based on the selected month
+    /// </summary>
+    private void UpdateEndDayOptions()
+    {
+        if (_period.EndMonth >= 1 && _period.EndMonth <= 12)
+        {
+            int daysInMonth = GetDaysInMonth(_period.EndMonth);
+            _endDayOptions = Enumerable.Range(1, daysInMonth).ToList();
+
+            // If current selected day is greater than available days, reset to last day of month
+            if (_period.EndDay > daysInMonth)
+            {
+                _period.EndDay = daysInMonth;
+            }
+        }
+        else
+        {
+            _endDayOptions = Enumerable.Range(1, 31).ToList();
+        }
+    }
+
+    /// <summary>
+    /// Handles start month change event
+    /// </summary>
+    private void OnStartMonthChange(object value)
+    {
+        if (value != null && int.TryParse(value.ToString(), out int monthValue))
+        {
+            _period.StartMonth = monthValue;
+            UpdateStartDayOptions();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles end month change event
+    /// </summary>
+    private void OnEndMonthChange(object value)
+    {
+        if (value != null && int.TryParse(value.ToString(), out int monthValue))
+        {
+            _period.EndMonth = monthValue;
+            UpdateEndDayOptions();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Initializes the scoring period data when parameters are set.
+    /// If editing, loads the selected period from the shared context;
+    /// otherwise, creates a new period with default values.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_rightSidebarService?.SharedContext is ScoringPeriodDto selected)
+        {
+            // Editing existing period
+            _period = new ScoringPeriodDto
+            {
+                UUID = selected.UUID,
+                Name = selected.Name,
+                Description = selected.Description,
+                StartDay = selected.StartDay,
+                StartMonth = selected.StartMonth,
+                EndDay = selected.EndDay,
+                EndMonth = selected.EndMonth,
+                DateDeactivated = selected.DateDeactivated
+            };
+        }
+        else
+        {
+            // Adding new period: set default values to current date
+            var today = DateTime.Today;
+            var nextMonth = today.AddMonths(1);
+
+            _period = new ScoringPeriodDto
+            {
+                StartDay = today.Day,
+                StartMonth = today.Month,
+                EndDay = nextMonth.Day,
+                EndMonth = nextMonth.Month,
+                DateCreated = DateTime.Now
+            };
+        }
+
+        // Initialize day options based on selected months
+        UpdateStartDayOptions();
+        UpdateEndDayOptions();
+
+        await base.OnParametersSetAsync();
+    }
+
+    /// <summary>
+    /// Saves the current scoring period.
+    /// If the period has a deactivation date, clears it before saving.
+    /// Triggers a data refresh and closes the sidebar on success.
+    /// </summary>
+    private async Task OnSave()
+    {
+        // Validate that month and day values are set
+        if (_period.StartMonth < 1 || _period.StartMonth > 12 ||
+            _period.EndMonth < 1 || _period.EndMonth > 12 ||
+            _period.StartDay < 1 || _period.EndDay < 1)
+        {
+            _errorMessage = "Please select valid dates for both start and end periods.";
+            return;
+        }
+
+        // Validate that the selected days are valid for the selected months
+        if (_period.StartDay > GetDaysInMonth(_period.StartMonth) ||
+            _period.EndDay > GetDaysInMonth(_period.EndMonth))
+        {
+            _errorMessage = "Invalid day selected for the chosen month.";
+            return;
+        }
+
+        // If record has a deactivation date
+        if (_period.DateDeactivated != null)
+        {
+            _period.isActive = false; // keep inactive
+            _period.DateDeactivated = null; // reset date
+        }
+
+        var result = await ScoringPeriodsService.CreateScoringPeriod(_period);
+        if (result?.isValid != true)
+        {
+            _errorMessage = result?.Message ?? "Failed to save scoring period.";
+            return;
+        }
+        _errorMessage = null;
+        _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_ScoringPeriods);
+        _rightSidebarService.Close();
+    }
+
+    /// <summary>
+    /// Prompts the user for confirmation and deletes the current scoring period.
+    /// Triggers a data refresh and closes the sidebar on success.
+    /// </summary>
+    private async Task OnDelete()
+    {
+        var confirm = await DialogService.Confirm("Are you sure you want to delete this scoring period?", "Confirm",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirm == true && !string.IsNullOrEmpty(_period.UUID))
+        {
+            var result = await ScoringPeriodsService.DeleteScoringPeriod(_period.UUID);
+            if (result?.isValid != true)
+            {
+                _errorMessage = result?.Message ?? "Failed to delete scoring period.";
+                return;
+            }
+            _errorMessage = null;
+            _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_ScoringPeriods);
+            _rightSidebarService.Close();
+        }
+    }
+
+    #endregion
+}

@@ -1,0 +1,111 @@
+﻿@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using OneCoreAssessUI.Components.Pages.Tools
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@implements IDisposable
+
+<RadzenStack class="container">
+    <RadzenStack>
+        <RadzenText Text="Position Disciplines" Style="font-weight: 700; font-size: 25px;" />
+    </RadzenStack>
+    @if (_jobDisciplines != null)
+    {
+        <MultiListExtra Data=@_jobDisciplines
+                        TItem="EmployeeBaseModel"
+                        Name="Position Disciplines"
+                        StatsName="Employees"
+                        OnAddNew="OnAddNew_Click"
+                        OnItemSelect="RowSelect_Click"
+                        isStats=false
+                        isIcon=false
+                        ShowCategories=false>
+        </MultiListExtra>
+
+    }
+</RadzenStack>
+
+@code {
+    [Inject] public IJobDisciplinesService _jobDisciplinesEmployeeBaseService { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<EmployeeBaseModel>? _jobDisciplines = null;
+    private EmployeeBaseModel? _jobDisciplineSelected = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the OnDataRefresh event
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+        await LoadJobDisciplines();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadJobDisciplines()
+    {
+        try
+        {
+            // Load job disciplines from the service
+            _jobDisciplines = await _jobDisciplinesEmployeeBaseService.GetJobDisciplinesToEmployeeBaseModel();
+            
+            // Sort by OrderVal to show disciplines in proper order
+            if (_jobDisciplines != null)
+            {
+                _jobDisciplines = _jobDisciplines.OrderBy(x => x.Name).ToList();
+            }
+            
+            // Trigger state change to update UI
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading job disciplines: {ex.Message}");
+            // Handle error as needed
+        }
+    }
+
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Only respond to refresh events for our specific control type
+        if (controlType == Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_JobDisciplines)
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadJobDisciplines();
+            });
+        }
+    }
+
+    private async Task RowSelect_Click(EmployeeBaseModel? employeeBase)
+    {
+        _jobDisciplineSelected = employeeBase;
+        _rightSidebarService.SharedContext = employeeBase;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_JobDisciplines);
+    }
+
+    private async Task OnAddNew_Click()
+    {
+        _jobDisciplineSelected = null;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_JobDisciplines, true);
+    }
+
+    /// <summary>
+    /// Public method that can be called externally to refresh data
+    /// </summary>
+    public async Task RefreshData()
+    {
+        await LoadJobDisciplines();
+    }
+
+    public void Dispose()
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+        }
+    }
+}

@@ -1,0 +1,23 @@
+﻿ <RadzenMenu>
+                                <RadzenMenuItem Text="Projects" Icon="build" Click="ChangeMenuProject"  ></RadzenMenuItem>  
+                            <RadzenMenuItem Text="Candidate" Icon="accessibility"></RadzenMenuItem>  
+                            <RadzenMenuItem Text="Reports" Icon="assignment"></RadzenMenuItem>  
+                    </RadzenMenu>
+
+@code {
+
+    [Parameter]
+    public int Item { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ItemChanged { get; set; }
+
+
+    private async Task ChangeMenuProject()
+    {
+        Item = 2;
+        await ItemChanged.InvokeAsync(Item);
+    }
+
+
+}

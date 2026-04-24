@@ -1,0 +1,291 @@
+﻿@using OneCoreAssessUI.Services
+
+
+@using Library.API.Goals.Models.Contracts
+@using Radzen
+@using Library.API.Goals.Models
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Models
+
+@inject DialogService DialogService
+@inject ITemplatesService TemplatesService
+@inject IContractsService _contractsService
+@inject NotificationService NotificationService
+
+<RadzenStack Gap="1rem">
+	<RadzenStack class="header-custom">
+		<RadzenStack class="header-outer">
+			<RadzenStack>
+				<RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Assign Templates" />
+			</RadzenStack>
+		</RadzenStack>
+	</RadzenStack>
+
+
+	<RadzenStack>
+		<!-- Messages -->
+		@if (_logMessages != null && _logMessages.Any())
+		{
+			@foreach (var msg in _logMessages)
+			{
+				<div class="rz-alert @(msg.isValid == true ? "rz-success-light" : "rz-danger-light")"
+					 style="margin-bottom: 1rem; display: flex; align-items: center;">
+					<RadzenIcon Icon="@(msg.isValid == true ? "check_circle" : "error")" Style="margin-right: 8px;" />
+					<span>@msg.Message</span>
+				</div>
+			}
+		}
+	</RadzenStack>
+
+	<RadzenTabs @bind-SelectedIndex="_selectedTabIndex" TabPosition="TabPosition.Top">
+		<Tabs>
+			<RadzenTabsItem Text="Users">
+				<RadzenStack Gap="1rem" class="rz-p-3">
+
+					<RadzenStack>
+						<!-- Users Multi-Select Dropdown with Search -->
+						<RadzenColumn Size="12">
+							<RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Users</RadzenText>
+
+							<RadzenDropDown Style="width: 100%;"
+											Data="@(_users ?? new List<UsersModel>())"
+											TextProperty="Name"
+											ValueProperty="UUID"
+											Placeholder="Select Users..."
+											@bind-Value="SelectedUserUUIDs"
+											Multiple="true"
+											AllowFiltering="true"
+											FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+											FilterOperator="StringFilterOperator.Contains" />
+						</RadzenColumn>
+
+						<!-- Action Buttons -->
+						<RadzenColumn Size="12" class="mt-5">
+							<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+								<RadzenButton style="flex: 1;"
+											  Icon="save"
+											  Text="Save"
+											  Click="@OnSave_Click"
+											  Disabled="@_isSaving"
+											  Busy="@_isSaving"
+											  BusyText="Saving..." />
+							</RadzenStack>
+						</RadzenColumn>
+
+					</RadzenStack>
+				</RadzenStack>
+			</RadzenTabsItem>
+
+			<RadzenTabsItem Text="Linked Users">
+				<RadzenStack Gap="1rem" class="rz-p-3">
+					<RadzenStack>
+						<RadzenColumn Size="12">
+							<RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Linked Users</RadzenText>
+
+							<RadzenDropDown Style="width: 100%;"
+											Data="@_linkedUsers"
+											TextProperty="Name"
+											ValueProperty="UUID"
+											Placeholder="Linked Users..."
+											@bind-Value="SelectedlinkedUserUUIDs"
+											Multiple="true"
+											AllowFiltering="true"
+											FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+											FilterOperator="StringFilterOperator.Contains" />
+						</RadzenColumn>
+
+						<!-- Action Buttons -->
+						<RadzenColumn Size="12" class="mt-5">
+							<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+								<RadzenButton style="flex: 1;"
+											  Icon="save"
+											  Text="Save"
+											  Click="@OnSaveLinkedUsers_Click"
+											  Disabled="@_isSaving"
+											  Busy="@_isSaving"
+											  BusyText="Saving..." />
+							</RadzenStack>
+						</RadzenColumn>
+
+					</RadzenStack>
+				</RadzenStack>
+			</RadzenTabsItem>
+
+
+		</Tabs>
+	</RadzenTabs>
+
+
+</RadzenStack>
+
+@code {
+	[CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+	[CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+	private int _selectedTabIndex = 0;
+
+
+	private List<UsersModel>? _users { get; set; }
+
+	// MULTIPLE SELECT VALUES
+	private List<string> SelectedUserUUIDs { get; set; } = new();
+	private List<string> SelectedlinkedUserUUIDs { get; set; } = new();
+
+	private string? _templatesUUID;
+	private string? _ContractsUUID;
+	private ContractsModel? _contract = null;
+	private List<UsersModel>? _linkedUsers { get; set; }
+
+	private List<ResultsModel>? _logMessages = null;
+	private bool _isSaving = false;
+
+	private UserTemplatesModel _userTemplates = new();
+
+
+	protected override async Task OnParametersSetAsync()
+	{
+		var contextString = _menuNav.GetSharedContext<string>();
+		if (!string.IsNullOrEmpty(contextString))
+		{
+			var parts = contextString.Split(';')
+										.Select(p => p.Split('='))
+										.Where(p => p.Length == 2)
+										.ToDictionary(a => a[0], a => a[1]);
+
+			_ContractsUUID = parts.ContainsKey("ContractsUUID") ? parts["ContractsUUID"] : null;
+			_templatesUUID = parts.ContainsKey("TemplatesUUID") ? parts["TemplatesUUID"] : null;
+		}
+
+		await LoadData();
+	}
+
+	private async Task LoadData()
+	{
+		try
+		{
+			
+
+			if (!string.IsNullOrEmpty(_ContractsUUID))
+			{
+				_contract = await _contractsService.GetContract(_ContractsUUID);
+			}
+
+
+			if (_contract != null)
+			{
+				_users = await TemplatesService.GetAllUsers(new UserTemplatesModel
+				{
+					ContractPeriodsUUID = _contract.ContractPeriodsUUID,
+					TemplatesUUID = _templatesUUID
+				});
+
+
+				_linkedUsers = await TemplatesService.GetAllTemplateLinkedUsers(
+								new UserTemplatesModel
+									{
+										ContractPeriodsUUID = _contract.ContractPeriodsUUID,
+										TemplatesUUID = _templatesUUID
+									});
+			}
+
+			if (_linkedUsers != null && _linkedUsers.Any())
+			{
+				SelectedlinkedUserUUIDs = _linkedUsers.Select(u => u.UUID).ToList();
+			}
+
+			_logMessages = null;
+		}
+		catch (Exception ex)
+		{
+			_logMessages = new List<ResultsModel>
+			{
+				new ResultsModel { isValid = false, Message = $"Error loading data: {ex.Message}" }
+			};
+		}
+	}
+
+	private async Task OnSaveLinkedUsers_Click()
+	{
+		if (_linkedUsers != null && SelectedlinkedUserUUIDs != null)
+		{
+			// Get unselected users
+			var unselectedUsers = _linkedUsers
+				.Where(u => !SelectedlinkedUserUUIDs.Contains(u.UUID))
+				.ToList();
+
+			// If you just need UUIDs
+			var unselectedUUIDs = unselectedUsers.Select(u => u.UUID).ToList();
+
+			var userTemplate = new UserTemplatesModel
+				{
+					UsersUUID = unselectedUUIDs,
+					ContractPeriodsUUID = _contract.ContractPeriodsUUID,
+					TemplatesUUID = _templatesUUID
+				};
+
+			var results = await TemplatesService.UserTemplateDelete(userTemplate);
+
+			if (results != null && results.Any())
+			{
+				_logMessages = results;
+
+			}
+		}
+	}
+
+
+
+	private async Task OnSave_Click()
+	{
+		if (SelectedUserUUIDs == null || !SelectedUserUUIDs.Any())
+		{
+			_logMessages = new List<ResultsModel>
+			{
+				new ResultsModel { isValid = false, Message = "Please select at least one user before saving." }
+			};
+			return;
+		}
+
+		if (_contract == null)
+		{
+			_logMessages = new List<ResultsModel>
+			{
+				new ResultsModel { isValid = false, Message = "Error: Contract not loaded." }
+			};
+			return;
+		}
+
+		_isSaving = true;
+		await InvokeAsync(StateHasChanged);
+
+		try
+		{
+
+			var userTemplate = new UserTemplatesModel
+				{
+					UsersUUID = SelectedUserUUIDs,
+					ContractPeriodsUUID = _contract.ContractPeriodsUUID,
+					TemplatesUUID = _templatesUUID
+				};
+
+			var results = await TemplatesService.UserTemplateSave(userTemplate);
+
+			if (results != null && results.Any())
+			{
+				_logMessages = results;
+
+			}
+		}
+		catch (Exception ex)
+		{
+			_logMessages = new List<ResultsModel>
+			{
+				new ResultsModel { isValid = false, Message = $"Failed to save template: {ex.Message}" }
+			};
+		}
+		finally
+		{
+			_isSaving = false;
+			await InvokeAsync(StateHasChanged);
+		}
+	}
+}

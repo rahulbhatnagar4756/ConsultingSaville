@@ -1,0 +1,247 @@
+﻿@using Library.API.Goals.Models.ContractPeriod
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@using Radzen
+@implements IDisposable
+
+@inject DialogService DialogService
+
+@if (_contractPeriods != null && _contractPeriods.Any())
+{
+    <RadzenStack Class="p-4 max-w-6xl mx-auto">
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px" Class="mb-4">
+            <RadzenIcon Icon="calendar_month" Style="font-size: 36px;" />
+            <RadzenText Text="Contract Periods" Style="font-weight: 700; font-size: 28px; color:#111827;" />
+        </RadzenStack>
+
+        <!-- Top bar: Add New button -->
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Class="mb-2">
+            <RadzenButton Icon="add_circle" Text="Add New Contract Period"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="@OnAddNew" />
+        </RadzenStack>
+
+        <!-- Data Grid for Contract Periods -->
+        <RadzenDataGrid TItem="ContractPeriod"
+                        Data="@_contractPeriods"
+                        AllowPaging="true"
+                        PageSize="10"
+                        AllowSorting="true"
+                        AllowFiltering="true"
+                        FilterMode="FilterMode.Advanced"
+                        Responsive="true"
+                        RowRender="@OnRowRender"
+                        AllowColumnResize="true"
+                        Style="overflow-x: auto; display: block; white-space: nowrap;"
+                        Class="shadow-sm rounded-lg">
+            <Columns>
+                <!-- Display Columns -->
+                <RadzenDataGridColumn TItem="ContractPeriod" 
+                                      Property="Name"
+                                      MinWidth="200px"
+                                      Title="Name" 
+                                      Filterable="true" />
+                <RadzenDataGridColumn TItem="ContractPeriod" Property="Description" Title="Description" Filterable="true" />
+                <RadzenDataGridColumn TItem="ContractPeriod" 
+                                      Property="Year"
+                                      MaxWidth="120px"
+                                      Title="Year" 
+                                      Filterable="true" />
+                <RadzenDataGridColumn TItem="ContractPeriod" 
+                                      Property="DateStart" 
+                                      MaxWidth="180px"
+                                      Title="Start Date" 
+                                      Filterable="true" 
+                                      FormatString="{0:dd MMM yyyy}" />
+                <RadzenDataGridColumn TItem="ContractPeriod" 
+                                      Property="DateEnd"
+                                      MaxWidth="180px"
+                                      Title="End Date" 
+                                      Filterable="true" 
+                                      FormatString="{0:dd MMM yyyy}" />
+                <!-- Active/Inactive Badge -->
+                <RadzenDataGridColumn TItem="ContractPeriod" 
+                                      Property="isActive"
+                                      MaxWidth="150px"
+                                      Title="Active" 
+                                      Filterable="true">
+                    <Template Context="data">
+                        <RadzenBadge Text="@(data.isActive ? "Active" : "Inactive")"
+                                     Style="@GetBadgeStyle(data.isActive)" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <!-- Action Buttons -->
+                <RadzenDataGridColumn TItem="ContractPeriod" Context="data" Title="Actions" Width="150px" Filterable="false">
+                    <Template Context="data">
+                        <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Info"
+                                      Click="@(args => OnEdit(data))"
+                                      @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger"
+                                      Click="@(args => OnDelete(data))"
+                                      @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenStack>
+}
+
+@code {
+    [Inject] public IContractPeriodsService ContractPeriodsService { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<ContractPeriod>? _contractPeriods;
+    private string? _selectedUUID;
+
+    /// <summary>
+    /// Lifecycle method that runs on component initialization.
+    /// Sets up data refresh handler and loads contract periods.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the data refresh event from sidebar
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh; // Attach event handler to refresh data when triggered
+        }
+        // Load contract period data
+        await LoadData();
+        // Call base class implementation
+        await base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Loads the contract periods from the API.
+    /// </summary>
+    private async Task LoadData()
+    {
+        //Call contract period service to get all the fresh data
+        _contractPeriods = await ContractPeriodsService.GetContractPeriods();
+        // If no data is returned, show an error dialog
+        if (_contractPeriods == null)
+        {
+            await ShowError("Failed to load contract periods. Please try again.");
+        }
+
+        StateHasChanged();   // Notify the component to re-render the UI with updated data
+    }
+
+
+    /// <summary>
+    /// Opens the sidebar to add a new contract period.
+    /// </summary>
+    private void OnAddNew()
+    {
+        _selectedUUID = null;  // Clear selected item UUID
+        _rightSidebarService.SharedContext = null; // Clear any existing shared context data
+        // Open the sidebar for adding a new contract period
+        _rightSidebarService.Open(ControlTypes.sb_Goals_Administration_ContractPeriods, true);
+    }
+
+    /// <summary>
+    /// Deletes the selected contract period after confirmation.
+    /// </summary>
+    /// <param name="period">The contract period to delete.</param>
+    private async Task OnDelete(ContractPeriod period)
+    {
+        //Open popup to confirm to delete the existing entry
+        var confirm = await DialogService.Confirm("Delete contract period?", "Confirm",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        // If user confirmed deletion
+        if (confirm == true)
+        {
+            // call delete contract period service method
+            var result = await ContractPeriodsService.DeleteContractPeriod(period.UUID);
+            // If deletion failed or returned an error, show an error dialog
+            if (result?.isValid != true)
+            {
+                await ShowError(result?.Message ?? "Failed to delete the contract period.");
+                return;
+            }
+            // Reload data after deletion
+            await LoadData();
+        }
+    }
+
+    /// <summary>
+    /// Opens the sidebar to edit a selected contract period.
+    /// </summary>
+    /// <param name="period">The contract period to edit.</param>
+    private void OnEdit(ContractPeriod period)
+    {
+        _selectedUUID = period.UUID; // Set selected item UUID
+        _rightSidebarService.SharedContext = period; // Pass the selected period as context to the sidebar
+        // Open the sidebar for editing
+        _rightSidebarService.Open(ControlTypes.sb_Goals_Administration_ContractPeriods);
+    }
+
+    /// <summary>
+    /// Event handler triggered when data refresh is requested.
+    /// </summary>
+    /// <param name="controlType">The sidebar control type.</param>
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // If the refresh request is for this specific control type (contract periods)
+        if (controlType == ControlTypes.sb_Goals_Administration_ContractPeriods)
+        {
+            // Invoke the data load method asynchronously to refresh UI
+            await InvokeAsync(async () => await LoadData());
+        }
+    }
+
+    /// <summary>
+    /// Gets the badge style string based on the active status.
+    /// </summary>
+    /// <param name="isActive">Whether the contract period is active.</param>
+    /// <returns>CSS style string for the badge.</returns>
+    private string GetBadgeStyle(bool isActive)
+    {
+        var color = isActive ? "#22c55e" : "#ef4444"; // green or red
+        return $"background-color:{color}; color:white; padding:0.25rem 0.5rem; border-radius:0.25rem;";  // Return inline CSS string for styling the badge
+    }
+
+    /// <summary>
+    /// Releases resources and unsubscribes from events when the component is disposed.
+    /// </summary>
+    public void Dispose()
+    {
+        // Detach the event handler to prevent memory leaks
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+        }
+    }
+
+    /// <summary>
+    /// Renders the row style, applying highlighting to the selected row.
+    /// </summary>
+    /// <param name="args">Row render event arguments.</param>
+    private void OnRowRender(RowRenderEventArgs<ContractPeriod> args)
+    {
+        // Apply 'selected-row' style if the row's UUID matches the selected UUID
+        if (args.Data.UUID == _selectedUUID)
+        {
+            args.Attributes["class"] = "hover-row selected-row";
+        }
+        else  // Otherwise just apply default hover-row class
+        {
+            args.Attributes["class"] = "hover-row";
+        }
+    }
+
+    /// <summary>
+    /// Displays an error message using the dialog service.
+    /// </summary>
+    /// <param name="message">The error message to show.</param>
+    private async Task ShowError(string message)
+    {
+        // Show alert dialog with provided message and Error title
+        await DialogService.Alert(message, "Error", new AlertOptions()
+        {
+            OkButtonText = "Close"  // Set the button text to Close
+        });
+    }
+}

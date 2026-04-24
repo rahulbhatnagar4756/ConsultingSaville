@@ -1,0 +1,345 @@
+﻿@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+ 
+
+
+   
+
+    <RadzenStack Orientation="Orientation.Horizontal" class="mb-3" Style="gap: 8px;">
+        <RadzenTextBox @bind-Value="_searchTerm" 
+                       @oninput="@OnSearchInput"
+                       Placeholder="Search..." 
+                       Style="width: 100%;" />
+        @if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Click="@ClearSearch" />
+        }
+    <RadzenButton Icon="add" title="Add Position" Click="@(async () => await EditPosition(new PositionsModel()))" />
+    </RadzenStack>
+ 
+
+    @* Loading Indicator *@
+    @if (_isLoading)
+    {
+        <RadzenCard class="rz-text-align-center rz-p-4">
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                <RadzenText Text="Loading positions..." />
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else if (_filteredPositions != null)
+    {
+        @* Business Unit Filter Buttons *@
+
+        <RadzenStack class="mb-3">
+            <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="8px">
+                <RadzenButton Text="All"
+                              ButtonStyle="@(_selectedBusinessUnit == null ? ButtonStyle.Primary : ButtonStyle.Light)"
+                              Click="@(() => FilterByBusinessUnit("All"))" />
+                @foreach (var businessUnit in _businessUnits.OrderBy(x => x.Name))
+                {
+                    <RadzenButton Text="@businessUnit.Name"
+                                  ButtonStyle="@(_selectedBusinessUnit == businessUnit.Name ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Click="@(() => FilterByBusinessUnit(businessUnit.Name))" />
+                }
+            </RadzenStack>
+        </RadzenStack>
+
+
+        @* Data Grid *@
+        <RadzenDataGrid @ref="@_dataGrid"
+                        Data="@_filteredPositions" 
+                        TItem="PositionsModel"
+                        AllowPaging="true" 
+                        AllowSorting="true" 
+                        AllowColumnResize="true"
+                        AllowFiltering="true"
+                        PageSize="50"
+                        PagerHorizontalAlign="HorizontalAlign.Left"
+                        ShowPagingSummary="true"
+                        PagingSummaryFormat="@("{0} - {1} of {2} positions")"
+                        EmptyText="No positions found."
+                        class="rz-mt-3">
+            
+            <Columns>
+                <RadzenDataGridColumn TItem="PositionsModel" Property="Name" Title="Name" Width="200px">
+                    <Template Context="position">
+                        <RadzenText Text="@position.Name" Style="font-weight: 500;" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="PositionsModel" Property="Code" Title="Code" Width="120px">
+                    <Template Context="position">
+                        <RadzenText Text="@(position.Code ?? "-")" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="PositionsModel" Property="Level" Title="Level" Width="120px">
+                    <Template Context="position">
+                        <RadzenText Text="@(position.Level ?? "-")" />
+                    </Template>
+                </RadzenDataGridColumn>
+ 
+
+                <RadzenDataGridColumn TItem="PositionsModel" Property="EmployeeBusinessUnits" Title="Business Unit" Width="180px">
+                    <Template Context="position">
+                        <RadzenText Text="@(position.EmployeeBusinessUnits ?? "-")" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="PositionsModel" Property="EmployeeDepartments" Title="Department" Width="180px">
+                    <Template Context="position">
+                        <RadzenText Text="@(position.EmployeeDepartments ?? "-")" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="PositionsModel" Property="EmployeeJobDisciplines" Title="Discipline" Width="150px">
+                    <Template Context="position">
+                        <RadzenText Text="@(position.EmployeeJobDisciplines ?? "-")" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="PositionsModel" Property="EmployeeJobsCriticalRoles" Title="Critical Role" Width="150px">
+                    <Template Context="position">
+                        <RadzenText Text="@(position.EmployeeJobsCriticalRoles ?? "-")" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="PositionsModel" Title="Actions" Width="100px" Sortable="false" Filterable="false">
+                    <Template Context="position">
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                            <RadzenButton Icon="edit" 
+                                         Variant="Variant.Text" 
+                                         Size="ButtonSize.Small" 
+                                         Click="@(() => EditPosition(position))" 
+                                         Tooltip="Edit Position" />
+                            <RadzenButton Icon="delete" 
+                                         Variant="Variant.Text" 
+                                         Size="ButtonSize.Small" 
+                                         ButtonStyle="ButtonStyle.Danger"
+                                         Click="@(() => DeletePosition(position))" 
+                                         Tooltip="Delete Position" />
+                        </RadzenStack>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+
+        @* Summary *@
+        <RadzenCard class="rz-mt-3">
+            <RadzenText Text="@($"Total: {_filteredPositions.Count} positions")" Style="font-weight: 500;" />
+            @if (_selectedBusinessUnit != "All")
+            {
+                <RadzenText Text="@($"Filtered by: {_selectedBusinessUnit}")" Style="font-size: 14px; color: #666;" />
+            }
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenCard class="rz-text-align-center rz-p-4">
+            <RadzenText Text="No positions available." />
+        </RadzenCard>
+    }
+ 
+
+@code {
+    [Inject] private IPositionService PositionService { get; set; }
+    [Inject] private IBusinessUnitsService BusinessUnitsService { get; set; }
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<PositionsModel>? _positions = null;
+    private List<PositionsModel>? _filteredPositions = null;
+    private List<EmployeeBaseModel>? _businessUnits = null;
+    private RadzenDataGrid<PositionsModel>? _dataGrid;
+    private string _searchTerm = string.Empty;
+    private string _selectedBusinessUnit = "All";
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the OnDataRefresh event if using sidebar
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+        await LoadData();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            // Load both positions and business units
+            var positionsTask = PositionService.GetPositions();
+            var businessUnitsTask = BusinessUnitsService.GetBusinessUnits();
+
+            await Task.WhenAll(positionsTask, businessUnitsTask);
+
+            _positions = await positionsTask;
+            _businessUnits = await businessUnitsTask;
+
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+            // Handle error as needed - could show a notification
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadPositions()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _positions = await PositionService.GetPositions();
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading positions: {ex.Message}");
+            // Handle error as needed - could show a notification
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        ApplyFilter();
+    }
+
+    private void FilterByBusinessUnit(string businessUnit)
+    {
+        _selectedBusinessUnit = businessUnit;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (_positions == null)
+        {
+            _filteredPositions = null;
+            return;
+        }
+
+        var filtered = _positions.AsEnumerable();
+
+        // Apply business unit filter
+        if (_selectedBusinessUnit != "All")
+        {
+            filtered = filtered.Where(p => 
+                string.Equals(p.EmployeeBusinessUnits, _selectedBusinessUnit, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            var searchLower = _searchTerm.ToLower();
+            filtered = filtered.Where(p =>
+                (p.Name?.ToLower().Contains(searchLower) ?? false) ||
+                (p.Code?.ToLower().Contains(searchLower) ?? false) ||
+                (p.Level?.ToLower().Contains(searchLower) ?? false) ||
+                (p.Description?.ToLower().Contains(searchLower) ?? false) ||
+                (p.EmployeeBusinessUnits?.ToLower().Contains(searchLower) ?? false) ||
+                (p.EmployeeDepartments?.ToLower().Contains(searchLower) ?? false) ||
+                (p.EmployeeJobDisciplines?.ToLower().Contains(searchLower) ?? false) ||
+                (p.EmployeeJobsCriticalRoles?.ToLower().Contains(searchLower) ?? false)
+            );
+        }
+
+        _filteredPositions = filtered.ToList();
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        _searchTerm = string.Empty;
+        ApplyFilter();
+    }
+
+    private string TruncateText(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text))
+            return "-";
+
+        return text.Length <= maxLength ? text : $"{text[..maxLength]}...";
+    }
+
+    private async Task EditPosition(PositionsModel position)
+    {
+        // TODO: Implement edit functionality
+        // This would typically open a sidebar or modal for editing
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.SharedContext = position;
+            _rightSidebarService.Open(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Positions);
+        }
+    }
+
+    private async Task DeletePosition(PositionsModel position)
+    {
+        // TODO: Implement delete functionality with confirmation
+        // Could show a confirmation dialog first
+        try
+        {
+            var result = await PositionService.Delete(position.UUID);
+            if (result.isValid == true)
+            {
+                await LoadPositions(); // Refresh the list
+                // Show success notification
+            }
+            else
+            {
+                // Show error notification
+                Console.WriteLine($"Delete failed: {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting position: {ex.Message}");
+        }
+    }
+
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Only respond to refresh events for positions
+        if (controlType == Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Positions)
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadPositions();
+            });
+        }
+    }
+
+    public async Task RefreshData()
+    {
+        await LoadData();
+    }
+
+    
+
+}

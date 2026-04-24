@@ -1,0 +1,450 @@
+﻿@using Library.API.Base.Models
+@using Library.API.Base.Models.BusinessHierarchy.EmployeeCriteria
+@using Library.API.Base.Models.BusinessHierarchy.EmployeeHierarchy
+@using Library.API.Base.Models.BusinessHierarchy.Jobs
+@using Library.API.Base.Models.Employees
+@using Library.API.Base.Services
+@using Library.API.Base.Services.Users
+@using OneCoreAssessUI.Services
+
+y.API.Base.Services.Users
+
+@if (_employeeInformation != null && _employeeInformation.UserInformation != null)
+{
+    <RadzenStack class="employee-position-user">
+        <RadzenCard class=" card-outer " style="box-shadow: var(--rz-shadow-5)">
+
+            <RadzenStack Orientation="Orientation.Horizontal" class="header-employee ">
+                <RadzenStack class="image-circle">
+                    @if (_employeeInformation.UserInformation.UsersImageURL != null && !string.IsNullOrWhiteSpace(_employeeInformation.UserInformation.UsersImageURL))
+                    {
+                        <RadzenImage Path="@_employeeInformation.UserInformation.UsersImageURL" class="header-image"></RadzenImage>
+                    }
+                    else
+                    {
+                        @if (_loggedInInformation != null && _loggedInInformation.Company != null && _loggedInInformation.Company.URLAddress != null)
+                        {
+                            <RadzenImage Path="@string.Format("{0}Images/Avatars/anonymous-avatar.jpg", _loggedInInformation.Company.URLAddress)" class="employee-image"></RadzenImage>
+                        }
+                    }
+                </RadzenStack>
+                <RadzenStack Orientation="Orientation.Vertical" Gap="5px">
+                    <RadzenStack Gap="0px">
+                        <RadzenText class="fw-bold" Text="Employee"></RadzenText>
+                        <RadzenText class="rz-font-weight-light" Text="@_employeeInformation.UserInformation.FullName"></RadzenText>
+                    </RadzenStack>
+                    <RadzenStack>
+                        <RadzenText class="fw-bold" Text="Position"></RadzenText>
+                        <RadzenText class="rz-font-weight-light" Text="@_employeeInformation.PositionName()"></RadzenText>
+                    </RadzenStack>
+                </RadzenStack>
+
+            </RadzenStack>
+
+            <RadzenStack >
+
+                <RadzenTabs RenderMode="TabRenderMode.Client">
+                    <Tabs>
+                        <RadzenTabsItem Text="Basic" Icon="person">
+                            <RadzenStack class="body-inner" Gap="5px">
+
+
+                                @* ===================================================User Basic===============================================================
+                                =============================================================================================================================== *@
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px"> 
+                                    <RadzenText class=" ">ID Number</RadzenText>
+                                    <RadzenTextBox @bind-Value=@_employeeInformation.UserInformation.IDNumber 
+                                    Change=@(args => Check_IDNumber(args))></RadzenTextBox>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">First Name</RadzenText>
+                                    <RadzenTextBox @bind-Value=@_employeeInformation.UserInformation.FirstName></RadzenTextBox>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Last Name</RadzenText>
+                                    <RadzenTextBox @bind-Value=@_employeeInformation.UserInformation.LastName></RadzenTextBox>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Email</RadzenText>
+                                    <RadzenTextBox @bind-Value=@_employeeInformation.UserInformation.Email></RadzenTextBox>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Mobile</RadzenText>
+                                    <RadzenTextBox @bind-Value=@_employeeInformation.UserInformation.Mobile></RadzenTextBox>
+                                </RadzenStack>
+
+                                @if (_employeeInformation.EmployeeInformation != null)
+                                {
+                                    <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                        <RadzenText class="rz-font-weight-medium">Employee Number</RadzenText>
+                                        <RadzenTextBox @bind-Value=@_employeeInformation.EmployeeInformation.EmployeeNumber></RadzenTextBox>
+                                    </RadzenStack>
+                                }
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Gender</RadzenText>
+                                    <RadzenDropDown @bind-Value=@_employeeInformation.UserInformation.Gender
+                                    Data=@_genderList
+                                    TextProperty="@nameof(LookupBasicModel.Name)"
+                                    ValueProperty="@nameof(LookupBasicModel.Name)">
+                                    </RadzenDropDown>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Ethnicity</RadzenText>
+                                    <RadzenDropDown @bind-Value=@_employeeInformation.UserInformation.Ethnicity
+                                    Data=@_ethnicityList
+                                    TextProperty="@nameof(LookupBasicModel.Name)"
+                                    ValueProperty="@nameof(LookupBasicModel.Name)">
+                                    </RadzenDropDown>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Date Of Birth</RadzenText>
+                                    <RadzenDatePicker DateFormat="dd MMM yyyy" @bind-Value=@_employeeInformation.UserInformation.DateOfBirth></RadzenDatePicker>
+                                </RadzenStack>
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px" class="rz-pt-10">
+                                    <RadzenButton Text="Update" class="control" Click="(async() => await Save_UserInformation())"></RadzenButton>
+                                </RadzenStack>
+                            </RadzenStack>
+                        </RadzenTabsItem>
+                        <RadzenTabsItem Text="Position" Icon="location_on">
+                            <RadzenStack class="body-inner">
+                                @* ===================================================Position=================================================================
+                                =============================================================================================================================== *@
+
+                                @if(_employeeInformation.EmployeeHierarchy != null)
+                                {
+                                    @foreach (var item in _employeeInformation.EmployeeHierarchy)
+                                    {
+                                        <RadzenStack class="Position">
+                                            <RadzenRow>
+                                                <RadzenColumn>
+
+                                                    <RadzenStack Orientation="Orientation.Vertical" Gap="0">
+                                                        <RadzenText TextStyle="TextStyle.H5" Text=@item.EmployeeJobs></RadzenText>
+                                                        <RadzenText Text=@($"{item.EmployeeBusinessUnit} - {item.EmployeeDepartment} - {item.Level}")></RadzenText>
+                                                        <RadzenText Text=@($"Date: {item.DateStarted:dd MMM yyyy}")></RadzenText>
+                                                        <RadzenText Text=@($"Critical Roles: {item.CriticalRoles}")></RadzenText>
+                                                        <RadzenText Text=@($"Disciplines: {item.Disciplines}")></RadzenText>
+                                                        <RadzenText Text=@($"Manager: {item.UserManager}")></RadzenText>
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                                <RadzenColumn Size="1">
+                                                    <RadzenStack class="delete-button">
+                                                        <RadzenButton Click="@(async() => await Delete_Hierarchy(item.EmployeeHierarchyUUID))">
+                                                            <RadzenIcon Icon="delete" IconColor="var(--rz-white)"></RadzenIcon>
+                                                        </RadzenButton>
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+
+                                            </RadzenRow>
+
+                                        </RadzenStack>
+
+                                    }
+                                }
+
+                                @if (_hierarchyDataSearch != null){
+
+                                    <RadzenStack Gap="10px">
+
+                                        <RadzenPanel AllowCollapse="true" Collapsed="true" >
+                                            <HeaderTemplate>
+                                                <RadzenText TextStyle="TextStyle.H6" class="rz-display-flex rz-align-items-center rz-m-0">
+                                                    <RadzenIcon Icon="radar" class="rz-me-1" /><b>New Position</b>
+                                                </RadzenText>
+                                            </HeaderTemplate>
+                                            <ChildContent>
+
+                                                <RadzenStack Gap="3px" class="rz-mt-2">
+                                                    <text class="rz-font-weight-medium">Business Unit</text>
+                                                    <RadzenDropDown Data=@_hierarchyDataSearch.BusinessUnits?.OrderBy(x => x.Name) 
+                                                    TValue="Library.API.Base.Models.TypesModel"
+                                                    TextProperty="@nameof(TypesModel.Name)"
+                                                    ValueProperty="@nameof(TypesModel.UUID)"
+                                                    Change="@(args => FilterBusinessUnit(args))"></RadzenDropDown>
+                                                </RadzenStack>
+                                                @if (@_hierarchyDataSearch.Departments != null)
+                                                {
+                                                    <RadzenStack Gap="3px" class="rz-mt-2">
+                                                        <text class="rz-font-weight-medium">Department</text>
+                                                        <RadzenDropDown Data=@_hierarchyDataSearch.Departments?.OrderBy(x => x.FullName)
+                                                        TValue="Library.API.Base.Models.TypesModel"
+                                                        TextProperty="@nameof(TypesModel.FullName)"
+                                                        ValueProperty="@nameof(TypesModel.UUID)"
+                                                        AllowClear="true" 
+                                                        AllowFiltering="true" 
+                                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                        Change="@(args => FilterDepartments(args))" ></RadzenDropDown>
+                                                    </RadzenStack>
+                                                }
+                                                @if (@_hierarchyDataSearch.Position != null)
+                                                {
+                                                    <RadzenStack Gap="3px" class="rz-mt-2">
+
+                                                        <text class="rz-font-weight-medium">Position</text>
+                                                        <RadzenDropDown Data=@_hierarchyDataSearch.Position?.OrderBy(x => x.FullName)
+                                                                        TValue="Library.API.Base.Models.BusinessHierarchy.Jobs.EmployeeJobsModel"
+                                                                        TextProperty="@nameof(Library.API.Base.Models.BusinessHierarchy.Jobs.EmployeeJobsModel.Name)"
+                                                                        ValueProperty="@nameof(Library.API.Base.Models.BusinessHierarchy.Jobs.EmployeeJobsModel.UUID)"
+                                                                        AllowClear="true"
+                                                                        AllowFiltering="true"
+                                                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                        Change="@(args => SelectedPosition(args))"></RadzenDropDown>
+                                                    </RadzenStack>
+                                                }
+
+                                                <RadzenStack Gap="3px" class="rz-mt-2">
+                                                    <text class="rz-font-weight-medium">Manager</text>
+
+                                                    <RadzenStack>
+                                                        <div class="input-group ">
+                                                            <input type="text" class="form-control" placeholder="Search Employees"
+                                                            aria-label="Search Employees"
+                                                            aria-describedby="button-addon2"
+                                                            @bind-value="@_searchEmployeeManager">
+                                                            <button class="btn btn-outline-secondary" type="button" id="button-addon2" @onclick="Search_Employee_Managers">
+                                                                <RadzenIcon Icon="search"></RadzenIcon>
+                                                            </button>
+                                                        </div>
+                                                    </RadzenStack>
+
+                                                    @if (_userManagerNames != null)
+                                                    {
+                                                        <RadzenListBox  
+                                                        Data=@_userManagerNames
+                                                        TValue="NamesModel"
+                                                        TextProperty="@nameof(NamesModel.Name)"
+                                                        ValueProperty="@nameof(NamesModel.UUID)"
+                                                        Style="width: 100%; max-width: 400px; height: 136px"
+                                                        Change="@(args => Selected_Employee_Manager(args))" />
+                                                    }
+
+                                                </RadzenStack>
+
+                                                <RadzenStack Gap="3px" class="rz-mt-2">
+                                                    <text class="rz-font-weight-medium">Date started at position</text>
+                                                    <RadzenDatePicker @bind-Value=_employeeHierarchy.DateStartedAtPosition 
+                                                    DateFormat="dd MMM yyyy"></RadzenDatePicker>
+
+                                                </RadzenStack>
+
+                                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px" class="rz-pt-4" >
+                                                    <RadzenButton Text="Update" class="control" Click="Save_Hierarchy"></RadzenButton>
+                                                </RadzenStack>
+
+                                            </ChildContent>
+
+                                        </RadzenPanel>
+                                    </RadzenStack>
+                                }
+
+                            </RadzenStack>
+                        </RadzenTabsItem>
+                        <RadzenTabsItem Text="Employee" Icon="badge">
+                            <RadzenStack class="body-inner" Gap="5px">
+                                @* ===================================================Employee===============================================================
+                                =============================================================================================================================== *@
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Employee Number</RadzenText>
+                                    <RadzenTextBox @bind-Value=@_employeeInformation.EmployeeInformation.EmployeeNumber></RadzenTextBox>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Date Started at Company</RadzenText>
+                                    <RadzenDatePicker @bind-Value=@_employeeInformation.EmployeeInformation.DateOfEmployment DateFormat="dd MMMM yyyy"></RadzenDatePicker>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px">
+                                    <RadzenText class="rz-font-weight-medium">Phone Number</RadzenText>
+                                    <RadzenTextBox @bind-Value=@_employeeInformation.EmployeeInformation.PhoneNumber></RadzenTextBox>
+                                </RadzenStack>
+
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="3px" class="rz-pt-4">
+                                    <RadzenButton Text="Update" class="control" Click="Save_EmployeeInformation"></RadzenButton>
+                                </RadzenStack>
+                            </RadzenStack>
+                        </RadzenTabsItem>
+                    </Tabs>
+                </RadzenTabs>
+
+            </RadzenStack>
+
+
+
+        </RadzenCard>
+    </RadzenStack>
+}
+
+@code {
+    [Inject] IEmployeeService employeeService { get; set; }
+    [Inject] IUsersService userService { get; set; }
+    [CascadingParameter] private LoggedInInformationModel _loggedInInformation { get; set; }
+
+
+    [Parameter] public string? UsersUUID { get; set; }
+    [Parameter] public EventCallback<string?> UsersUUIDChanged { get; set; }
+
+    private string? _usersUUIDCurrent = null;
+    private Library.API.Base.Models.Employees.EmployeeBasicModel? _employeeInformation = new();
+    private EmployeePositionModel _employeePosition = new();
+    private EmployeeCriteriaResultsModel? _hierarchyData = new();
+    private EmployeeCriteriaResultsModel? _hierarchyDataSearch = new();
+    private List<NamesModel>? _userManagerNames;
+
+
+    private List<LookupBasicModel>? _genderList = new();
+    private List<LookupBasicModel>? _ethnicityList = new();
+
+
+    private EmployeeHierarchyModel _employeeHierarchy = new();  
+    private EmployeeJobsModel? _employeeHierarchyJob;
+    private NamesModel _employeeHierarchySearchUserManager;
+
+    private string? _searchEmployeeManager;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (employeeService != null) _hierarchyData = await employeeService.GetEmployeeFilteringCriteria();
+        if (_hierarchyData != null) _hierarchyDataSearch = (EmployeeCriteriaResultsModel)_hierarchyData.Clone();
+        await LoadGender();
+        await LoadEthnicity();
+        await base.OnInitializedAsync();
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadEmployeeInformation();
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadEmployeeInformation(bool isForceLoad = false)
+    {
+        if (!string.IsNullOrWhiteSpace(UsersUUID) && (UsersUUID != _usersUUIDCurrent || isForceLoad))
+        {
+            _employeeInformation = await employeeService.GetEmployeeInformation(UsersUUID);
+        }
+    }
+
+
+    private async Task LoadGender()
+    {
+        if (userService == null) return;
+        _genderList = await userService.GetGender();
+    }
+
+    private async Task LoadEthnicity()
+    {
+        if (userService == null) return;
+        _ethnicityList = await userService.GetEthnicity();
+    }
+
+    private async Task Check_IDNumber(string value)
+    {
+        if (value.Length > 0)
+        {
+            //check if the ID Number does not already exist in the database for a user
+            var UsersUUIDIdnumber = await userService.GetUsersUUIDByIDNumber(value);
+            //then return and set the new users uuid
+            if (UsersUUIDIdnumber != null && UsersUUIDIdnumber.isValid.HasValue && UsersUUIDIdnumber.isValid.Value && UsersUUID != UsersUUIDIdnumber.UUID)
+            {
+                UsersUUID = UsersUUIDIdnumber.UUID;
+                //_employeeInformation = await employeeService.GetEmployeeInformation(UsersUUID);
+                //raise event UsersUUIDChanged
+                await UsersUUIDChanged.InvokeAsync(UsersUUID);
+            }
+
+        }
+    }
+
+
+    private async Task Save_UserInformation()
+    {
+        if(userService == null) return;
+        if (_employeeInformation != null && _employeeInformation.UserInformation != null)
+        {
+            var result = await userService.SetUserBasicInformationByUUID(_employeeInformation.UserInformation);
+        }
+    }
+
+    private async Task Save_EmployeeInformation()
+    {
+        if (userService == null) return;
+        if (_employeeInformation != null && _employeeInformation.EmployeeInformation != null)
+        {
+            _employeeInformation.EmployeeInformation.UsersUUIDLoggedIn = _loggedInInformation.User.UsersUUID;
+            ResultsModel? result = await employeeService.SetEmployeeBasicInformationByUUID(_employeeInformation.EmployeeInformation);
+            if(result != null && result.Message != null)
+            {
+
+            }
+        }
+    }
+
+    private async Task Save_Hierarchy()
+    {
+        if (_employeeHierarchy == null) _employeeHierarchy = new();
+        _employeeHierarchy.UsersUUID = UsersUUID;
+
+        var Result = await employeeService.SetEmployeeHierarchy(_employeeHierarchy);
+        await LoadEmployeeInformation(true);
+    }
+
+    private async Task Delete_Hierarchy(string? UUID)
+    {
+        var results = await employeeService.DeleteEmployeeHierarchy(UUID);
+        await LoadEmployeeInformation(true);
+    }
+
+    /// <summary>
+    /// filter systems for the business unit and department and position
+    /// </summary>
+    /// <param name="value2"></param>
+    private void FilterBusinessUnit(object value2)
+    {
+        if (_hierarchyDataSearch != null)
+        {
+            string value = value2?.ToString();
+            _hierarchyDataSearch.Departments = _hierarchyData?.Departments?.Where(x => x.TrackingUUID == value).ToList();
+            //all posible positions for the departments
+            _hierarchyDataSearch.Position = _hierarchyData?.Position?
+                .Where(x => _hierarchyDataSearch.Departments.Select(y => y.UUID).Contains(x.EmployeeDepartmentsUUID))
+                .ToList();
+        }
+    }
+
+    private void FilterDepartments(object value2)
+    {
+        if (_hierarchyDataSearch != null)
+        {
+            string value = value2?.ToString();
+            _hierarchyDataSearch.Position = _hierarchyData?.Position?.Where(x => x.EmployeeDepartmentsUUID == value)
+                .ToList();
+        }
+    }
+
+    private async Task Search_Employee_Managers()
+    {
+        _userManagerNames = await userService.GetUsersNamesSearch(_searchEmployeeManager);
+    }
+
+    private void SelectedPosition (Object Name){
+        if (_employeeHierarchy == null) _employeeHierarchy = new();
+        _employeeHierarchy.Position = Name.ToString(); 
+    }
+
+    private void Selected_Employee_Manager(Object Name)
+    {
+        if (_employeeHierarchy == null) _employeeHierarchy = new();
+        _employeeHierarchy.UsersUUIDManager = Name.ToString();
+    }
+}
+

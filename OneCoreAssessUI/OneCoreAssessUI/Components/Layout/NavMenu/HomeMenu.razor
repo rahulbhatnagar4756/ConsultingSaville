@@ -1,0 +1,15 @@
+﻿@using OneCoreAssessUI.Enumerables
+
+<RadzenMenu>
+    <RadzenMenuItem Text="Dashboard" Icon="dashboard" Click="(async() => await ChangeMenuItem(MenuItemTypes.HomeDashboard))"></RadzenMenuItem> 
+</RadzenMenu>
+
+@code {
+
+    [Parameter] public Enumerables.MenuItemTypes Item { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemTypes> ItemChanged { get; set; }
+
+    private async Task ChangeMenuItem(MenuItemTypes Option) =>
+        await ItemChanged.InvokeAsync(Option);
+
+}

@@ -1,0 +1,51 @@
+
+
+.employee-image {
+    max-width: 165px;
+    max-height: 130px;
+    width: 100%;
+}
+
+
+.employee-edit-button {
+    background-color: var(--rz-white) !important;
+    color: var(--rz-base-700) !important;
+    border-style: none !important;
+    box-shadow: none !important;
+    border-image: none !important;
+
+    :hover {
+    color: var(--rz-primary) !important;
+    }
+}
+
+
+
+.employee-add {
+    background-color: var(--rz-white);
+    color: var(--rz-grey);
+    border: 1px dashed var(--rz-base-700);
+
+
+    &:hover {
+        background-color: var(--rz-base-700);
+        border-color: var(--rz-white);
+    }
+
+    .employee-plus {
+        color: var(--bs-btn-hover-bg);
+        font-size: 64px;
+    }
+
+    &:hover .employee-plus {
+        color: var(--rz-white);
+    }
+
+    .employee-footer {
+        color: var(--bs-btn-hover-bg);
+    }
+
+    &:hover .employee-footer {
+        color: var(--rz-white);
+    }
+}

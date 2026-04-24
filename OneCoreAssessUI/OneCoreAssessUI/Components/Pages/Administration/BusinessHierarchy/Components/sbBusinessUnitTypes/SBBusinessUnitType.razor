@@ -1,0 +1,209 @@
+﻿@using Library.API.Admin.Models
+@using Library.API.Base.Models
+@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using Library.API.Admin.Services
+
+@inject DialogService DialogService
+
+<RadzenStack class="header-custom">
+    <RadzenStack class="header-outer">
+        <RadzenStack>
+            <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Business Unit Type" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenStack>
+
+@* create a log for messages from _logMessage *@
+@if (_logMessage != null)
+{
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+
+        @* Replace the RadzenAlert with a custom message box that does not have a close (X) button and always shows when _logMessage is set *@
+        @if (_logMessage != null && _logMessage.isValid.HasValue)
+        {
+            <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+                <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+                <span>@_logMessage.Message</span>
+            </div>
+        }
+
+    }
+}
+
+@if (EmployeeBusinessUnitType != null)
+{
+
+
+    <RadzenStack class="p-4 ">
+
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Name</RadzenText>
+            <RadzenTextBox Placeholder="Business Unit Type Name ..."
+                           @bind-Value=EmployeeBusinessUnitType.Name
+                           Style="width: 100%" aria-label="Business Unit Type Name" />
+        </RadzenColumn>
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Description</RadzenText>
+            <RadzenTextArea oninput="event.target.style.height = Math.max(event.target.clientHeight, event.target.scrollHeight) + 'px';"
+                            @bind-Value=EmployeeBusinessUnitType.Description
+                            Style="width: 100%"
+                            aria-label="Description" />
+        </RadzenColumn>
+ 
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Icon</RadzenText>
+            <RadzenDropDown @bind-Value=@EmployeeBusinessUnitType.Icon
+                            Data=@_Icons
+                            Style="width: 100%;"
+                            TextProperty="@nameof(NameOnlyModel.Name)"
+                            ValueProperty="@nameof(NameOnlyModel.Name)"
+                            Name="DropDownBindValue">
+                <Template Context="data">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <RadzenIcon Icon="@data.Name" />
+                        <span>@data.Name</span>
+                    </div>
+                </Template>
+            </RadzenDropDown>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12">
+            <RadzenText Text="Icon Color" />
+            <RadzenColorPicker @bind-Value=@EmployeeBusinessUnitType.IconColor
+                               ShowHSV=true
+                               ShowRGBA=true
+                               ShowColors=true
+                               ShowButton=false />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" class="mt-5">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                <RadzenButton style="flex: 1;" 
+                              Icon="save" 
+                              BusyText="Saving ..." 
+                              IsBusy=@busy 
+                              Click=@OnSave_Click 
+                              Text="Save" />
+                
+                @if (!string.IsNullOrEmpty(EmployeeBusinessUnitType?.UUID))
+                {
+                    <RadzenButton Icon="delete"
+                                  Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                  IsBusy=@busy
+                                  Click=OnDelete_Confirm />
+                }
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenStack>
+}
+
+@code {
+
+    [Inject] public IIconsService _IconsService { get; set; }
+    [Inject] public IBusinessUnitTypesService _businessUnitTypeService { get; set; }
+
+
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+
+    [Parameter] public EmployeeBaseModel? EmployeeBusinessUnitType { get; set; }
+    [Parameter] public EventCallback<EmployeeBaseModel> OnSaveComplete { get; set; }
+
+    private ResultsModel? _logMessage = null;
+
+    private EmployeeBaseModel? EmployeeBusinessUnitCurrent = null;
+    private bool busy = false;
+    private List<NameOnlyModel>? _Icons;
+    private List<EmployeeBaseModel>? _businessUnitTypesList = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EmployeeBusinessUnitType == null) EmployeeBusinessUnitType = new EmployeeBaseModel() { IconColor = "#362f21" };
+        await OnLoad_Icons();
+        await base.OnInitializedAsync();
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //get data if its sent to the right sidebar area
+        EmployeeBusinessUnitCurrent = _rightSidebarService.GetSharedContext<EmployeeBaseModel>();
+        if (EmployeeBusinessUnitType != null && EmployeeBusinessUnitCurrent == null) EmployeeBusinessUnitType = new();
+
+        if (EmployeeBusinessUnitCurrent != null && EmployeeBusinessUnitType != EmployeeBusinessUnitCurrent)
+        {
+            _logMessage = null;
+            EmployeeBusinessUnitType = EmployeeBusinessUnitCurrent;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    
+
+    private async Task OnLoad_Icons()
+    {
+        _Icons = await _IconsService.GetIcons();
+    }
+
+    private async Task OnSave_Click()
+    {
+        busy = true;
+
+        if (EmployeeBusinessUnitType == null)
+        {
+            busy = false;
+            return;
+        }
+        _logMessage = await _businessUnitTypeService.Save(EmployeeBusinessUnitType);
+        if (_logMessage != null && _logMessage.isValid.Value && EmployeeBusinessUnitType.UUID == null)
+        {
+            EmployeeBusinessUnitType.UUID = _logMessage.UUID;
+        }
+        await OnSaveComplete.InvokeAsync(EmployeeBusinessUnitType);
+        _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_BusinessUnitTypes);
+        await InvokeAsync(StateHasChanged);
+        busy = false;
+    }
+
+    private async Task OnDelete_Confirm()
+    {
+        string message;
+        string title = "Delete Business Unit Type";
+        
+        if (EmployeeBusinessUnitType?.Count > 0)
+        {
+            message = $"⚠️ Warning: This business unit type has {EmployeeBusinessUnitType.Count} business units attached. Deleting it will affect these business units. Are you sure you want to proceed?";
+        }
+        else
+        {
+            message = "Are you sure you want to delete this business unit type?";
+        }
+        
+        var result = await DialogService.Confirm(message, title, new ConfirmOptions() 
+        { 
+            OkButtonText = "Yes", 
+            CancelButtonText = "No" 
+        });
+        
+        // Only proceed with deletion if the user explicitly clicked "Yes"
+        if (result.HasValue && result.Value)
+        {
+            await OnDelete_Click();
+        }
+        // If result is null or false (X button or No button), do nothing
+    }
+
+    private async Task OnDelete_Click()
+    {
+        _logMessage = await _businessUnitTypeService.Delete(EmployeeBusinessUnitType.UUID);
+        EmployeeBusinessUnitType = new();
+        _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_BusinessUnitTypes);
+    }
+
+}

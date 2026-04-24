@@ -1,0 +1,390 @@
+﻿@using Library.API.Base.Models.Employees
+@using Library.API.TalentManagement.Models.SuccessionReadiness
+@using Library.API.TalentManagement.Services
+@using Library.Tools.Webs
+
+@if (_isLoading)
+{
+    <RadzenCard>
+        <RadzenStack AlignItems="AlignItems.Center">
+            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+                <div class="spinner"></div>
+            </RadzenText>
+        </RadzenStack>
+    </RadzenCard>
+}
+else{
+    <RadzenStack class="successionreadiness ">
+    <RadzenRow class="card-base-400">
+        <RadzenColumn Size="12" SizeMD="4">
+            <RadzenCard>
+                <RadzenStack class="header-subs">Succession Position</RadzenStack>
+                <div class="header-underline"></div>
+                <RadzenStack AlignItems="AlignItems.Center" Gap="10px">
+
+                    @if (_successionReadiness != null && _successionReadiness.Role != null)
+                    {
+                        <RadzenText Style=" font-size: x-large; font-weight: bold;">@_successionReadiness.Role.Name</RadzenText>
+                        <RadzenText>@_successionReadiness.Role.Level</RadzenText>
+                    }
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="5">
+            <RadzenCard>
+                <RadzenStack class="header-subs">Current Incumbents</RadzenStack>
+                <div class="header-underline"></div>
+
+                @if (_successionReadiness != null && _successionReadiness.EmployeeCurrent != null)
+                {
+                    <RadzenRow RowGap="5px">
+                        @foreach (var item in _successionReadiness.EmployeeCurrent)
+                        {
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenStack @onclick="(args => ClickEvent_CurrentEmployee(item.UsersUUID))" Style=@($"cursor:pointer;{@Event_CurrentIncumbentDisplay(item.UsersUUID)}")>
+                                    @item.BusinessUnits - @(item?.FirstName ?? "") @(item?.LastName ?? "")
+                                </RadzenStack>
+                            </RadzenColumn>
+                        }
+                    </RadzenRow>
+                }
+
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard>
+                <RadzenStack class="header-subs">Vulnerability Level</RadzenStack>
+                <div class="header-underline"></div>
+                <RadzenStack AlignItems="AlignItems.Center">
+                    @if (_successionReadiness != null && _successionReadiness.Vulnerability != null)
+                    {
+                        <RadzenText style=" font-size: x-large; font-weight: bold;">@_successionReadiness.Vulnerability.Name</RadzenText>
+                    }
+                </RadzenStack>
+                <RadzenStack>
+
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow class="card-base-200">
+        <RadzenColumn Size="12" SizeMD="4">
+            <RadzenCard class="mt-plus-100">
+                <RadzenStack AlignItems="AlignItems.Center">
+
+                    <RadzenStack AlignItems="AlignItems.Center" class="round-image-container">
+                        <RadzenImage Path="@_employeeCurrent.AvatarPath" ></RadzenImage>
+                    </RadzenStack>
+                </RadzenStack>
+                <RadzenStack style="height:0;">
+                    <RadzenRow>
+                        <RadzenColumn Style="margin-top: -60px;"><RadzenButton Icon="arrow_left" Click="ClickEvent_LeftCurrentEmployee"></RadzenButton></RadzenColumn>
+                        <RadzenColumn Style="margin-top: -60px;">
+                            <RadzenStack AlignItems="AlignItems.End">
+                                <RadzenButton Icon="arrow_right" Click="ClickEvent_RightCurrentEmployee"></RadzenButton>
+                            </RadzenStack>
+                        </RadzenColumn>
+                    </RadzenRow>
+                </RadzenStack>
+                <RadzenStack AlignItems="AlignItems.Center" Gap="1px">
+                    <RadzenText style=" font-size: x-large; font-weight: bold;">
+                        @_employeeCurrent.FirstName @_employeeCurrent.LastName 
+                    </RadzenText>
+
+                    <RadzenText style=" font-size: large; font-weight: bold;" Text="@_employeeCurrent.EmployeeJobs"></RadzenText>
+                    <RadzenText style=" font-size: large; font-weight: bold;" Text="@_employeeCurrent.Level"></RadzenText>
+
+                </RadzenStack>
+                <div class="header-underline"></div>
+                <RadzenStack class="mb-2">
+                    <RadzenText TextStyle="TextStyle.DisplayH6" Text="Employee Details"></RadzenText>                
+                </RadzenStack>
+                <RadzenStack >
+                    <RadzenRow>
+                        <RadzenColumn Size="4" class="employee-information-cell">Tenure in Role:</RadzenColumn>
+                        <RadzenColumn Size="8" class="employee-information-cell align-text-center">@TenureInRole()</RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow>
+                        <RadzenColumn Size="4" class="employee-information-cell">Gender:</RadzenColumn>
+                        <RadzenColumn Size="8" class="employee-information-cell align-text-center">@_employeeCurrent.Gender</RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow>
+                        <RadzenColumn Size="4" class="employee-information-cell">Ethnicity:</RadzenColumn>
+                        <RadzenColumn Size="8" class="employee-information-cell align-text-center">@_employeeCurrent.Ethnicity</RadzenColumn>
+                    </RadzenRow>
+
+                    <RadzenRow>
+                        <RadzenColumn Size="4" class="employee-information-cell">Requirement for role:</RadzenColumn>
+                        <RadzenColumn Size="8" class="employee-information-cell ">@((MarkupString)_employeeCurrent.RequirementsForNextRole)</RadzenColumn>
+                    </RadzenRow>
+                </RadzenStack>
+
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="5">
+            <RadzenCard>
+
+                <RadzenStack class="header-subs">Candidate Readiness</RadzenStack>
+                <div class="header-underline"></div>
+                @if (_successionReadiness != null && _successionReadiness.EmployeePotential != null)
+                {
+                    <RadzenChart Style="min-height: 600px;"  >
+                        <RadzenBarSeries Data="@_successionReadiness.EmployeePotential.Where(x => x.IsTalentPool == true).GroupBy(g => new {g.Fullname, TransformedReadinessYears = g.ReadinessYears == -1 ? 100 : g.ReadinessYears == -2 ? 200 : g.ReadinessYears}).Select(g => new {g.Key.Fullname, ReadinessYears = g.Key.TransformedReadinessYears }).OrderBy(x => x.ReadinessYears).ThenBy(x => x.Fullname)"
+                            CategoryProperty="Fullname"
+                            Title="Readiness in Years"
+                            LineType="LineType.Dashed"
+                            ValueProperty="ReadinessYears"
+                            Fill="var(--sc-secondary-color3)">
+                             <RadzenSeriesDataLabels Visible=true />
+                        </RadzenBarSeries>
+                        
+                        <RadzenLegend Position="LegendPosition.Top" />
+                        <RadzenValueAxis Max="6" Min="0" Step="1" >
+                            <RadzenGridLines Visible="true" LineType="LineType.Dashed" /> 
+                        </RadzenValueAxis>
+                        <RadzenBarOptions Radius="5"  />
+                    </RadzenChart>
+                }
+            </RadzenCard>
+
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard>
+                <RadzenStack class="header-subs">Candidates not in Talent Pool</RadzenStack>
+                <div class="header-underline"></div>
+
+                @if (_successionReadiness != null && _successionReadiness.EmployeePotential != null  )
+                {
+
+                    <RadzenCheckBoxList TValue="String"
+                                        @bind-Value=@_candidatesNotInTalentPool
+                                        Data=@_notInTalentPool
+                                        TextProperty="Name"  
+                                        ValueProperty="UUID"
+                                        Style="display:grid;"
+                                        Class="my-CheckBoxList-grid"></RadzenCheckBoxList>
+                    <RadzenStack AlignItems="AlignItems.Center">
+                        <RadzenButton Text="Add to readiness Graph" Click="ClickEvent_AddToReadinessGraph" class="mt-4" Style="background-color: var(--sc-secondary-color2)"></RadzenButton>
+                    </RadzenStack>
+                }
+            </RadzenCard>
+
+
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenCard class="mt-4" Style="background-color: var(--rz-base-200)">
+        <RadzenStack class="header-subs">Candidate Readiness</RadzenStack>
+        <div class="header-underline"></div>
+        <RadzenDataGrid style="min-height: 300px"
+                        Data=@_candidateReadiness
+                        AllowColumnResize="true"
+                        AllowSorting="true"
+                        AllowFiltering="true"
+                        AllowPaging="false"
+                        PagerHorizontalAlign="HorizontalAlign.Left">
+            <Columns>
+
+                <RadzenDataGridColumn Property="@nameof(DataGridItem.Fullname)" Filterable="true" Title="Fullname" TextAlign="TextAlign.Left" />
+                <RadzenDataGridColumn Property="@nameof(DataGridItem.Readiness)" Filterable="true" Title="Readiness" TextAlign="TextAlign.Left" />
+                <RadzenDataGridColumn Property="@nameof(DataGridItem.BusinessUnits)" Filterable="true" Title="BusinessUnits" TextAlign="TextAlign.Left" />
+                <RadzenDataGridColumn Property="@nameof(DataGridItem.Department)" Filterable="true" Title="Department" TextAlign="TextAlign.Left" />
+                <RadzenDataGridColumn Property="@nameof(DataGridItem.EmployeeJobs)" Filterable="true" Title="Position" TextAlign="TextAlign.Left" />
+                <RadzenDataGridColumn Property="@nameof(DataGridItem.Level)" Filterable="true" Title="Level" TextAlign="TextAlign.Left" />
+                <RadzenDataGridColumn Property="@nameof(DataGridItem.CPP)" Filterable="true" Title="CPP" TextAlign="TextAlign.Left" />
+                <RadzenDataGridColumn Property="@nameof(DataGridItem.Qualifications)" Filterable="true" Title="Qualifications" TextAlign="TextAlign.Left" />
+            </Columns>
+        </RadzenDataGrid>
+
+    </RadzenCard>
+
+</RadzenStack>
+
+}
+
+@code {
+    [Inject] private IBox9Service _box9Service { get; set; }
+
+    [Parameter] public string? GenericUUID { get; set; }
+    [Parameter] public EmployeeSearchModel SearchFilter { get; set; } = new();
+    
+    private SuccessionReadinessModel? _successionReadiness;
+    private SuccessionReadinessRoleUsersCurrentModel? _employeeCurrent { get; set; } = new();
+    private List<DataItem>? _notInTalentPool;
+
+    private bool showDataLabels = true;
+    private IEnumerable<string>? _candidatesNotInTalentPool;
+    private List<DataGridItem>? _candidateReadiness;
+
+    private bool _isLoading = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (GenericUUID != null)
+        {
+            await LoadSuccessionReadinessRoleInformation();
+        }
+    }
+
+    private async Task LoadSuccessionReadinessRoleInformation()
+    {
+        _isLoading = true;
+        if (_box9Service == null && GenericUUID == null) return;
+        _successionReadiness = await _box9Service.SuccessionReadinessRoleInformation(GenericUUID, SearchFilter);
+        if (_successionReadiness == null || _successionReadiness.EmployeeCurrent == null || _successionReadiness.EmployeeCurrent.Count() == 0) return;
+        LoadDataGridItems();
+        LoadSuccessionReadinessRoleInformationEmployeePotentialNonTalent();
+        _employeeCurrent = _successionReadiness.EmployeeCurrent.FirstOrDefault();
+        if (_employeeCurrent == null) return;
+        if (await _employeeCurrent.AvatarPath.UrlExists())         {
+            //need to edit the avatar path search for /avatar/ then at then remove all text till the end of the string and then add the default  anonymous-avatar.jpg
+            _employeeCurrent.AvatarPath = _employeeCurrent.AvatarPath.ToLower().Substring(0, _employeeCurrent.AvatarPath.ToLower().IndexOf("/avatars/")) + "/avatars/anonymous-avatar.jpg";
+        }
+        _isLoading = false;
+    }
+
+    private void LoadSuccessionReadinessRoleInformationEmployeePotentialNonTalent()
+    {
+        if (_successionReadiness == null || _successionReadiness.EmployeePotential == null || _successionReadiness.EmployeePotential.Count() == 0) return;
+        _notInTalentPool = _successionReadiness.EmployeePotential.Where(x => x.IsTalentPool == false)
+                            .GroupBy(x => new { x.UsersUUID, x.Fullname })
+                            .Select(g => new DataItem() {UUID = g.Key.UsersUUID, Name = g.Key.Fullname })
+                            .OrderBy(x => x.Name).ToList();
+
+    }
+
+
+    private void LoadDataGridItems()
+    {
+        if (_successionReadiness == null || _successionReadiness.EmployeePotential == null) return;
+        _candidateReadiness = _successionReadiness.EmployeePotential.Where(x => x.IsTalentPool == true)
+                                                .GroupBy(g => new { g.Fullname, g.Readiness, g.BusinessUnits, TransformedReadinessYears = g.ReadinessYears == -1 ? 100 : g.ReadinessYears == -2 ? 200 : g.ReadinessYears, g.Department, g.EmployeeJobs, g.Level, g.CPP, g.Qualifications })
+                                                       .Select(g => new DataGridItem { Fullname = g.Key.Fullname, Readiness = g.Key.Readiness, ReadinessYears = g.Key.TransformedReadinessYears, BusinessUnits = g.Key.BusinessUnits, Department = g.Key.Department, EmployeeJobs = g.Key.EmployeeJobs, Level = g.Key.Level, CPP = g.Key.CPP, Qualifications = g.Key.Qualifications })
+                                                  .OrderBy(x => x.ReadinessYears)
+                                                  .ThenBy(x => x.Fullname).ToList();
+
+    }
+
+    /// <summary>
+    /// this is a formula if the year or month is 0 it will not display
+    /// </summary>
+    /// <returns></returns>
+    private string TenureInRole()
+    {
+        //return the year if year > 0 and return the month if > 0
+        string tenure = "";
+        if (_employeeCurrent != null)
+        {
+            if (_employeeCurrent.CurrentPositionYears > 0)
+            {
+                tenure = _employeeCurrent.CurrentPositionYears + " year";
+            }
+            if (_employeeCurrent.CurrentPositionMonths > 0)
+            {
+                tenure += " " + _employeeCurrent.CurrentPositionMonths + " month";
+            }
+        }
+
+        return tenure;
+    }
+
+    private void ClickEvent_LeftCurrentEmployee()
+    {
+        if (_successionReadiness == null || _successionReadiness.EmployeeCurrent == null || _employeeCurrent == null) return;
+        // Find the current index of _employeeCurrent in _successionReadiness.EmployeeCurrent
+        var currentIndex = _successionReadiness.EmployeeCurrent.FindIndex(e => e.UsersUUID == _employeeCurrent.UsersUUID);
+        // Set the previous index as the current employee
+        var previousIndex = (currentIndex - 1 + _successionReadiness.EmployeeCurrent.Count) % _successionReadiness.EmployeeCurrent.Count();
+        // Update _employeeCurrent to the previous employee
+        _employeeCurrent = _successionReadiness.EmployeeCurrent[previousIndex];
+    }
+
+    private void ClickEvent_RightCurrentEmployee()
+    {
+        if (_successionReadiness == null || _successionReadiness.EmployeeCurrent == null || _employeeCurrent == null) return;
+        // Find the current index of _employeeCurrent in _successionReadiness.EmployeeCurrent
+        var currentIndex = _successionReadiness.EmployeeCurrent.FindIndex(e => e.UsersUUID == _employeeCurrent.UsersUUID);
+        // Set the next index as the current employee
+        var nextIndex = (currentIndex + 1) % _successionReadiness.EmployeeCurrent.Where(x => !string.IsNullOrEmpty(x.EmployeeBusinessUnitsUUID)).Count();
+        // Update _employeeCurrent to the next employee
+        _employeeCurrent = _successionReadiness.EmployeeCurrent[nextIndex];
+    }
+
+
+    /// <summary>
+    /// on click in the current Incumbents section will case an event that will load that employees details onto the page 
+    /// </summary>
+    /// <param name="UUID"></param>
+    private void ClickEvent_CurrentEmployee(string? UUID)
+    {
+        if (UUID == null || _successionReadiness == null || _successionReadiness.EmployeeCurrent == null) return;
+        _employeeCurrent = _successionReadiness.EmployeeCurrent.Where(x => x.UsersUUID == UUID).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// this event will add the employees in the Not in talent pool, to display on the graph
+    /// </summary>
+    private void ClickEvent_AddToReadinessGraph()
+    {
+        if (_successionReadiness?.EmployeePotential == null || _candidatesNotInTalentPool == null) return;
+        //find all the UsersUUID in EmployeePotential using CandidatesNotInTalentPool and set the IsTalentPool = 1
+        foreach (var uuid in _candidatesNotInTalentPool)
+        {
+            var employees = _successionReadiness.EmployeePotential.Where(x => x.UsersUUID == uuid);
+            if (employees != null)
+            {
+                foreach(var employee in employees)
+                    employee.IsTalentPool = true;
+            }
+        }
+
+        LoadDataGridItems();
+        LoadSuccessionReadinessRoleInformationEmployeePotentialNonTalent();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// this event will bold if the current employee is found in the current incumbents list
+    /// </summary>
+    /// <param name="UUID"></param>
+    /// <returns></returns>
+    private string Event_CurrentIncumbentDisplay(string UUID)
+    {
+        if (_successionReadiness?.EmployeeCurrent == null) return "";
+        if (_employeeCurrent.UsersUUID == UUID) return " ;font-weight: bold; ";
+        return "";
+    }
+
+    public async Task OnUsersInformation_Refresh()
+    {
+        if (GenericUUID != null)
+        {
+            await LoadSuccessionReadinessRoleInformation();
+            StateHasChanged();
+        }
+    }
+
+    private class DataItem
+    {
+        public string UUID { get; set; }
+        public string Name { get; set; }
+    }
+
+    private class DataGridItem
+    {
+        public string? Fullname { get; set; }
+        public string? Readiness { get; set; }
+        public int? ReadinessYears { get; set; }
+        public string? BusinessUnits { get; set; }
+        public string? Department { get; set; }
+        public string? EmployeeJobs { get; set; }
+        public string? Level { get; set; }
+        public string? CPP { get; set; }
+        public string? Qualifications { get; set; }
+    }
+
+    
+}
+

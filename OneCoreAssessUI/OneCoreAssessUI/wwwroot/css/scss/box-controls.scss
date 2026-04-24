@@ -1,0 +1,21 @@
+.box-status {
+    background-color: var(--sc-primary-colour2);
+    border-radius: 5px;
+    color: var(--rz-white);
+    padding: 10px;
+    cursor: pointer;
+
+    .status-header {
+        font-size: 18px;
+        text-align: center;
+        height: 60px;
+        line-height: 27px;
+        text-transform: none;
+    }
+
+    .status {
+        font-weight: 700;
+        text-align: center;
+        text-transform: none;
+    }
+}

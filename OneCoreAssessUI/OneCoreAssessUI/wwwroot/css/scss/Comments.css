@@ -1,0 +1,340 @@
+﻿
+.right-sidebar-container,
+.rsb-main-container,
+.comments-list-section {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.loading-state,
+.rsb-loading-container {
+    min-height: 200px;
+}
+
+.loading-text,
+.rsb-loading-text {
+    color: #666;
+    font-size: 13px;
+}
+
+.no-item-icon,
+.rsb-no-item-icon {
+    font-size: 48px;
+    color: #ccc;
+}
+
+.no-item-text,
+.rsb-no-item-text {
+    color: #666;
+}
+
+.rsb-no-item-container {
+    min-height: 200px;
+}
+
+
+.rsb-tabs-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.comments-content-scroll,
+.rsb-data-content-scroll,
+.rsb-comments-content-scroll {
+    padding: 20px;
+    padding-top: 15px;
+    overflow-y: auto;
+    /* This calculation depends on your specific layout outside this component.
+        Adjust 250px as needed for header/footer/tab height. */
+    max-height: calc(100vh - 250px);
+    position: relative;
+}
+
+
+.comments-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.comments-header-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+
+.rsb-description-header,
+.rsb-kpi-header,
+.rsb-tolerance-header,
+.rsb-update-progress-header,
+.comments-list-header { /* Applied to comments list header too for consistency */
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.rsb-description-content {
+    font-size: 13px;
+    color: #333;
+    line-height: 1.6;
+}
+
+.rsb-description-missing,
+.rsb-kpi-missing,
+.rsb-tolerance-missing {
+    font-size: 13px;
+    color: #aaa;
+    font-style: italic;
+}
+
+.rsb-kpi-item-stack {
+    flex: 1;
+    min-width: 180px;
+}
+
+.rsb-kpi-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+}
+
+.rsb-tolerance-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+}
+
+/* Update Progress Section */
+.rsb-progress-numeric {
+    width: 150px;
+}
+
+.rsb-progress-dropdown {
+    width: 200px;
+}
+
+.rsb-progress-save-button {
+    background: #667eea;
+    color: white;
+}
+
+
+.rsb-progress-history-stack,
+.rsb-no-results-stack,
+.rsb-score-details-stack,
+.rsb-no-scores-stack {
+    padding: 20px;
+}
+
+.rsb-no-results-icon,
+.rsb-no-scores-icon {
+    font-size: 20px;
+    color: #ccc;
+}
+
+.rsb-no-results-text,
+.rsb-no-scores-text {
+    color: #999;
+    font-size: 12px;
+}
+
+.rsb-score-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+.rsb-score-value-employee {
+    font-weight: 700;
+    color: #4A90E2;
+}
+
+.rsb-score-value-manager {
+    font-weight: 700;
+    color: #90C850;
+}
+
+.rsb-score-value-average {
+    font-weight: 700;
+    color: #667eea;
+}
+
+
+.add-comment-section,
+.rsb-add-comment-section {
+    background: #f8f9fa;
+    /* Padding is implied by parent RadzenStack's Gap/Item spacing */
+}
+
+.add-comment-label,
+.rsb-comment-header {
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.comment-textarea,
+.rsb-comment-textarea {
+    width: 100%;
+    min-height: 80px;
+}
+
+.file-upload-label,
+.rsb-file-label {
+    width: 100%;
+    cursor: pointer;
+}
+
+.attach-button,
+.rsb-file-button {
+    width: 100%;
+    pointer-events: none; /* Allows the click to pass through to the underlying label/input */
+}
+
+.selected-file-display,
+.rsb-selected-file-stack {
+    padding: 8px;
+    background: #e3f2fd;
+    border-radius: 4px;
+}
+
+.pdf-icon,
+.rsb-file-pdf-icon {
+    color: #1976d2;
+}
+
+.file-name-text,
+.rsb-file-name {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.file-size-text,
+.rsb-file-size {
+    font-size: 11px;
+    color: #666;
+}
+
+.file-error-text,
+.rsb-file-error {
+    font-size: 11px;
+    color: #d32f2f;
+}
+
+.post-comment-button,
+.rsb-post-comment-button {
+    width: 100%;
+    background: #667eea;
+}
+
+
+.comment-card,
+.rsb-comment-card {
+    padding: 15px;
+    /* This box-shadow should be carefully reviewed for performance/design consistency */
+    box-shadow: 0 -1px 3px rgba(0,0,0,0.08), -1px 0 3px rgba(0,0,0,0.08), 1px 0 3px rgba(0,0,0,0.08), 0 2px 1px rgba(0,0,0,0.35);
+}
+
+.author-icon,
+.rsb-comment-author-icon {
+    font-size: 24px;
+    color: #667eea;
+}
+
+.author-name,
+.rsb-comment-author-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+.comment-date,
+.rsb-comment-date {
+    font-size: 11px;
+    color: #999;
+}
+
+.comment-content,
+.rsb-comment-content {
+    font-size: 13px;
+    color: #333;
+    line-height: 1.5;
+}
+
+.attachment-display,
+.rsb-comment-attachment-card {
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+}
+
+.attachment-icon,
+.rsb-comment-attachment-icon {
+    font-size: 24px;
+    color: #667eea;
+}
+
+.attachment-filename,
+.attachment-filesize,
+.rsb-comment-attachment-name,
+.rsb-comment-attachment-size {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+.download-button,
+.rsb-download-button {
+    padding: 21px; /* The original inline padding was 21px */
+}
+
+
+.no-comments-message,
+.rsb-no-comments-stack {
+    padding: 30px 0;
+}
+
+.no-comments-icon,
+.rsb-no-comments-icon {
+    font-size: 48px;
+    color: #ccc;
+}
+
+.no-comments-text,
+.rsb-no-comments-text-main {
+    font-size: 13px;
+    color: #999;
+}
+
+.no-comments-subtext,
+.rsb-no-comments-text-secondary {
+    font-size: 11px;
+    color: #bbb;
+}
+
+
+.rsb-scroll-to-top-container {
+    position: sticky;
+    bottom: 20px;
+    left: 100%;
+    margin-left: -60px;
+    z-index: 1000;
+}
+
+.rsb-scroll-to-top-button {
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.rsb-download-button, .download-button {
+    height: 40px;
+    width: 40px;
+}
+
+    .rsb-download-button i.rz-button-icon-left, .download-button i.rz-button-icon-left {
+        font-size: 22px;
+    }

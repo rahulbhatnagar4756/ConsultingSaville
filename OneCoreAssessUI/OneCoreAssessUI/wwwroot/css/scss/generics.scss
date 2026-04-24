@@ -1,0 +1,43 @@
+.round-image-container {
+    width: 150px; /* Adjust the size as needed */
+    height: 150px; /* Adjust the size as needed */
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    img {
+        min-width:150px;
+        min-height:150px;
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+    }
+}
+
+.align-text-center{
+    text-align: center;
+}
+
+.headings {
+
+    .header-subs {
+        font-weight: 700;
+        font-size: 18px;
+    }
+
+    .header-underline {
+        border: 2px solid var(--sc-secondary-color2);
+        width: 90px;
+        margin-bottom: 10px;
+    }
+}
+
+.my-CheckBoxList-grid {
+    display: grid;
+
+    > div {
+        display: grid!important;
+    }
+}

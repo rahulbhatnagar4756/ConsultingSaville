@@ -1,0 +1,34 @@
+﻿@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Contract
+@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Employee
+@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Templates
+@using OneCoreAssessUI.Models
+
+<RadzenStack class="pt-5">
+
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.ContractGoalContract)
+    {
+        <GoalContract />
+    }
+
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.ContractGoalsTemplates)
+    {
+        <Templates @bind-ItemSub="_menuNav.MenuItemSubType" />
+    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.EmployeeGoals)
+    {
+        <OneCoreAssessUI.Components.Pages.Goals.Administration.EmployeeGoals.EmployeeGoals @bind-ItemSub="_menuNav.MenuItemSubType" />
+    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.ContractGoalsEmployees)
+    {
+        <Employees @bind-ItemSub="_menuNav.MenuItemSubType" />
+    }
+
+
+
+</RadzenStack>
+
+
+@code {
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }   
+
+}

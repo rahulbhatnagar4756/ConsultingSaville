@@ -1,0 +1,14 @@
+﻿[
+  {
+    "outputFile": "wwwroot/css/scss/Controls/main-control.css",
+    "inputFile": "wwwroot/css/scss/Controls/main-control.scss"
+  },
+  {
+    "outputFile": "wwwroot/css/scss/dashboard-inner.css",
+    "inputFile": "wwwroot/css/scss/dashboard-inner.scss"
+  },
+  {
+    "outputFile": "wwwroot/css/scss/Candidates/Candidates.css",
+    "inputFile": "wwwroot/css/scss/Candidates/Candidates.scss"
+  }
+]

@@ -1,0 +1,54 @@
+
+
+.dashboard-search {
+    height: calc(100vh - 200px);  
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    .db-header {
+        border-bottom: 2px solid #CBCBCB;
+        padding: 5px 0;
+        font-weight: bold;
+        font-size: 20px;
+    }
+
+    .db-checkbox-outer {
+        border-radius: 20px;
+        border: 2px solid #CBCBCB;
+        padding: 2px 15px 1px 5px;
+
+        .rz-chkbox {
+            margin-top: 2px;
+        }
+
+        .rz-chkbox-box {
+            border-radius: 50%;
+        }
+
+        .rz-listbox {
+            width: 100%;
+            height: 300px;
+
+            .rz-chkbox-box {
+                border-radius: 50%;
+            }
+        }
+    }
+
+    .db-listbox-outer {
+
+        .rz-listbox {
+            width: 100%;
+            height: 300px;
+
+            .rz-chkbox-box {
+                border-radius: 50%;
+            }
+        }
+    }
+
+    .db-text-not-found {
+        font-size: 25px;
+        color: #cbcbcb;
+    }
+}

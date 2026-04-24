@@ -1,0 +1,396 @@
+﻿@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Models.BusinessHierarchy.Jobs
+@using Library.API.Base.Models.Employees
+@using Library.API.Base.Services
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using Library.API.Goals.Models
+@using Library.API.Goals.Models.EnterpriseStructures
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem">
+    @* Status Messages *@
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+        <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+            <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+            <span>@_logMessage.Message</span>
+        </div>
+    }
+
+    @* Loading Indicator *@
+    @if (_isLoading)
+    {
+        <RadzenCard class="rz-text-align-center rz-p-4">
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                <RadzenText Text="Loading enterprise structure weights..." />
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        @* Enterprise Structure Weights Matrix Grid *@
+        <RadzenText Text="Enterprise Structure Weights" Style="font-weight: 600; font-size: 18px; margin-bottom: 1rem;" />
+
+        @if (_employeeLevels == null || !_employeeLevels.Any())
+        {
+            <RadzenText Text="No employee levels found. Please configure employee levels first." Style="font-style: italic; color: #666; text-align: center; padding: 2rem;" />
+        }
+        else if (_enterpriseStructureTypes == null || !_enterpriseStructureTypes.Any())
+        {
+            <RadzenText Text="No enterprise structure types found. Please configure enterprise structure types first." Style="font-style: italic; color: #666; text-align: center; padding: 2rem;" />
+        }
+        else
+        {
+            <RadzenDataGrid Data="@_matrixData"
+                            TItem="WeightMatrixRow"
+                            AllowPaging="false"
+                            AllowSorting="false"
+                            AllowFiltering="false"
+                            EmptyText="No data available."
+                            Style="min-height: 200px;">
+                <Columns>
+                    @* Employee Level Column *@
+                    <RadzenDataGridColumn TItem="WeightMatrixRow"
+                                          Property="EmployeeLevel"
+                                          Title="Employee Level"
+                                          Width="200px"
+                                          Sortable="false">
+                        <Template Context="row">
+                            <RadzenText Text="@(row?.EmployeeLevel ?? "Unknown")" Style="font-weight: 500;" />
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    @* Dynamic columns for each Enterprise Structure Type *@
+                    @foreach (var structureType in _enterpriseStructureTypes.Where(t => t != null).OrderBy(t => t.Name ?? ""))
+                    {
+                        <RadzenDataGridColumn TItem="WeightMatrixRow"
+                                              Title="@(structureType.Name ?? "Unknown Type")"
+                                              Width="120px"
+                                              Sortable="false">
+                            <Template Context="row">
+                                @{
+                                    var weight = row?.Weights?.FirstOrDefault(w => w != null && w.EnterpriseStructureTypesUUID == structureType.UUID);
+                                }
+                                @if (weight != null)
+                                {
+                                    <RadzenNumeric @bind-Value="weight.Weight"
+                                                   Style="width: 100%;"
+                                                   Step="1"
+                                                   Format="F4"
+                                                   Min="0"
+                                                   Max="100"
+                                                   Placeholder="0.0000"
+                                                   Disabled="_isSaving"
+                                                   Change="@((decimal newValue) => OnWeightChanged(weight, newValue))" />
+                                }
+                                else
+                                {
+                                    <RadzenText Text="N/A" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+                    }
+
+                    @* Actions Column *@
+                    <RadzenDataGridColumn TItem="WeightMatrixRow"
+                                          Title="Actions"
+                                          Width="100px"
+                                          Sortable="false"
+                                          TextAlign="TextAlign.Center">
+                        <Template Context="row">
+                            @if (row != null)
+                            {
+                                <RadzenButton Icon="save"
+                                              Variant="Variant.Text"
+                                              Size="ButtonSize.Small"
+                                              Click="@(() => SaveRowWeights(row))"
+                                              Tooltip="Save Row Weights"
+                                              IsBusy="_isSaving"
+                                              ButtonStyle="ButtonStyle.Success" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+
+            @* Save All Button *@
+            <RadzenRow class="mt-3">
+                <RadzenColumn Size="12">
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
+                        <RadzenButton Icon="save"
+                                      Click="@SaveAllWeights"
+                                      Text="Save All Weights"
+                                      IsBusy="_isSaving"
+                                      BusyText="Saving..."
+                                      ButtonStyle="ButtonStyle.Primary" />
+                        <RadzenButton Icon="refresh"
+                                      Click="@LoadData"
+                                      Text="Refresh"
+                                      Disabled="_isSaving"
+                                      ButtonStyle="ButtonStyle.Light" />
+                    </RadzenStack>
+                </RadzenColumn>
+            </RadzenRow>
+
+            @* Summary Information *@
+            <RadzenCard class="mt-3">
+                <RadzenText Text="@($"Total: {_employeeLevels.Count} employee levels × {_enterpriseStructureTypes.Count} structure types = {_employeeLevels.Count * _enterpriseStructureTypes.Count} weight configurations")"
+                            Style="font-weight: 500;" />
+            </RadzenCard>
+        }
+    }
+</RadzenStack>
+
+
+@code {
+    [Inject] private IEnterpriseStructuresServices EnterpriseStructuresService { get; set; } = default!;
+    [Inject] private ILevelsService LevelsService { get; set; } = default!;
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; } = default!;
+
+    private List<EnterpriseStructureWeightsModel> _weights = new();
+    private List<EnterpriseStructureTypesModel> _enterpriseStructureTypes = new();
+    private List<EmployeeLevelsBaseModel> _employeeLevels = new();
+    private List<WeightMatrixRow> _matrixData = new();
+    private HashSet<string> _changedWeights = new();
+
+    private ResultsModel? _logMessage = null;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _isLoading = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            // Load all required data concurrently
+            var weightsTask = EnterpriseStructuresService.GetEnterpriseStructureWeights();
+            var typesTask = EnterpriseStructuresService.GetEnterpriseStructureTypes();
+            var levelsTask = LevelsService.GetLevels();
+
+            await Task.WhenAll(weightsTask, typesTask, levelsTask);
+
+            _weights = weightsTask.Result ?? new();
+            _enterpriseStructureTypes = typesTask.Result ?? new();
+            _employeeLevels = levelsTask.Result ?? new();
+
+            BuildMatrixData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading enterprise structure weights data: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = "Error loading data. Please try again." };
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void BuildMatrixData()
+    {
+        _matrixData.Clear();
+
+        if (_employeeLevels == null || _enterpriseStructureTypes == null) return;
+
+        foreach (var level in _employeeLevels.Where(l => l != null).OrderBy(l => l.Name ?? ""))
+        {
+            var row = new WeightMatrixRow
+            {
+                EmployeeLevelUUID = level.UUID,
+                EmployeeLevel = level.Name ?? "Unknown Level"
+            };
+
+            // Create weight entries for each structure type
+            foreach (var structureType in _enterpriseStructureTypes.Where(st => st != null))
+            {
+                var existingWeight = _weights?.FirstOrDefault(w =>
+                    w != null &&
+                    w.EmployeeLevelsUUID == level.UUID &&
+                    w.EnterpriseStructureTypesUUID == structureType.UUID);
+
+                var weightEntry = new WeightEntry
+                {
+                    UUID = existingWeight?.UUID,
+                    EnterpriseStructureTypesUUID = structureType.UUID,
+                    EmployeeLevelsUUID = level.UUID,
+                    Weight = existingWeight?.Weight ?? 0,
+                    IsNew = existingWeight == null
+                };
+
+                row.Weights.Add(weightEntry);
+            }
+
+            _matrixData.Add(row);
+        }
+    }
+
+    private void OnWeightChanged(WeightEntry? weightEntry, decimal newValue)
+    {
+        if (weightEntry == null) return;
+
+        // Update the weight value
+        weightEntry.Weight = newValue;
+
+        var key = $"{weightEntry.EmployeeLevelsUUID}_{weightEntry.EnterpriseStructureTypesUUID}";
+        _changedWeights.Add(key);
+        _logMessage = null; // Clear any previous messages
+    }
+
+    private async Task SaveRowWeights(WeightMatrixRow? row)
+    {
+        if (row?.Weights == null) return;
+
+        try
+        {
+            _isSaving = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var tasks = new List<Task<ResultsModel?>>();
+
+            foreach (var weight in row.Weights.Where(w => w != null))
+            {
+                var weightModel = new EnterpriseStructureWeightsModel
+                {
+                    UUID = weight.UUID,
+                    EnterpriseStructureTypesUUID = weight.EnterpriseStructureTypesUUID,
+                    EmployeeLevelsUUID = weight.EmployeeLevelsUUID,
+                    Weight = weight.Weight
+                };
+
+                tasks.Add(EnterpriseStructuresService.SaveEnterpriseStructureWeight(weightModel));
+            }
+
+            var results = await Task.WhenAll(tasks);
+            var failures = results.Where(r => r?.isValid != true).ToList();
+
+            if (failures.Any())
+            {
+                _logMessage = new ResultsModel { isValid = false, Message = $"Failed to save {failures.Count} weight(s) for {row.EmployeeLevel}." };
+            }
+            else
+            {
+                _logMessage = new ResultsModel { isValid = true, Message = $"Successfully saved weights for {row.EmployeeLevel}." };
+
+                // Update UUIDs for new entries
+                for (int i = 0; i < row.Weights.Count; i++)
+                {
+                    if (row.Weights[i].IsNew && results[i]?.UUID != null)
+                    {
+                        row.Weights[i].UUID = results[i]!.UUID;
+                        row.Weights[i].IsNew = false;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving row weights: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error saving weights for {row.EmployeeLevel}: {ex.Message}" };
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveAllWeights()
+    {
+        try
+        {
+            _isSaving = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var tasks = new List<Task<ResultsModel?>>();
+
+            foreach (var row in _matrixData.Where(r => r?.Weights != null))
+            {
+                foreach (var weight in row.Weights.Where(w => w != null))
+                {
+                    var weightModel = new EnterpriseStructureWeightsModel
+                    {
+                        UUID = weight.UUID,
+                        EnterpriseStructureTypesUUID = weight.EnterpriseStructureTypesUUID,
+                        EmployeeLevelsUUID = weight.EmployeeLevelsUUID,
+                        Weight = weight.Weight
+                    };
+
+                    tasks.Add(EnterpriseStructuresService.SaveEnterpriseStructureWeight(weightModel));
+                }
+            }
+
+            var results = await Task.WhenAll(tasks);
+            var failures = results.Where(r => r?.isValid != true).ToList();
+
+            if (failures.Any())
+            {
+                _logMessage = new ResultsModel { isValid = false, Message = $"Failed to save {failures.Count} out of {results.Length} weights." };
+            }
+            else
+            {
+                _logMessage = new ResultsModel { isValid = true, Message = $"Successfully saved all {results.Length} weights." };
+
+                // Update UUIDs for new entries
+                int resultIndex = 0;
+                foreach (var row in _matrixData.Where(r => r?.Weights != null))
+                {
+                    foreach (var weight in row.Weights.Where(w => w != null))
+                    {
+                        if (weight.IsNew && results[resultIndex]?.UUID != null)
+                        {
+                            weight.UUID = results[resultIndex]!.UUID;
+                            weight.IsNew = false;
+                        }
+                        resultIndex++;
+                    }
+                }
+
+                _changedWeights.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving all weights: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error saving weights: {ex.Message}" };
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    // Helper classes for matrix data structure
+    public class WeightMatrixRow
+    {
+        public string? EmployeeLevelUUID { get; set; }
+        public string EmployeeLevel { get; set; } = string.Empty;
+        public List<WeightEntry> Weights { get; set; } = new();
+    }
+
+    public class WeightEntry
+    {
+        public string? UUID { get; set; }
+        public string? EnterpriseStructureTypesUUID { get; set; }
+        public string? EmployeeLevelsUUID { get; set; }
+        public decimal Weight { get; set; }
+        public bool IsNew { get; set; } = true;
+    }
+}

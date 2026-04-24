@@ -1,0 +1,393 @@
+﻿@using Library.API.Assess.Models.Jobs
+@using Library.API.Assess.Services.Jobs
+@using Library.API.Base.Models
+@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Models.BusinessHierarchy.Jobs
+@using Library.API.Base.Models.Employees
+@using Library.API.Base.Services
+@using Library.API.Base.Services.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+
+@inject DialogService DialogService
+
+<RadzenStack class="container rz-p-4" Style="max-height: calc(100vh - 100px); overflow-y: auto; padding-bottom: 2rem;">
+    <RadzenStack>
+        @* Header *@
+        <RadzenStack class="header-custom" Style="margin: 0 -16px;">
+            <RadzenStack class="header-outer">
+                <RadzenStack>
+                    <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Position" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenStack>
+
+        @if (_logMessage != null)
+        {
+            @if (_logMessage != null && _logMessage.isValid.HasValue)
+            {
+
+                @* Replace the RadzenAlert with a custom message box that does not have a close (X) button and always shows when _logMessage is set *@
+                @if (_logMessage != null && _logMessage.isValid.HasValue)
+                {
+                    <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+                        <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+                        <span>@_logMessage.Message</span>
+                    </div>
+                }
+
+            }
+        }
+
+        @* Loading Indicator *@
+        @if (_isLoading)
+        {
+            <RadzenCard class="rz-text-align-center rz-p-4">
+                <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+                    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                    <RadzenText Text="Loading..." />
+                </RadzenStack>
+            </RadzenCard>
+        }
+        else
+        {
+            @* Form *@
+
+            <RadzenTabs TabPosition="TabPosition.Top" RenderMode="TabRenderMode.Client" @bind-SelectedIndex="_selectedTabIndex">
+
+                <Tabs>
+                    <RadzenTabsItem Text="Basic">
+
+                        <RadzenRow Gap="1rem">
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Position Name" Variant="Variant.Outlined" />
+                                <RadzenTextBox @bind-Value="_position.Name"
+                                               Style="width: 100%;"
+                                               Placeholder="Enter position name..." />
+
+                            </RadzenColumn>
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Code" Variant="Variant.Outlined" />
+                                <RadzenTextBox @bind-Value="_position.Code"
+                                               Style="width: 100%;"
+                                               Placeholder="Position code..." />
+                            </RadzenColumn>
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Description" Variant="Variant.Outlined" />
+                                <RadzenTextArea @bind-Value="_position.Description"
+                                                Style="width: 100%; min-height: 80px;"
+                                                Placeholder="Position description..." />
+                            </RadzenColumn>
+
+                        </RadzenRow>
+
+                    </RadzenTabsItem>
+
+                    <RadzenTabsItem Text="Business">
+                        <RadzenRow Gap="1rem">
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Department" Variant="Variant.Outlined" />
+                                <RadzenDropDown @bind-Value="_position.EmployeeDepartmentsUUID"
+                                                Data="@_departments"
+                                                TextProperty="FullName"
+                                                ValueProperty="UUID"
+                                                Placeholder="Select department..."
+                                                Style="width: 100%;"
+                                                AllowClear="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                FilterOperator="StringFilterOperator.Contains"
+                                                AllowFiltering="true"
+                                                Disabled="@(_businessUnits == null || _position.EmployeeBusinessUnitsUUID == null)" />
+
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Level" Variant="Variant.Outlined" />
+                                <RadzenStack Orientation="Orientation.Horizontal">
+
+                                    <RadzenDropDown @bind-Value="_position.EmployeeLevelsUUID"
+                                                    Data="@_levels"
+                                                    TextProperty="Name"
+                                                    ValueProperty="UUID"
+                                                    Placeholder="Select level..."
+                                                    Style="width: 100%;"
+                                                    AllowClear="true" />
+
+                                </RadzenStack>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenTabsItem>
+
+                    <RadzenTabsItem Text="Classification">
+                        <RadzenRow>
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Discipline" Variant="Variant.Outlined" />
+                                <RadzenDropDown @bind-Value="_position.EmployeeJobDisciplinesUUID"
+                                                Data="@_disciplines"
+                                                TextProperty="Name"
+                                                ValueProperty="UUID"
+                                                Placeholder="Select discipline..."
+                                                Style="width: 100%;"
+                                                AllowClear="true" />
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Critical Role" Variant="Variant.Outlined" />
+                                <RadzenDropDown @bind-Value="_position.EmployeeJobsCriticalRolesUUID"
+                                                Data="@_criticalRoles"
+                                                TextProperty="Name"
+                                                ValueProperty="UUID"
+                                                Placeholder="Select critical role..."
+                                                Style="width: 100%;"
+                                                AllowClear="true" />
+                            </RadzenColumn>
+
+                            <RadzenColumn Size="12">
+                                <RadzenText Text="Job Assigned to Position" Variant="Variant.Outlined" />
+                                <RadzenDropDown @bind-Value="_position.JobsUUID"
+                                                Data="@_jobs"
+                                                TextProperty="Name"
+                                                ValueProperty="UUID"
+                                                Placeholder="Select job ..."
+                                                Style="width: 100%;"
+                                                AllowClear="true"
+                                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                                FilterOperator="StringFilterOperator.Contains"
+                                                AllowFiltering="true" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenTabsItem>
+
+                    <RadzenTabsItem Text="Experience" Visible="@(_position.UUID != null)">
+                        <OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components.Positions.sbPositions.Components.SBExperience PositionUUID=@_position.UUID />
+                    </RadzenTabsItem>
+
+                    <RadzenTabsItem Text="Education" Visible="@(_position.UUID != null)">
+                        <OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components.Positions.sbPositions.Components.SBEducations PositionUUID=@_position.UUID />
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
+
+            @if (!IsExperienceOrEducationTabSelected())
+            {
+                <RadzenColumn Size="12" class="mt-5 mb-5">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                        <RadzenButton style="flex: 1;"
+                        Icon="save"
+                        BusyText="Saving ..."
+                        Click=@SavePosition
+                        Text="Save" />
+
+                        @if (!string.IsNullOrEmpty(_position?.UUID))
+                        {
+                            <RadzenButton Icon="delete"
+                            Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                            Click=OnDelete_Confirm />
+                        }
+                    </RadzenStack>
+            </RadzenColumn>
+            }
+
+
+        }
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Inject] private IPositionService PositionService { get; set; }
+    [Inject] private IBusinessUnitsService BusinessUnitsService { get; set; }
+    [Inject] private IDepartmentService DepartmentsService { get; set; }
+    [Inject] private IEmployeeService EmployeeService { get; set; }
+    [Inject] private ILevelsService LevelService { get; set; }
+    [Inject] private IJobDisciplinesService JobDisciplinesService { get; set; } // Add this injection
+    [Inject] private ICriticalRolesService CriticalRolesService { get; set; }
+    [Inject] private IJobsService JobsService { get; set; }
+
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    [Parameter] public EventCallback<PositionsModel> OnSaveComplete { get; set; }
+
+    private PositionsModel _position = new();
+    private PositionsModel _positionCurrent;
+    private List<EmployeeBaseModel>? _businessUnits = null;
+    private List<EmployeeDepartmentBaseModel>? _departments = null;
+    private List<EmployeeJobDisciplineBaseModel>? _disciplines = null; // Changed to EmployeeBaseModel to match service return type
+    private List<EmployeeBaseModel>? _criticalRoles = null;
+    private List<EmployeeBaseModel>? _employeeLevels = null;
+    private List<JobsBaseModel>? _jobs = null;
+    private List<EmployeeLevelsBaseModel>? _levels = null;
+
+    private ResultsModel? _logMessage = null;
+    
+    // Track the selected tab index
+    private int _selectedTabIndex = 0;
+
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private bool _isAddMode = true;
+    private string _statusMessage = string.Empty;
+    private bool _isSuccessMessage = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDropdownData();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //get data if its sent to the right sidebar area
+        _positionCurrent = _rightSidebarService.GetSharedContext<PositionsModel>();
+
+        if (_position != null && _positionCurrent == null) _position = new();
+
+        if (_positionCurrent != null && _position != _positionCurrent)
+        {
+            _logMessage = null;
+            _position = _positionCurrent;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadDropdownData()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            // Load all dropdown data in parallel
+            var businessUnitsTask = BusinessUnitsService.GetBusinessUnits();
+            var departmentsTask = DepartmentsService.GetDepartments();
+            var levelTask = LevelService.GetLevels();
+            var disciplinesTask = JobDisciplinesService.GetJobDisciplines(); // Add disciplines call
+            var criticalRolesTask = CriticalRolesService.GetCriticalRoles();
+            var jobsTask = JobsService.GetJobs(); // Add jobs call
+
+            await Task.WhenAll(businessUnitsTask, departmentsTask, levelTask, disciplinesTask, criticalRolesTask, jobsTask);
+
+            _businessUnits = await businessUnitsTask;
+            _departments = await departmentsTask;
+            _levels = await levelTask;
+            _disciplines = await disciplinesTask;
+            _criticalRoles = await criticalRolesTask;
+            _jobs = await jobsTask; // Populate jobs
+
+            // TODO: Add other dropdown data when services are available
+            // _criticalRoles = await CriticalRolesService.GetCriticalRoles();
+            // _employeeLevels = await EmployeeLevelsService.GetEmployeeLevels();
+            // _jobs = await JobsService.GetJobs();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dropdown data: {ex.Message}");
+            _statusMessage = "Error loading form data. Please try again.";
+            _isSuccessMessage = false;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void LoadPositionData()
+    {
+        if (_rightSidebarService?.SharedContext is PositionsModel existingPosition)
+        {
+            _position = (PositionsModel)existingPosition.Clone();
+            _isAddMode = false;
+        }
+        else
+        {
+            _position = new PositionsModel();
+            _isAddMode = true;
+        }
+    }
+
+    private async Task OnBusinessUnitChanged()
+    {
+        // Filter departments based on selected business unit
+        if (_position.EmployeeBusinessUnitsUUID != null && _departments != null)
+        {
+            // TODO: Implement department filtering based on business unit
+            // This would require a service method that gets departments by business unit UUID
+        }
+
+        // Clear department selection when business unit changes
+        _position.EmployeeDepartmentsUUID = null;
+        StateHasChanged();
+    }
+
+    private async Task SavePosition()
+    {
+        if (_position == null)
+        {
+            return;
+        }
+        _logMessage = await PositionService.Save(_position);
+        if (_logMessage != null && _logMessage.isValid.Value && _position.UUID == null)
+        {
+            _position.UUID = _logMessage.UUID;
+        }
+
+        await OnSaveComplete.InvokeAsync(_position);
+        _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Positions);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ClosePanel()
+    {
+        _rightSidebarService?.Close();
+    }
+
+    public void Dispose()
+    {
+        // Clean up if needed
+    }
+    private async Task OnDelete_Confirm(MouseEventArgs args)
+    {
+        string message = "Are you sure you want to delete this position?";
+        string title = "Delete Position";
+
+        var result = await DialogService.Confirm(message, title, new ConfirmOptions()
+        {
+            OkButtonText = "Yes",
+            CancelButtonText = "No"
+        });
+
+        // Only proceed with deletion if the user explicitly clicked "Yes"
+        if (result.HasValue && result.Value)
+        {
+            await OnDelete_Click();
+        }
+    }
+
+    private async Task OnDelete_Click()
+    {
+        _logMessage = await PositionService.Delete(_position.UUID);
+        _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Positions);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsExperienceOrEducationTabSelected()
+    {
+        // Experience tab index = 3, Education tab index = 4
+        // Note: If Experience tab is not visible (_position.UUID == null),
+        // then Education tab becomes index 3
+        if (_position.UUID == null)
+        {
+            // Experience tab is hidden, so Education is at index 3
+            return _selectedTabIndex == 1;
+        }
+        else
+        {
+            // Both tabs are visible, Experience at index 3, Education at index 4
+            return _selectedTabIndex == 3 || _selectedTabIndex == 4;
+        }
+    }
+
+}

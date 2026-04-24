@@ -1,0 +1,43 @@
+﻿@using Library.API.Base.Models.BusinessHierarchy
+@using OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components
+@using OneCoreAssessUI.Models
+@implements IDisposable
+
+<RadzenStack class="pt-5">
+     
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationBusinessHierarchyBusinessUnitTypes) { <BusinessUnitTypes /> } 
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationBusinessHierarchyBusinessUnits)     { <BusinessUnits />     }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationBusinessHierarchyDepartments)       { <Departments />       }  
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationBusinessHierarchyPositions)         { <PositionPages />     }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationBusinessHierarchyLevels)            { <Levels />            }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationBusinessHierarchyJobDisciplines)    { <JobDisciplines />    }
+</RadzenStack>
+
+@code {
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to menu changes
+        if (_menuNav != null)
+        {
+            _menuNav.OnMenuItemSubTypeChanged += HandleMenuItemSubTypeChanged;
+        }
+        base.OnInitialized();
+    }
+
+    private void HandleMenuItemSubTypeChanged(Enumerables.MenuItemSubTypes subType)
+    {
+        // Force a re-render when the menu item sub type changes
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from the event
+        if (_menuNav != null)
+        {
+            _menuNav.OnMenuItemSubTypeChanged -= HandleMenuItemSubTypeChanged;
+        }
+    }
+}

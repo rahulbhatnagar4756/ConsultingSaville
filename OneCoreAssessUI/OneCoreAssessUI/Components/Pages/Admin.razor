@@ -1,0 +1,490 @@
+﻿@using Library.API.Base.Models.Employees
+@using Library.API.Base.Services
+@using Library.API.Base.Services.Users
+@using OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy
+@using OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components.Positions.sbPositions
+@using OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components.sbBusinessUnitTypes
+@using OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components.sbDepartments
+@using OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components.sbJobDiscipline
+@using OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components.sbLevels
+@using OneCoreAssessUI.Components.Pages.Employees
+@using OneCoreAssessUI.Components.Pages.Employees.SuccessionPlanning
+@using OneCoreAssessUI.Components.Pages.Employees.TalentManagement
+@using OneCoreAssessUI.Components.Pages.Employees.TalentManagement.Sidebars
+@using OneCoreAssessUI.Components.Pages.FROG
+@using OneCoreAssessUI.Components.Pages.Goals.Administration
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.EnterpriseStructures.sbEnterpriseStructureTypes
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.Pillars.sbPillars 
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.ContractPeriods.sbContractPeriod
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.RatingPeriods.sbRatingPeriods
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.ScoringPeriods.sbScoringPeriod
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.Tolerances.sbTolerance
+@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Contract.Components.sbKPA
+@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Contract.Components.sbKPI
+@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Contract.Components.sbLinked
+@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Employee.sbEmployee
+@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Templates.sbTemplates
+@using OneCoreAssessUI.Components.Pages.Goals.Contracts.Templates.sbAssignTemplates
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.EmployeeGoals.sbEmployeeGoals
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.EmployeeGoals.sbGlobalComments
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using OneCoreAssessUI.Components.Pages.Administration.BusinessHierarchy.Components.sbBusinessUnits
+
+
+ 
+@page "/Admin/"
+@page "/Admin/{MenuSectionsId}/{MenuItemTypesid}"
+@layout BlankLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+ 
+<style>
+
+    :root {
+    --sc-primary-colour1: @PrimaryColor1;
+    --sc-primary-colour2: @PrimaryColor2;
+    --sc-secondary-color1: @SecondaryColor1;
+    --sc-secondary-color2: @SecondaryColor2;
+    --sc-secondary-color3: @SecondaryColor3;
+    --sc-secondary-color4: @SecondaryColor4;
+    --sc-card-background-colour: #dedfde;
+    --sc-card-background-colour-daker: #b1b3b2;
+    --rz-primary: @SecondaryColor4;
+        --header-color1: #00BF6370;
+        --header-color2: #7ED95770;
+        --header-color3: #FFDE5970;
+        --header-color4: #FF575770;
+        --header-color5: #7AB3E170;
+        --header-color6: #7AB3E180;
+    }
+
+    .sb-sidebar-right { 
+    width: @GetSidebarWidth(); 
+    max-width: 100vw;
+    }
+
+    .top-bar .rz-menu  {
+    margin-top: 6px;
+    }
+
+   /*  @@media only screen and (max-width:767px)
+    {
+        .sb-top-close > button:first-child {
+        display: none !important;
+    }
+    } */
+
+</style>
+
+<CascadingValue Value="@_menuNav">
+
+    <CascadingValue Value="@_rightSidebarService">
+        <CascadingValue Value="_loggedInInformation">
+
+            @if (_menuNav != null)
+            {
+
+                <RadzenLayout class="left-sidebar" style="grid-template-areas: 'rz-header rz-header rz-header' 'rz-sidebar rz-body rz-right-sidebar';">
+                    <RadzenHeader>
+                        <RadzenRow JustifyContent="JustifyContent.Start" AlignItems="AlignItems.Center" Gap="0">
+                            <RadzenColumn class="top-bar" Style="display: contents;">
+                                @* <RadzenSidebarToggle Click="@SidebarToggleClick"></RadzenSidebarToggle>  *@
+                                <RadzenStack class="filler">
+                                </RadzenStack> 
+
+                                @*==============================================================  Nav Menus  ============================================================================================= *@
+
+                                @if (_menuNav.MenuSubSectionId == MenuSubSectionTypes.Home){ <OneCoreAssessUI.Components.Layout.NavMenu.HomeMenu                                         @bind-Item="_menuNav.MenuItemType" /> }
+                                @if (_menuNav.MenuSubSectionId == MenuSubSectionTypes.Assessments){ <OneCoreAssessUI.Components.Layout.NavMenu.AssessmentMenu                            @bind-Item="_menuNav.MenuItemType" /> }
+                                @if (_menuNav.MenuSubSectionId == MenuSubSectionTypes.LeaderShipAndDevelopment){ <OneCoreAssessUI.Components.Layout.NavMenu.LeadershipAndDevelopmentMenu @bind-Item="_menuNav.MenuItemType" /> }
+                                @if (_menuNav.MenuSubSectionId == MenuSubSectionTypes.PerformanceManagement){ <OneCoreAssessUI.Components.Layout.NavMenu.PerformanceManagementMenu       @bind-Item="_menuNav.MenuItemType" @bind-ItemSub="_menuNav.MenuItemSubType" /> }
+                                @if (_menuNav.MenuSubSectionId == MenuSubSectionTypes.Administration){ <OneCoreAssessUI.Components.Layout.NavMenu.AdministrationMenu                     @bind-Item="_menuNav.MenuItemType" @bind-ItemSub="_menuNav.MenuItemSubType" /> }
+                                @if (_menuNav.MenuSubSectionId == MenuSubSectionTypes.Employee){ <OneCoreAssessUI.Components.Layout.NavMenu.EmployeeMenu                                 @bind-Item="_menuNav.MenuItemType" /> }
+                                @if (_menuNav.MenuSubSectionId == MenuSubSectionTypes.Company){ <OneCoreAssessUI.Components.Layout.NavMenu.CompanyMenu                                   @bind-Item="_menuNav.MenuItemType" /> }
+
+                                @*======================================================================================================================================================================== *@
+
+                            </RadzenColumn>
+                            <RadzenColumn>
+                                <RadzenStack AlignItems="AlignItems.Center" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem" class="rz-px-2">
+                                    @if (_loggedInInformation != null && _loggedInInformation.User != null) 
+                                    { 
+                                        @_loggedInInformation.User.FullName  
+                                        <div class="rz-text-align-center" style="">
+                                            <RadzenProfileMenu>
+                                                <Template>
+                                                    <RadzenAvatar Image="@_loggedInInformation.User.UsersImageURL" />
+                                                </Template>
+                                                <ChildContent>
+                                                    <RadzenProfileMenuItem Text="Edit" Path="buttons" Icon="edit_note"></RadzenProfileMenuItem>
+                                                </ChildContent>
+                                            </RadzenProfileMenu>
+                                        </div>
+                                    }
+                                    @* <RadzenAppearanceToggle /> *@
+                                    <RadzenStack Style="width: 110px; max-width: 110px; overflow:clip; ">
+                                        @if (_loggedInInformation != null && _loggedInInformation.Company != null)
+                                        {
+                                            <RadzenImage Path="@_loggedInInformation.Company.CompanyLogoURL" style="max-width: 110px; margin: 0 10px;" AlternateText="logo"></RadzenImage>
+                                        }
+                                        else
+                                        {
+                                            <RadzenImage Path="https://assessment.savilleconsulting.co.za/images/Saville_Logo3.png" style="max-width: 150px; height: 35px; margin: 0 10px;" AlternateText="logo"></RadzenImage>
+                                        }
+                                    </RadzenStack>
+                                </RadzenStack>
+
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenHeader>
+                    <RadzenSidebar Expanded="@sidebarExpanded" style="z-index: 2">
+
+                        <RadzenPanelMenu class="">
+                            <div class="@SideBarCSSClass(Enumerables.MenuSectionTypes.Home) pt-4" @onclick="() => NavigateTo(MenuSectionTypes.Home)">
+                                <div>
+                                    <RadzenIcon Icon="house"></RadzenIcon>
+                                </div>
+                                <div>
+                                    <span class="rz-sidebar-collapsed-text">Home</span>
+                                </div>
+                            </div>
+                        </RadzenPanelMenu>
+                        <RadzenPanelMenu class="">
+                            <div class="@SideBarCSSClass(Enumerables.MenuSectionTypes.Assessments) pt-4" @onclick="() => NavigateTo(MenuSectionTypes.Assessments)">
+                                <div>
+                                    <RadzenIcon Icon="assignment"></RadzenIcon>
+                                </div>
+                                <div>
+                                    <span class="rz-sidebar-collapsed-text">Assessment</span>
+                                </div>
+                            </div>
+                        </RadzenPanelMenu>
+                        <RadzenPanelMenu class=" ">
+                            <div class="@SideBarCSSClass(Enumerables.MenuSectionTypes.LeaderShipAndDevelopment) pt-4" @onclick="() => NavigateTo(MenuSectionTypes.LeaderShipAndDevelopment)">
+                                <div>
+                                    <RadzenIcon Icon="local_library"></RadzenIcon>
+                                </div>
+                                <div>
+                                    <span class="rz-sidebar-collapsed-text">Leadership & Development</span>
+                                </div>
+                            </div>
+                        </RadzenPanelMenu>
+                        <RadzenPanelMenu class=" ">
+                            <div class="@SideBarCSSClass(Enumerables.MenuSectionTypes.PerformanceManagement )  pt-4" @onclick="() => NavigateTo(MenuSectionTypes.PerformanceManagement)">
+                                <div>
+                                    <RadzenIcon Icon="readiness_score"></RadzenIcon>
+                                </div>
+                                <div>
+                                    <span class="rz-sidebar-collapsed-text">Performance Management</span>
+                                </div>
+                            </div>
+                        </RadzenPanelMenu>
+                        <RadzenPanelMenu class=" ">
+                            <div class="@SideBarCSSClass(Enumerables.MenuSectionTypes.Administration)  pt-4" @onclick="() => NavigateTo(MenuSectionTypes.Administration)">
+                                <div>
+                                    <RadzenIcon Icon="settings"></RadzenIcon>
+                                </div>
+                                <div>
+                                    <span class="rz-sidebar-collapsed-text">Administration</span>
+                                </div>
+                            </div>
+                        </RadzenPanelMenu>
+
+                        <RadzenPanelMenu class=" ">
+                            <div class="@SideBarCSSClass(Enumerables.MenuSectionTypes.Employee)  pt-4" @onclick="() => NavigateTo(MenuSectionTypes.Employee)">
+                                <div>
+                                    <RadzenIcon Icon="badge"></RadzenIcon>
+                                </div>
+                                <div>
+                                    <span class="rz-sidebar-collapsed-text">Employee</span>
+                                </div>
+                            </div>
+                        </RadzenPanelMenu>
+
+                        <RadzenPanelMenu class=" ">
+                            <div class="@SideBarCSSClass(Enumerables.MenuSectionTypes.Company)  pt-4" @onclick="() => NavigateTo(MenuSectionTypes.Company)">
+                                <div>
+                                    <RadzenIcon Icon="apartment"></RadzenIcon>
+                                </div>
+                                <div>
+                                    <span class="rz-sidebar-collapsed-text">Company</span>
+                                </div>
+                            </div>
+                        </RadzenPanelMenu>
+
+                    </RadzenSidebar>
+                    <RadzenBody Expanded="@sidebarExpanded">
+                        <RadzenRow class="rz-mx-auto rz-px-4      rz-pb-2 rz-pb-lg-12"  >
+                            <RadzenColumn Size="12">
+
+
+                                @*==============================================================  Content  ============================================== *@
+
+
+                                 
+                                @if (_menuNav.MenuItemType == MenuItemTypes.Employees) { <OneCoreAssessUI.Components.Pages.Employees.Employees @bind-Search=_employeeFilter /> }
+                                @if (_menuNav.MenuItemType == MenuItemTypes.TalentManagement) { <TalentManagements @bind-SearchFilter=_employeeFilter
+                                                                                                                   @bind-Search9BoxEmployees=_box9EmployeeFilter 
+                                                                                                                   SuccessionStatusChanged="OnSuccessionStatusChanged" />
+                                }
+                                @if (_menuNav.MenuItemType == MenuItemTypes.SuccessionReadiness) { <SuccessionPlan @ref=_SuccessionPlan @bind-SearchFilter=_employeeFilter />}
+                                @if (_menuNav.MenuItemType == MenuItemTypes.AdministrationBusinessHierarchy) { <BusinessHierarchy/> }
+
+                                @if (_menuNav.MenuItemType == MenuItemTypes.GoalsAdministration) { <GoalsAdministration/> }
+                                @if (_menuNav.MenuItemType == MenuItemTypes.GoalsContracts) { <OneCoreAssessUI.Components.Pages.Goals.Contracts.GoalsContracts/> }
+                                                                
+                                @* ============================================================================================== *@
+
+                                
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenBody>
+                </RadzenLayout>
+
+
+                <div class=" sb-sidebar-right" Style="right: @_rightSidebarWidth">
+                    <div class=" sb-top-close ">
+                        <RadzenButton Icon="@(_isRightSidebarExpanded ? "fullscreen_exit" : "expand_content")" 
+                                      Click="ToggleSidebarFullscreen" 
+                                      ButtonStyle="ButtonStyle.Light" 
+                                      Size="ButtonSize.Medium"
+                                      Style="margin-right: 8px;" />
+                        <RadzenButton Icon="cancel" Click="SidebarRight_Close"></RadzenButton>
+                    </div>
+                    <div  >
+                        @if (_rightSidebarService != null)
+                        {
+
+                            @*==============================================================  Right Bar Menus  ============================================================ *@
+                             
+                            @if (_rightSidebarService.Control == ControlTypes.sb_employee_filter){ <EmployeeSearchFilter OnFilterClick="FilterClick" /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_9Box_Employee_levels){ <EmployeeLevel9Box @bind-Search9Box=_box9EmployeeFilter  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Succession_Planning){ <ManagerSuccessionPlan isPageLoad=false 
+                                                                                                                              UsersUUID=@_usersUUIDSuccessionStatus 
+                                                                                                                               /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Administration_BusinessHierarchy_BusinessUnits){ <SBBusinessUnit  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Administration_BusinessHierarchy_BusinessUnitTypes){ <SBBusinessUnitType  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Administration_BusinessHierarchy_Department){ <SBDepartments  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Administration_BusinessHierarchy_Positions){ <SBPositions  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Administration_BusinessHierarchy_Levels){ <SBLevels  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Administration_BusinessHierarchy_JobDisciplines){ <SBJobDiscipline  /> }
+                            
+                            // Goal Administration Side Bars:
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Administration_ToleranceSets){ <SBTolerance  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Administration_Pillars){ <SBPillars  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Administration_Status){ <OneCoreAssessUI.Components.Pages.Goals.Administration.Status.sbStatus.SBStatus  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Administration_EnterpriseStructureTypes){ <SBEnterpriseStructureTypes  /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Administration_ContractPeriods){<SBContractPeriod />}
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Employees){<SBEmployee />}
+                            // Goal Contract Side Bars:
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Contracts_Templates){ <SBTemplate /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Contracts_AssignTemplates){<SBAssignTemplates />}
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Contracts_KPA){ <SBKPA /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Contracts_KPI){ <SBKPI /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_Contracts_Linked)
+                            {
+                                <SBLinked />
+                            }
+
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_RatingPeriods){ <SBRatingPeriods /> }
+                           
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_ScoringPeriods){ <SBScoringPeriod /> }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_EmployeeGoals)
+                            {
+                                <SBEmployeeGoals />
+                            }
+                            @if (_rightSidebarService.Control == ControlTypes.sb_Goals_GlobalComments)
+                            {
+                                <SBGlobalComments/>
+                            }
+                            @* ============================================================================================================================================ *@
+                        }
+                    </div>
+                </div>
+
+                
+
+            }
+
+        </CascadingValue>
+    </CascadingValue>
+</CascadingValue> 
+
+@code {
+    [Inject] protected IJSRuntime JSRuntime { get; set; }
+    [Inject] protected DialogService DialogService { get; set; }
+    [Inject] protected TooltipService TooltipService { get; set; }
+    [Inject] protected ContextMenuService ContextMenuService { get; set; }
+    [Inject] protected NotificationService NotificationService { get; set; }
+    [Inject] CookieThemeService CookieThemeService { get; set; }
+    [Inject] NavigationManager _navigationManager { get; set; }
+    [Inject] public ICompanyService _companyService { get; set; }
+    [Inject] public IUsersService _userService { get; set; }
+
+    private SuccessionPlan _SuccessionPlan { get; set; } 
+
+    [Parameter] public string? MenuSectionsId { get; set; }
+    [Parameter] public string? MenuItemTypesid { get; set; }
+    [Parameter] public string? MenuSubSectionsId { get; set; }
+
+
+    private bool sidebarExpanded = true;
+    private bool _rightSidebarExpanded = false;
+    private int? rightSidebarContent = null;
+    private string _rightSidebarWidth = "-600px";
+    private bool _isRightSidebarExpanded = false;
+
+    private LayoutCascadeMenuModel _menuNav { get; set; }
+
+    private RightSidebarService _rightSidebarService = new();
+    private LoggedInInformationModel _loggedInInformation = new();
+    private EmployeeSearchModel _employeeFilter = new();
+    private EmployeeSearchModel _box9EmployeeFilter = new();
+
+    private string? _usersUUIDSuccessionStatus;
+
+    private string PrimaryColor1 = "#0F1F38";
+    private string PrimaryColor2 = "#727572";
+    private string SecondaryColor1 = "#FBDD7C";
+    private string SecondaryColor2 = "#CC6826";
+    private string SecondaryColor3 = "#7AB3E1";
+    private string SecondaryColor4 = "#616F85";
+
+
+    protected override void OnInitialized()
+    {
+        _menuNav = new LayoutCascadeMenuModel(_navigationManager, _loggedInInformation);
+        _rightSidebarService.OnToggleSidebar += Sidebar_Controls;
+        _rightSidebarService.OnOpenSidebar += Sidebar_Open_Controls;
+        SidebarRight_Close();
+
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loggedInInformation = await _userService.GetLoggedInInformation();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (MenuSectionsId != null && MenuItemTypesid != null)
+        {
+            _menuNav.MenuSectionId = (MenuSectionTypes)Enum.Parse(typeof(MenuSectionTypes), MenuSectionsId);
+            _menuNav.MenuItemType = (MenuItemTypes)Enum.Parse(typeof(MenuItemTypes), MenuItemTypesid);
+            await InvokeAsync(StateHasChanged); 
+        }
+        await base.OnParametersSetAsync();
+    }
+
+    #region "Sidebars"
+
+    private void SidebarToggleClick() =>
+    sidebarExpanded = !sidebarExpanded;
+
+    private void Sidebar_Controls(bool isSidebarOpen, ControlTypes control, string sidebarWidth)
+    {
+        _rightSidebarExpanded = isSidebarOpen;
+        _rightSidebarWidth = isSidebarOpen? "0" : GetHiddenSidebarPosition();
+        StateHasChanged();
+    }
+
+
+    private void Sidebar_Open_Controls()
+    {
+        _rightSidebarExpanded = true;
+        _rightSidebarWidth = "0";
+        StateHasChanged();
+    }
+
+    private void SidebarRight_Close()
+    {
+        _rightSidebarWidth = GetHiddenSidebarPosition();
+        _rightSidebarService.Close();
+    }
+
+    private void ToggleSidebarFullscreen()
+    {
+        _isRightSidebarExpanded = !_isRightSidebarExpanded;
+        StateHasChanged();
+    }
+
+    private string GetSidebarWidth()
+    {
+        if (_isRightSidebarExpanded)
+        {
+            return "100vw";
+        }
+        
+        // Get the configured width and ensure it doesn't exceed screen size
+        var configuredWidth = _rightSidebarService.ControlWidth;
+        
+        // If the configured width is a percentage, use it as-is
+        if (configuredWidth.Contains("%") || configuredWidth.Contains("vw"))
+        {
+            return configuredWidth;
+        }
+        
+        // For pixel values, use CSS min function to cap at 100vw
+        return $"min({configuredWidth}, 100vw)";
+    }
+
+    private string GetHiddenSidebarPosition()
+    {
+        var width = GetSidebarWidth();
+        
+        // For percentage or viewport units, hide completely
+        if (width.Contains("%") || width.Contains("vw"))
+        {
+            return "-100vw";
+        }
+        
+        // For pixel values, use negative width
+        return $"-{width}";
+    }
+
+    #endregion
+
+    private void NavigateTo(MenuSectionTypes section)
+    {
+        _menuNav.MenuSectionId = section;
+
+    }
+
+
+    private void NavigateTo(string path)
+    {
+        //NavigationManager.NavigateTo(NavigationManager.Uri + path);
+        _navigationManager.NavigateTo(path);
+    }
+
+    private string SideBarCSSClass(Enumerables.MenuSectionTypes section)
+    {
+        return section == _menuNav.MenuSectionId ? " sidebar-menu sidebar-menu-active" : "sidebar-menu";
+    }
+
+    private void FilterClick(EmployeeSearchModel search)
+    {
+        _employeeFilter = search;
+        //StateHasChanged();
+    }
+
+    private async Task OnSuccessionStatusChanged(string? value)
+    {
+        _usersUUIDSuccessionStatus = value;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Succession_Planning);
+
+    }
+
+    private async Task OnManagerSuccessPlan_ValueChange()
+    {
+        //await _SuccessionPlan.OnUsersInformation_Refresh(); 
+        Console.WriteLine("Test");
+        StateHasChanged();
+    }
+}
+
+   

@@ -1,0 +1,87 @@
+﻿@using Library.API.Base.Models.Users
+@using Library.API.Base.Services.Users
+
+<RadzenCard class="rz-my-12 rz-mx-auto" style="margin-bottom: 15px !important;">
+
+
+
+    <RadzenRow Gap="1rem" class="rz-mb-4">
+
+        <RadzenColumn Size="12" SizeSM="6">
+            <RadzenFormField Text="Company Number" Variant="@_radzenVariant" class="rz-w-100">
+                <RadzenTextBox @bind-Value="@_userData.EmployeeNumber"></RadzenTextBox>
+            </RadzenFormField>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeSM="6">
+            <RadzenFormField Text="Date Joined" Variant="@_radzenVariant" class="rz-w-100">
+                <RadzenDatePicker @bind-Value="@_userData.DateJoined" DateFormat="dd MMMM yyyy" ></RadzenDatePicker>
+            </RadzenFormField>
+        </RadzenColumn>
+
+    </RadzenRow>
+
+    <RadzenRow Gap="1rem" class="rz-mb-4">
+
+        <RadzenColumn Size="12" SizeSM="6">
+            <RadzenFormField Text="Office Phone Number" Variant="@_radzenVariant" class="rz-w-100">
+                <RadzenTextBox @bind-Value="@_userData.WorkPhone"></RadzenTextBox>
+            </RadzenFormField>
+        </RadzenColumn>
+
+
+    </RadzenRow>
+
+
+
+
+</RadzenCard>
+
+@code {
+
+    [Inject] IUserDataService _userDataService { get; set; }
+
+    [Parameter] public string? UsersUUID { get; set; }
+    [Parameter] public EventCallback<string?> UsersUUIDChanged { get; set; }
+
+    private string? PreviousUsersUUID = null;
+
+    private UserDataBasicModel _userData = new();
+    private Radzen.Variant _radzenVariant = Variant.Flat;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PreviousUsersUUID != UsersUUID)
+        {
+            if (string.IsNullOrWhiteSpace(UsersUUID))
+            {
+                _userData = new();
+            }
+            else
+            {
+                if (_userDataService == null)
+                {
+                    _userData = new();
+                }
+                else
+                {
+                    _userData = await _userDataService.GetUserDataInformationByUsersUUID(UsersUUID);
+                }
+            }
+
+            PreviousUsersUUID = UsersUUID;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    /// <summary>
+    /// save users information to the database
+    /// </summary>
+    /// <returns>this will return the UUID of the User</returns>
+    public async Task<UserBasicInformationModel?> Save()
+    {
+        return null;
+    }
+
+}

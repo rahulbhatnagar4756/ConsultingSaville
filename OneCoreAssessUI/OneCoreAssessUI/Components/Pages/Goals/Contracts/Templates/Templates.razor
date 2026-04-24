@@ -1,0 +1,323 @@
+﻿@using Library.API.Goals.Models.Templates
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@implements IDisposable
+
+<RadzenStack Orientation="Orientation.Horizontal">
+	<RadzenIcon Icon="widget_medium" Style="font-size: 34px;" />
+	<RadzenText Text="Contract Templates" Style="font-weight: 700; font-size: 25px;" />
+</RadzenStack>
+
+<RadzenStack Orientation="Orientation.Horizontal" class="mb-3" Style="gap: 8px;">
+	<RadzenTextBox @bind-Value="_searchTerm"
+				   @oninput="@OnSearchInput"
+				   Placeholder="Search templates..."
+				   Style="width: 100%;" />
+	@if (!string.IsNullOrWhiteSpace(_searchTerm))
+	{
+		<RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Click="@ClearSearch" />
+	}
+	<RadzenButton Icon="add" title="Add Template" Click="@(async () => await EditTemplate(new TemplatesModel()))" />
+</RadzenStack>
+
+@* Loading Indicator *@
+@if (_isLoading)
+{
+	<RadzenCard class="rz-text-align-center rz-p-4">
+		<RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+			<RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+			<RadzenText Text="Loading template records..." />
+		</RadzenStack>
+	</RadzenCard>
+}
+else if (_filteredTemplates != null)
+{
+	@* Data Grid *@
+	<RadzenDataGrid @ref="@_dataGrid"
+					Data="@_filteredTemplates"
+					TItem="TemplatesModel"
+					AllowPaging="true"
+					AllowSorting="true"
+					AllowColumnResize="true"
+					AllowFiltering="true"
+					PageSize="50"
+					PagerHorizontalAlign="HorizontalAlign.Left"
+					ShowPagingSummary="true"
+					PagingSummaryFormat="@("{0} - {1} of {2} template records")"
+					EmptyText="No template records found."
+					class="rz-mt-3">
+
+		<Columns>
+			<RadzenDataGridColumn TItem="TemplatesModel" Property="Name" Title="Name" Width="250px">
+				<Template Context="template">
+					<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+						<RadzenText Text="@template.Name" Style="font-weight: 500;" />
+					</RadzenStack>
+				</Template>
+			</RadzenDataGridColumn>
+
+			<RadzenDataGridColumn TItem="TemplatesModel" Property="Code" Title="Code" Width="150px">
+				<Template Context="template">
+					<RadzenText Text="@template.Code" />
+				</Template>
+			</RadzenDataGridColumn>
+
+			<RadzenDataGridColumn TItem="TemplatesModel" Property="Description" Title="Description" Width="400px">
+				<Template Context="template">
+					<RadzenText Text="@(TruncateText(template.Description, 60))" />
+				</Template>
+			</RadzenDataGridColumn>
+
+
+
+			<RadzenDataGridColumn TItem="TemplatesModel" Title="Actions" Width="100px" Sortable="false" Filterable="false">
+				<Template Context="template">
+					<RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+						<RadzenButton Icon="edit"
+									  Size="ButtonSize.Small"
+									  ButtonStyle="ButtonStyle.Info"
+									  Click="@(() => EditTemplate(template))"
+									  Tooltip="Edit Template" />
+
+						<RadzenButton Icon="gavel"
+									  Size="ButtonSize.Small"
+									  Click="@(() => EditContact(template))"
+									  ButtonStyle="ButtonStyle.Primary"
+									  Tooltip="Contract" />
+						<RadzenButton Icon="delete"
+									  Size="ButtonSize.Small"
+									  ButtonStyle="ButtonStyle.Danger"
+									  Click="@(() => DeleteTemplate(template))"
+									  Tooltip="Delete Template" />
+						<RadzenButton Icon="assignment"
+									  Size="ButtonSize.Small"
+									  ButtonStyle="ButtonStyle.Info"
+									  Click="@(() => AssignTemplate(template))"
+									  Tooltip="Assignment Template" />
+					</RadzenStack>
+				</Template>
+			</RadzenDataGridColumn>
+		</Columns>
+	</RadzenDataGrid>
+
+	@* Summary *@
+	<RadzenCard class="rz-mt-3">
+		<RadzenText Text="@($"Total: {_filteredTemplates.Count} template records")" Style="font-weight: 500;" />
+	</RadzenCard>
+}
+else
+{
+	<RadzenCard class="rz-text-align-center rz-p-4">
+		<RadzenText Text="No template records available." />
+	</RadzenCard>
+}
+
+@code {
+	[Inject] private ITemplatesService TemplatesService { get; set; }
+	[CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+	[CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+	[Parameter] public Enumerables.MenuItemSubTypes ItemSub { get; set; }
+	[Parameter] public EventCallback<Enumerables.MenuItemSubTypes> ItemSubChanged { get; set; }
+
+	private List<TemplatesModel>? _templates = null;
+	private List<TemplatesModel>? _filteredTemplates = null;
+	private RadzenDataGrid<TemplatesModel>? _dataGrid;
+	private string _searchTerm = string.Empty;
+	private bool _isLoading = true;
+
+	private readonly string ContractsUUID = "52483E04-30AD-489D-9951-AB788B312EA5";
+
+	protected override async Task OnInitializedAsync()
+	{
+		// Subscribe to the OnDataRefresh event if using sidebar
+		if (_rightSidebarService != null)
+		{
+			_rightSidebarService.OnDataRefresh += HandleDataRefresh;
+		}
+
+		await LoadData();
+		await base.OnInitializedAsync();
+	}
+
+	private async Task LoadData()
+	{
+		try
+		{
+			_isLoading = true;
+			StateHasChanged();
+
+			_templates = await TemplatesService.GetAllTemplates();
+			ApplyFilter();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading template records: {ex.Message}");
+			// Handle error as needed - could show a notification
+		}
+		finally
+		{
+			_isLoading = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task LoadTemplates()
+	{
+		try
+		{
+			_isLoading = true;
+			StateHasChanged();
+
+			_templates = await TemplatesService.GetAllTemplates();
+			ApplyFilter();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading template records: {ex.Message}");
+		}
+		finally
+		{
+			_isLoading = false;
+			StateHasChanged();
+		}
+	}
+
+	private void OnSearchInput(ChangeEventArgs e)
+	{
+		_searchTerm = e.Value?.ToString() ?? string.Empty;
+		ApplyFilter();
+	}
+
+	private void ApplyFilter()
+	{
+		if (_templates == null)
+		{
+			_filteredTemplates = null;
+			return;
+		}
+
+		var filtered = _templates.AsEnumerable();
+
+		// Apply search filter
+		if (!string.IsNullOrWhiteSpace(_searchTerm))
+		{
+			var searchLower = _searchTerm.ToLower();
+			filtered = filtered.Where(t =>
+				(t.Name?.ToLower().Contains(searchLower) ?? false) ||
+				(t.Code?.ToLower().Contains(searchLower) ?? false) ||
+				(t.Description?.ToLower().Contains(searchLower) ?? false)
+			);
+		}
+
+		_filteredTemplates = filtered.OrderBy(t => t.Name).ToList();
+		StateHasChanged();
+	}
+
+	private void ClearSearch()
+	{
+		_searchTerm = string.Empty;
+		ApplyFilter();
+	}
+
+
+
+	private string TruncateText(string? text, int maxLength)
+	{
+		if (string.IsNullOrEmpty(text))
+			return "-";
+
+		return text.Length <= maxLength ? text : $"{text[..maxLength]}...";
+	}
+
+	private async Task EditTemplate(TemplatesModel template)
+	{
+		if (_rightSidebarService != null)
+		{
+			_rightSidebarService.SharedContext = template;
+			_rightSidebarService.Open(Enumerables.ControlTypes.sb_Goals_Contracts_Templates);
+		}
+	}
+
+	private async Task EditContact(TemplatesModel template)
+	{
+		if (_menuNav != null)
+		{
+			//TODO: Build query to get the latest contract associated with the template
+			string data = $"ContractsUUID={ContractsUUID};TemplatesUUID={template.TemplatesUUID}";
+			_menuNav.SetSharedContext(data);
+			_menuNav.MenuItemSubType = MenuItemSubTypes.ContractGoalContract;
+		}
+		await ItemSubChanged.InvokeAsync(MenuItemSubTypes.ContractGoalContract);
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private async Task DeleteTemplate(TemplatesModel template)
+	{
+		try
+		{
+			var result = await TemplatesService.Delete(template.TemplatesUUID);
+			if (result?.isValid == true)
+			{
+				await LoadTemplates(); // Refresh the list
+				// Show success notification
+			}
+			else
+			{
+				// Show error notification
+				Console.WriteLine($"Delete failed: {result?.Message}");
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error deleting template: {ex.Message}");
+		}
+	}
+
+
+	private async Task AssignTemplate(TemplatesModel template)
+	{
+		if (_rightSidebarService != null)
+		{
+			// Library.API.Goals.Models.UserTemplatesModel _userTemplates = new Library.API.Goals.Models.UserTemplatesModel()
+			//     {
+			//         TemplatesUUID = template.TemplatesUUID,
+			//         ContractPeriodsUUID = ContractsUUID
+			//     };
+
+			// TODO: Build query to get the latest contract associated with the template
+			string data = $"ContractsUUID={ContractsUUID};TemplatesUUID={template.TemplatesUUID}";
+			_menuNav.SetSharedContext(data);
+
+			_rightSidebarService.Open(Enumerables.ControlTypes.sb_Goals_Contracts_AssignTemplates);
+		}
+	}
+
+
+	private async void HandleDataRefresh(ControlTypes controlType)
+	{
+		// Only respond to refresh events for template records
+		if (controlType == Enumerables.ControlTypes.sb_Goals_Contracts_Templates)
+		{
+			await InvokeAsync(async () =>
+			{
+				await LoadTemplates();
+			});
+		}
+	}
+
+	public async Task RefreshData()
+	{
+		await LoadData();
+	}
+
+	public void Dispose()
+	{
+		if (_rightSidebarService != null)
+		{
+			_rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+		}
+	}
+}

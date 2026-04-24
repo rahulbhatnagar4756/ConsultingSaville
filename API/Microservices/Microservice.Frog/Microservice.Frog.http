@@ -1,0 +1,6 @@
+@Microservice.Frog_HostAddress = http://localhost:5297
+
+GET {{Microservice.Frog_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,523 @@
+﻿@page "/Candidates"
+@page "/QL/{QuickLinkCode}"
+@page "/Assessments"
+
+@layout BlankLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@using Library.API.Assess.Models.Projects
+@using Library.API.Assess.Services.Projects
+@using Library.Tools.Models.Tokens
+@using OneCoreAssessUI.Components.Pages.Candidates.Components
+@using OneCoreAssessUI.Components.Pages.Candidates.sbAssessments
+@using OneCoreAssessUI.Components.Pages.Candidates.sbCandidate
+@using OneCoreAssessUI.Services
+@using OneCoreAssessUI.Enumerables
+@using Library.Tools.Tokens
+
+<PageTitle>@_pageTitle</PageTitle>
+
+<style>
+    :root {
+        --sc-primary-colour1: @PrimaryColor1;
+        --sc-primary-colour2: @PrimaryColor2;
+        --sc-secondary-color1: @SecondaryColor1;
+        --sc-secondary-color2: @SecondaryColor2;
+        --sc-secondary-color3: @SecondaryColor3;
+        --sc-secondary-color4: @SecondaryColor4;
+        --sc-card-background-colour: #dedfde;
+        --sc-card-background-colour-daker: #b1b3b2;
+        --rz-primary: @SecondaryColor4;
+        --header-color1: #00BF6370;
+        --header-color2: #7ED95770;
+        --header-color3: #FFDE5970;
+        --header-color4: #FF575770;
+        --header-color5: #7AB3E170;
+        --header-color6: #7AB3E180;
+    }
+</style>
+
+<CascadingValue Value="@_rightSidebarService">
+
+    <div class="candidate-page-container">
+        <!-- Main Content Wrapper -->
+        <div class="candidate-content-wrapper" style="margin-right: @GetContentMargin()">
+            @if (_isLoading)
+            {
+                <div class="candidate-loading-container">
+                    <div class="candidate-loading-background"></div>
+                    <div class="candidate-loading-content">
+                        <RadzenCard class="candidate-loading-card">
+                            <RadzenStack AlignItems="AlignItems.Center" Gap="1.5rem">
+                                <RadzenText Text="Processing Your Request"
+                                            TextStyle="TextStyle.H4"
+                                            class="candidate-loading-title rz-white " />
+
+                                <RadzenText Text="@_loadingMessage"
+                                            TextStyle="TextStyle.Body1"
+                                            class="candidate-loading-subtitle" />
+
+                                <RadzenProgressBarCircular ShowValue="false"
+                                                           Mode="ProgressBarMode.Indeterminate"
+                                                           Size="ProgressBarCircularSize.Large" />
+
+                                <RadzenText Text="Please wait while we validate your access..."
+                                            TextStyle="TextStyle.Body2"
+                                            Style="color: var(--sc-primary-colour2, #727572);" />
+                            </RadzenStack>
+                        </RadzenCard>
+                    </div>
+                </div>
+            }
+            else if (_hasError)
+            {
+                <div class="candidate-error-container">
+                    <div class="candidate-loading-background"></div>
+                    <div class="candidate-loading-content">
+                        <RadzenCard class="candidate-error-card">
+                            <RadzenStack AlignItems="AlignItems.Center" Gap="1.5rem">
+                                <RadzenIcon Icon="error"
+                                            Style="font-size: 4rem; color: var(--rz-danger);" />
+                            
+                                <RadzenText Text="Access Denied"
+                                            TextStyle="TextStyle.H4"
+                                            Style="color: var(--rz-danger);" />
+                            
+                                <RadzenText Text="@_errorMessage"
+                                            TextStyle="TextStyle.Body1"
+                                            Style="text-align: center;" />
+                            
+                                <RadzenText Text="Please contact your administrator or check your access link."
+                                            TextStyle="TextStyle.Body2"
+                                            Style="color: var(--sc-primary-colour2, #727572); text-align: center;" />
+                            </RadzenStack>
+                        </RadzenCard>
+                    </div>
+                </div>
+            }
+            else if (_showRegistration)
+            {
+                <CandidateRegisteration CompanyUUID="@_companyUUID" 
+                                       ProjectsUUID="@_projectsUUID" 
+                                       ProjectName="@_projectName" />
+            }
+            else if (_showAssessments)
+            {
+                <CascadingValue Value="@_rightSidebarService">
+                    <CandidateAssessments CompanyUUID="@_companyUUID"
+                                          ProjectsUUID="@_projectsUUID"
+                                          UsersUUID="@_usersUUID" />
+                </CascadingValue>
+            }
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="candidate-sidebar-right @GetSidebarWidthClass()" 
+             style="right: @_rightSidebarWidth;">
+            <div class="candidate-sidebar-header">
+                <RadzenText Text="@GetSidebarTitle()" TextStyle="TextStyle.H6" />
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                    <RadzenButton Icon="@(_isFullscreen ? "fullscreen_exit" : "fullscreen")" 
+                                  Click="ToggleSidebarFullscreen"
+                                  ButtonStyle="ButtonStyle.Light" 
+                                  Size="ButtonSize.Small" />
+                    <RadzenButton Icon="close" 
+                                  Click="SidebarRight_Close"
+                                  ButtonStyle="ButtonStyle.Light" 
+                                  Size="ButtonSize.Small" />
+                </RadzenStack>
+            </div>
+
+            <div class="candidate-sidebar-content">
+                @if (_rightSidebarService != null && _rightSidebarExpanded)
+                {
+                    @if (_rightSidebarService.Control == ControlTypes.sb_Candidate_TestInstructions)
+                    {
+                        <SBInstructions />
+                    }
+                    @if (_rightSidebarService.Control == ControlTypes.sb_Candidate_Profile)
+                    {
+                        <SBProfile UsersUUID=@_usersUUID />
+                    }
+                }
+                else
+                {
+                    <RadzenCard>
+                        <RadzenText Text="No content selected" />
+                    </RadzenCard>
+                }
+            </div>
+        </div>
+    </div>
+
+</CascadingValue>
+
+@code {
+    [Inject] private ICandidateRegistrationService _candidateRegistrationService { get; set; }
+    [Inject] private ICandidateLoginService _candidateAssessmentService { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+    [Inject] private IConfiguration _configuration { get; set; }
+
+    [Parameter] public string? QuickLinkCode { get; set; }
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? JWSToken { get; set; }
+
+    private bool _isLoading = true;
+    private bool _hasError = false;
+    private bool _showRegistration = false;
+    private bool _showAssessments = false;
+    private string _loadingMessage = "Validating access...";
+    private string _errorMessage = string.Empty;
+    private string _companyUUID = string.Empty;
+    private string _projectsUUID = string.Empty;
+    private string _projectName = string.Empty;
+    private string _usersUUID = string.Empty;
+    private string _token = string.Empty;
+    private string _pageTitle = "Candidate Access"; 
+
+    // Sidebar properties
+    private RightSidebarService _rightSidebarService = new();
+    private bool _rightSidebarExpanded = false;
+    private string _rightSidebarWidth = "-600px";
+    private bool _isFullscreen = false;
+
+    private string PrimaryColor1 = "#0F1F38";
+    private string PrimaryColor2 = "#727572";
+    private string SecondaryColor1 = "#FBDD7C";
+    private string SecondaryColor2 = "#CC6826";
+    private string SecondaryColor3 = "#7AB3E1";
+    private string SecondaryColor4 = "#616F85";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Set up sidebar event handlers
+        _rightSidebarService.OnToggleSidebar += Sidebar_Controls;
+        _rightSidebarService.OnOpenSidebar += HandleSidebarOpen;
+        
+        await ProcessAccess();
+    }
+
+    // Sidebar event handlers and methods
+    private void Sidebar_Controls(bool isSidebarOpen, ControlTypes control, string sidebarWidth)
+    {
+        _rightSidebarExpanded = isSidebarOpen;
+        _rightSidebarWidth = isSidebarOpen ? "0" : GetHiddenSidebarPosition();
+        StateHasChanged();
+    }
+
+    private void HandleSidebarOpen()
+    {
+        _rightSidebarExpanded = true;
+        _rightSidebarWidth = "0";
+        StateHasChanged();
+    }
+
+    private void SidebarRight_Close()
+    {
+        _rightSidebarExpanded = false;
+        _rightSidebarWidth = GetHiddenSidebarPosition();
+        _rightSidebarService.Close();
+        StateHasChanged();
+    }
+
+    private void ToggleSidebarFullscreen()
+    {
+        _isFullscreen = !_isFullscreen;
+        StateHasChanged();
+    }
+
+    private string GetHiddenSidebarPosition()
+    {
+        var width = GetSidebarWidthValue();
+        return $"-{width}";
+    }
+
+    private string GetSidebarWidthValue()
+    {
+        if (_isFullscreen)
+            return "100vw";
+
+        // Get the configured width from the service
+        var configuredWidth = _rightSidebarService.ControlWidth;
+        
+        if (string.IsNullOrEmpty(configuredWidth))
+            return "400px"; // Default width
+
+        return configuredWidth;
+    }
+
+    private string GetSidebarWidthClass()
+    {
+        if (_isFullscreen)
+            return "sidebar-width-fullscreen";
+
+        var width = GetSidebarWidthValue();
+        return width switch
+        {
+            "400px" => "sidebar-width-small",
+            "600px" => "sidebar-width-medium",
+            "800px" => "sidebar-width-large",
+            _ => "sidebar-width-medium"
+        };
+    }
+
+    private string GetContentMargin()
+    {
+        if (!_rightSidebarExpanded)
+            return "0";
+
+        // On mobile, don't push content
+        return "0"; // You can adjust this if you want to push content on desktop
+    }
+
+    private string GetSidebarTitle()
+    {
+        return _rightSidebarService?.Control switch
+        {
+            ControlTypes.sb_Candidate_TestInstructions => "Instructions",
+            ControlTypes.sb_Candidate_Profile => "Profile",
+            _ => "Information"
+        };
+    }
+
+    // Rest of your existing methods remain the same...
+    private async Task ProcessAccess()
+    {
+        _isLoading = true;
+        _hasError = false;
+        _showRegistration = false;
+        _showAssessments = false;
+
+        try
+        {
+            // First, check if there's an existing valid token in cookies
+            var existingToken = await GetTokenFromCookie();
+            if (!string.IsNullOrEmpty(existingToken))
+            {
+                _loadingMessage = "Checking existing session...";
+                var cookieLoginResult = await ValidateExistingToken(existingToken);
+                if (cookieLoginResult)
+                {
+                    return; // Successfully logged in with existing token
+                }
+                // If existing token is invalid, clear it and continue with normal flow
+                await ClearSecurityCookie();
+            }
+
+            // Continue with normal access validation flow
+            if (!string.IsNullOrEmpty(QuickLinkCode))
+            {
+                await ProcessQuickLink();
+            }
+            else if (!string.IsNullOrEmpty(JWSToken))
+            {
+                await ProcessJWSToken();
+            }
+            else
+            {
+                ShowError("No access method provided. Please use a valid access link.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError("An unexpected error occurred while processing your request. Please try again.");
+        }
+    }
+
+    private async Task<string?> GetTokenFromCookie()
+    {
+        try
+        {
+            // Get the Security_API cookie
+            var cookieValue = await JSRuntime.InvokeAsync<string>("getCookie", "Security_API");
+
+            if (string.IsNullOrEmpty(cookieValue))
+                return null;
+
+            // Extract the token from the "Access=token" format
+            return ExtractTokenFromCookieValue(cookieValue);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string? ExtractTokenFromCookieValue(string cookieValue)
+    {
+        if (string.IsNullOrEmpty(cookieValue))
+            return null;
+
+        // Cookie format: "Access=token&OtherKey=OtherValue"
+        var keyValuePairs = cookieValue.Split('&');
+        foreach (var pair in keyValuePairs)
+        {
+            var keyValue = pair.Split('=', 2); // Split into max 2 parts
+            if (keyValue.Length == 2 && keyValue[0] == "Access")
+            {
+                return keyValue[1];
+            }
+        }
+        return null;
+    }
+
+    private async Task<bool> ValidateExistingToken(string token)
+    {
+        try
+        {
+            _loadingMessage = "Validating existing session...";
+
+            TokenSettingsModel settings = new()
+                {
+                    SecretKey = _configuration.GetSection("jwt:Key")?.Value ?? "",
+                    Issuer = _configuration.GetSection("jwt:Issuer")?.Value ?? "",
+                    Audience = _configuration.GetSection("jwt:Audience")?.Value ?? ""
+                };
+
+            var autoLoginResult = token.DecodeToken(settings);
+
+            if (autoLoginResult.IsValid)
+            {
+                _companyUUID = autoLoginResult.Claims.First(x => x.Name == "CompanyUUID")?.Value ?? string.Empty;
+                _projectsUUID = autoLoginResult.Claims.First(x => x.Name == "ProjectsUUID")?.Value ?? string.Empty;
+                _usersUUID = autoLoginResult.Claims.First(x => x.Name == "UsersUUID")?.Value ?? string.Empty;
+                
+                _loadingMessage = "Session validated. Loading assessments...";
+                _pageTitle = "Candidate Assessments";
+                
+                // Add a small delay for better UX
+                await Task.Delay(500);
+                
+                _isLoading = false;
+                _showAssessments = true; 
+
+                return true;
+            }
+            
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task ProcessQuickLink()
+    {
+        _loadingMessage = "Validating quick link...";
+        
+        try
+        {
+            var validationResult = await _candidateRegistrationService.ValidateQuickLinkAsync(QuickLinkCode!);
+            
+            if (validationResult.isSuccessful)
+            {
+                _companyUUID = validationResult.CompanyUUID ?? string.Empty;
+                _projectsUUID = validationResult.ProjectsUUID ?? string.Empty;
+                _projectName = validationResult.ProjectName ?? "Assessment Project";
+                
+                _loadingMessage = "Access validated. Loading registration form...";
+                _pageTitle = "Candidate Registration";
+                
+                // Add a small delay for better UX
+                await Task.Delay(1000);
+                
+                _isLoading = false;
+                _showRegistration = true;
+            }
+            else
+            {
+                ShowError(validationResult.Message ?? "Invalid or expired quick link.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError("Failed to validate quick link. Please try again.");
+        }
+    }
+
+    private async Task ProcessJWSToken()
+    {
+        _loadingMessage = "Validating access token...";
+        
+        try
+        {
+            var autoLoginResult = await _candidateAssessmentService.ValidateCandidateAutoLoginToken(JWSToken!);
+            
+            if (autoLoginResult.IsValid)
+            {
+                _companyUUID = autoLoginResult.CompanyUUID ?? string.Empty;
+                _projectsUUID = autoLoginResult.ProjectsUUID ?? string.Empty;
+                _usersUUID = autoLoginResult.UsersUUID ?? string.Empty;
+                _token = autoLoginResult.Token ?? string.Empty;
+                
+                _loadingMessage = "Access validated. Setting up session...";
+                _pageTitle = "Candidate Assessments";
+                
+                // Add the token to the cookies as name Security_API and value Access=token
+                await SetSecurityCookie(_token);
+
+                // Wait a bit longer to ensure cookie is set
+                await Task.Delay(1000);
+
+                // Instead of navigating, directly show the assessments
+                _loadingMessage = "Loading assessments...";
+                _isLoading = false;
+                _showAssessments = true;
+                
+                // Remove the navigation since we're already on the correct page
+                StateHasChanged();
+                _navigationManager.NavigateTo("/Assessments");
+                
+                // Force a state change to update the UI
+            }
+            else
+            {
+                ShowError(autoLoginResult.Message ?? "Invalid or expired access token.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError("Failed to validate access token. Please try again.");
+        }
+    }
+
+    private async Task SetSecurityCookie(string token)
+    {
+        try
+        {
+            // Set the cookie with name "Security_API" and value "Access=token"
+            string cookieValue = $"Access={token}";
+            await JSRuntime.InvokeVoidAsync("setCookie", "Security_API", cookieValue, 30); // 30 days expiration
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the entire process
+            Console.WriteLine($"Failed to set cookie: {ex.Message}");
+        }
+    }
+
+    private async Task ClearSecurityCookie()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("deleteCookie", "Security_API");
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the entire process
+            Console.WriteLine($"Failed to clear cookie: {ex.Message}");
+        }
+    }
+
+    private void ShowError(string message)
+    {
+        _errorMessage = message;
+        _hasError = true;
+        _isLoading = false;
+        _showRegistration = false;
+        _showAssessments = false;
+    }
+}

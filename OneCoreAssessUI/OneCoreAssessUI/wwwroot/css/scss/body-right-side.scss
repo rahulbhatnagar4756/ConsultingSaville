@@ -1,0 +1,47 @@
+.templates {
+
+    .body-right-side {
+        width: 600px;
+        transition: transform 0.3s ease-in-out;
+
+
+        .text-big {
+            font-size: 1.1em;
+        }
+
+        .text-small {
+            font-size: 0.8em;
+        }
+    }
+
+    @media (max-width: 800px) {
+        .body-right-side {
+            width: 100%;
+            transform: translateX(100%);
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100%;
+            background-color: white;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.5);
+        }
+
+        .body-right-side.open {
+            transform: translateX(0);
+        }
+    }
+
+
+    .card-level {
+        background-color: var(--sc-secondary-color2);
+        text-align: center;
+        color: var(--rz-white);
+        min-width: 100px;
+    }
+
+    .card-level .inner-count {
+        color: var(--rz-white);
+        font-size: 30px;
+    }
+     
+}

@@ -1,0 +1,330 @@
+﻿@using Library.API.Base.Models
+@using Library.API.Base.Models.BusinessHierarchy.Jobs
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using OneCoreAssessUI.Services
+
+@inject DialogService DialogService 
+
+<RadzenStack Gap="1rem">
+    
+    @* Status Messages *@
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+        <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+            <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+            <span>@_logMessage.Message</span>
+        </div>
+    }
+
+    @* Loading Indicator *@
+    @if (_isLoading)
+    {
+        <RadzenCard class="rz-text-align-center rz-p-4">
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                <RadzenText Text="Loading education requirements..." />
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        @* Education Requirements Grid *@
+
+        <RadzenText Text="Education" Style="font-weight: 600; font-size: 16px; margin-bottom: 1rem;" />
+
+        @if (_educationList == null || !_educationList.Any())
+        {
+            <RadzenText Text="No education requirements found for this position." Style="font-style: italic; color: #666; text-align: center; padding: 2rem;" />
+        }
+        else
+        {
+            <RadzenDataGrid Data="@_educationList"
+                            TItem="EmployeeJobEducationBaseModel"
+                            AllowPaging="false"
+                            AllowSorting="true"
+                            AllowFiltering="false"
+                            EmptyText="No education requirements found."
+                            Style="min-height: 200px;">
+                <Columns>
+                    <RadzenDataGridColumn TItem="EmployeeJobEducationBaseModel"
+                                          Property="Information"
+                                          Title="Requirements"
+                                          Sortable="true">
+                        <Template Context="education">
+                            <RadzenText Text="@education.Information" Style="word-wrap: break-word;" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                                        
+                    <RadzenDataGridColumn TItem="EmployeeJobEducationBaseModel"
+                                          Title="Actions"
+                                          Width="15%"
+                                          Sortable="false"
+                                          TextAlign="TextAlign.Center">
+                        <Template Context="education">
+                            <RadzenButton Icon="delete"
+                                          Variant="Variant.Text"
+                                          Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Danger"
+                                          Click="@(() => DeleteEducation(education))"
+                                          Tooltip="Delete Education Requirement"
+                                          Disabled="_isSaving" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        }
+
+
+        @* Add New Education Section *@
+
+        <RadzenText Text="Add Education Requirement" Style="font-weight: 600; font-size: 16px; margin-bottom: 1rem;" />
+
+            <RadzenStack  Orientation="Orientation.Horizontal">
+                <RadzenAutoComplete @bind-Value="_newEducationText"
+                                    Data="@_educationSuggestions"
+                                    LoadData="@LoadEducationSuggestions"
+                                    Placeholder="Enter education requirement (e.g., Bachelor's Degree, Master's in Business...)"
+                                    Style="width: 100%;"
+                                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    FilterOperator="StringFilterOperator.Contains"
+                                    AllowClear="true"
+                                    Disabled="_isSaving" />
+           
+                <RadzenButton 
+                              Icon="add"
+                              Click="@AddEducation"
+                              Style="width: 40px;"
+                              IsBusy="_isSaving"
+                              title="Add Education"
+                              BusyText="Adding..." />
+            </RadzenStack>
+
+    }
+</RadzenStack>
+
+@code {
+    [Inject] private IPositionEducationService PositionEducationService { get; set; }
+
+    [Parameter] public string? PositionUUID { get; set; }
+    [Parameter] public EventCallback OnEducationChanged { get; set; }
+
+    private List<EmployeeJobEducationBaseModel> _educationList = new();
+    private string _newEducationText = string.Empty;
+    private int _newEducationOrder = 1;
+    private List<string> _educationSuggestions = new();
+    
+    private ResultsModel? _logMessage = null;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+
+    // Common education suggestions for auto-complete
+    private readonly List<string> _commonEducationRequirements = new()
+    {
+        "High School Diploma or equivalent",
+        "Bachelor's Degree",
+        "Bachelor's Degree in Business Administration",
+        "Bachelor's Degree in Computer Science",
+        "Bachelor's Degree in Engineering",
+        "Bachelor's Degree in Finance",
+        "Bachelor's Degree in Marketing",
+        "Bachelor's Degree in Human Resources",
+        "Master's Degree",
+        "Master's in Business Administration (MBA)",
+        "Master's in Computer Science",
+        "Master's in Engineering",
+        "Master's in Finance",
+        "Master's in Human Resources",
+        "Professional Certification",
+        "Industry-specific certification",
+        "Project Management Professional (PMP)",
+        "Certified Public Accountant (CPA)",
+        "Professional Engineer (PE)",
+        "Chartered Financial Analyst (CFA)",
+        "Six Sigma Certification",
+        "ITIL Certification",
+        "Scrum Master Certification",
+        "Technical Training",
+        "Vocational Training",
+        "Trade School Certificate",
+        "Associate Degree",
+        "Doctoral Degree (PhD)",
+        "Juris Doctor (JD)",
+        "Medical Degree (MD)",
+        "Nursing Degree (RN/BSN)"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _educationSuggestions = _commonEducationRequirements.ToList();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(PositionUUID))
+        {
+            await LoadEducationData();
+        }
+        else
+        {
+            _educationList = new();
+            _isLoading = false;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadEducationData()
+    {
+        try
+        {
+            _isLoading = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var data = await PositionEducationService.GetPositionEducationByJobUUID(PositionUUID!);
+            _educationList = data?.OrderBy(x => x.OrderVal).ThenBy(x => x.Information).ToList() ?? new();
+
+            // Update the order for the next new item
+            _newEducationOrder = _educationList.Any() ? (_educationList.Max(x => x.OrderVal) ?? 0) + 1 : 1;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading education data: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = "Error loading education requirements. Please try again." };
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void LoadEducationSuggestions(LoadDataArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(args.Filter))
+        {
+            _educationSuggestions = _commonEducationRequirements.ToList();
+        }
+        else
+        {
+            _educationSuggestions = _commonEducationRequirements
+                .Where(x => x.ToLower().Contains(args.Filter.ToLower()))
+                .ToList();
+        }
+    }
+
+    private async Task AddEducation()
+    {
+        if (string.IsNullOrWhiteSpace(_newEducationText) || string.IsNullOrEmpty(PositionUUID))
+            return;
+
+        try
+        {
+            _isSaving = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var newEducation = new EmployeeJobEducationBaseModel
+            {
+                EmployeeJobsUUID = PositionUUID,
+                Information = _newEducationText.Trim(),
+                OrderVal = _newEducationOrder
+            };
+
+            var result = await PositionEducationService.SavePositionEducation(newEducation);
+
+            if (result?.isValid == true)
+            {
+                _logMessage = new ResultsModel { isValid = true, Message = "Education requirement added successfully." };
+                
+                // Clear the form
+                _newEducationText = string.Empty;
+                _newEducationOrder = (_educationList.Max(x => x.OrderVal) ?? 0) + 1;
+                
+                // Reload the data
+                await LoadEducationData();
+                
+                // Notify parent component
+                await OnEducationChanged.InvokeAsync();
+            }
+            else
+            {
+                _logMessage = result ?? new ResultsModel { isValid = false, Message = "Failed to add education requirement." };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding education: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error adding education requirement: {ex.Message}" };
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteEducation(EmployeeJobEducationBaseModel education)
+    {
+        if (education?.UUID == null)
+            return;
+
+        string message = $"Are you sure you want to delete the education requirement:\n\"{education.Information}\"?";
+        string title = "Delete Education Requirement";
+
+        var result = await DialogService.Confirm(message, title, new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "Cancel"
+        });
+
+        if (result.HasValue && result.Value)
+        {
+            try
+            {
+                _isSaving = true;
+                _logMessage = null;
+                StateHasChanged();
+
+                var deleteResult = await PositionEducationService.DeletePositionEducation(education.UUID);
+
+                if (deleteResult?.isValid == true)
+                {
+                    _logMessage = new ResultsModel { isValid = true, Message = "Education requirement deleted successfully." };
+                    
+                    // Reload the data
+                    await LoadEducationData();
+                    
+                    // Notify parent component
+                    await OnEducationChanged.InvokeAsync();
+                }
+                else
+                {
+                    _logMessage = deleteResult ?? new ResultsModel { isValid = false, Message = "Failed to delete education requirement." };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting education: {ex.Message}");
+                _logMessage = new ResultsModel { isValid = false, Message = $"Error deleting education requirement: {ex.Message}" };
+            }
+            finally
+            {
+                _isSaving = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Public method to refresh education data from parent component
+    /// </summary>
+    public async Task RefreshEducationData()
+    {
+        if (!string.IsNullOrEmpty(PositionUUID))
+        {
+            await LoadEducationData();
+        }
+    }
+}

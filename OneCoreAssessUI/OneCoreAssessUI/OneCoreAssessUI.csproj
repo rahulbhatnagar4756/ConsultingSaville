@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="compilerconfig.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="compilerconfig.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\API\Microservices\Library\Library.Frog\Library.Frog.csproj" />
+    <ProjectReference Include="..\..\Library.Database\Library.Database.csproj" />
+    <ProjectReference Include="..\..\Library.Security\Library.Security.csproj" />
+    <ProjectReference Include="..\..\Library.Tools\Library.Tools.csproj" />
+    <ProjectReference Include="..\..\UI\Library.API\Library.API.csproj" />
+    <ProjectReference Include="..\..\UI\Library\Library.API.Admin\Library.API.Admin.csproj" />
+    <ProjectReference Include="..\..\UI\Library\Library.API.Assess\Library.API.Assess.csproj" />
+    <ProjectReference Include="..\..\UI\Library\Library.API.Base\Library.API.Base.csproj" />
+    <ProjectReference Include="..\..\UI\Library\Library.API.Goals\Library.API.Goals.csproj" />
+    <ProjectReference Include="..\..\UI\Library\Library.API.TalentManagement\Library.API.TalentManagement.csproj" />
+    <ProjectReference Include="..\OneCoreAssessUI.Client\OneCoreAssessUI.Client.csproj" />
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="EPPlus" Version="8.2.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.5" />
+    <PackageReference Include="Radzen.Blazor" Version="7.0.5" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Components\Pages\Administration\Users\sbUsers\" />
+    <Folder Include="wwwroot\images\Icon\" />
+    <Folder Include="wwwroot\images\Logos\" />
+  </ItemGroup>
+
+</Project>

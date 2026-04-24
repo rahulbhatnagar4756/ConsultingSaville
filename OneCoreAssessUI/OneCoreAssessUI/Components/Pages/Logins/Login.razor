@@ -1,0 +1,261 @@
+﻿@page "/" 
+@layout BlankLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@using Library.API.Base.Models.Users
+@using Library.API.Base.Services.Users
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Login - OneCore Assessment</PageTitle>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    
+</style>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-title">
+            Welcome Back
+        </div>
+        <div class="login-subtitle">
+            Please sign in to your account
+        </div>
+
+        <EditForm Model="@_loginModel" OnValidSubmit="@HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label class="form-label" for="username">Username</label>
+                <InputText id="username" 
+                          @bind-Value="_loginModel.Username" 
+                          class="@GetInputCssClass()"
+                          placeholder="Enter your username"
+                          disabled="@_isLoading" />
+                <ValidationMessage For="@(() => _loginModel.Username)" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <InputText id="password" 
+                          type="password"
+                          @bind-Value="_loginModel.Password" 
+                          class="@GetInputCssClass()"
+                          placeholder="Enter your password"
+                          disabled="@_isLoading" />
+                <ValidationMessage For="@(() => _loginModel.Password)" />
+            </div>
+
+            <div class="form-group company-input">
+                <label class="form-label" for="company">
+                    Company UUID <span class="optional-label">(Optional)</span>
+                </label>
+                <InputText id="company" 
+                          @bind-Value="_loginModel.CompanyUUID" 
+                          class="form-input"
+                          placeholder="Enter company UUID (optional)"
+                          disabled="@_isLoading" />
+            </div>
+
+            <button type="submit" class="login-button" disabled="@_isLoading">
+                @if (_isLoading)
+                {
+                    <span class="loading-spinner"></span>
+                    <span>Signing In...</span>
+                }
+                else
+                {
+                    <span>Sign In</span>
+                }
+            </button>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="error-message">
+                    @_errorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_successMessage))
+            {
+                <div class="success-message">
+                    @_successMessage
+                </div>
+            }
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Inject] private IUserLoginService _userLoginService { get; set; }
+    [Inject] private NavigationManager _navigationManager { get; set; }
+    [Inject] private IJSRuntime JSRuntime { get; set; }
+
+    [Parameter] public string? MenuSectionsId { get; set; }
+    [Parameter] public string? MenuItemTypesid { get; set; }
+
+    private UserLoginRequestModel _loginModel = new();
+    private bool _isLoading = false;
+    private bool _hasError = false;
+    private string _errorMessage = string.Empty;
+    private string _successMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user is already logged in via cookie
+        await CheckExistingLogin();
+    }
+
+    private string GetInputCssClass()
+    {
+        return _hasError ? "form-input error" : "form-input";
+    }
+
+    private async Task CheckExistingLogin()
+    {
+        try
+        {
+            var existingToken = await GetTokenFromCookie();
+            if (!string.IsNullOrEmpty(existingToken))
+            {
+                // Navigate to admin page if already logged in
+                _navigationManager.NavigateTo("/Admin", true);
+            }
+        }
+        catch
+        {
+            // Ignore errors when checking existing login
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        _hasError = false;
+        _errorMessage = string.Empty;
+        _successMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var result = await _userLoginService.LoginReturnTokenAsync(
+                _loginModel.CompanyUUID,
+                _loginModel.Username,
+                _loginModel.Password);
+
+            if (result.IsSuccessful && !string.IsNullOrEmpty(result.Token))
+            {
+                _successMessage = "Login successful! Redirecting...";
+                StateHasChanged();
+
+                // Save token to cookie
+                await SetSecurityCookie(result.Token);
+
+                // Wait a moment for the cookie to be set
+                await Task.Delay(1000);
+
+                // Navigate to admin page
+                _navigationManager.NavigateTo("/Admin", true);
+            }
+            else
+            {
+                _hasError = true;
+                _errorMessage = result.Message ?? "Login failed. Please check your credentials.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<string?> GetTokenFromCookie()
+    {
+        try
+        {
+            var cookieValue = await JSRuntime.InvokeAsync<string>("getCookie", "Security_API");
+            
+            if (string.IsNullOrEmpty(cookieValue))
+                return null;
+
+            return ExtractTokenFromCookieValue(cookieValue);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string? ExtractTokenFromCookieValue(string cookieValue)
+    {
+        if (string.IsNullOrEmpty(cookieValue))
+            return null;
+
+        var keyValuePairs = cookieValue.Split('&');
+        foreach (var pair in keyValuePairs)
+        {
+            var keyValue = pair.Split('=', 2);
+            if (keyValue.Length == 2 && keyValue[0] == "Access")
+            {
+                return keyValue[1];
+            }
+        }
+        return null;
+    }
+
+    private async Task SetSecurityCookie(string token)
+    {
+        try
+        {
+            string cookieValue = $"Access={token}";
+            await JSRuntime.InvokeVoidAsync("setCookie", "Security_API", cookieValue, 30); // 30 days expiration
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to set cookie: {ex.Message}");
+        }
+    }
+}
+
+<script>
+    window.setCookie = function (name, value, days) {
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Strict";
+    };
+
+    window.getCookie = function (name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    };
+
+    window.deleteCookie = function (name) {
+        document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict";
+    };
+</script>

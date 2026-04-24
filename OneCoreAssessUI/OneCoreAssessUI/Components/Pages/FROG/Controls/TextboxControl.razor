@@ -1,0 +1,77 @@
+﻿@using Library.Frog.Services
+
+
+@if (Element != null)
+{
+    <RadzenStack Gap="5px" class=@string.Format("form {0}", Element.CSSClass)>
+        <RadzenLabel  class="form-label" >
+            @((MarkupString)_Label)
+        </RadzenLabel>
+        <RadzenTextBox @bind-Value=_textboxValue 
+        Placeholder=@Element.Placeholder
+        Style=@Element.Style class=@string.Format("form-control {0}" , _active)
+        ReadOnly=@(Element.FrogSecurityPermissionsId == _readonly)
+        change="Save" />
+    </RadzenStack>
+}
+
+
+
+
+
+@code {
+    [Inject] IFrogService FrogService { get; set; }
+
+    [Parameter] public EventCallback<string?> OnValueChanged { get; set; }
+
+    [Parameter] public Library.Frog.Models.FrogElementModel Element { get; set; }
+    [Parameter] public string CompanyUUID { get; set; }
+    [Parameter] public string UsersUUIDLoggedIn { get; set; }
+
+    private List<Library.Frog.Models.FrogLookupModel> _Lookups = new();
+    private string _textboxValue;
+    private string _active = "";
+    private int _readonly = 2;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PopulateElement(Element);
+    }
+
+    private string _Label
+    {
+        get
+        {
+            string Required = "";
+            if (Element.IsRequired.HasValue && Element.IsRequired.Value) Required = @"<span Style=""color: red;"">*</span> ";
+
+            return Required + Element.Label;
+        }
+    }
+
+    private async Task PopulateElement(Library.Frog.Models.FrogElementModel element)
+    {
+        if (element == null || string.IsNullOrWhiteSpace(element.ResultText)) return;
+        _textboxValue = element.ResultText;
+    }
+
+    private async Task Save(object value)
+    {
+        Library.Frog.Models.FrogElementSaveLogModel element = new()
+            {
+                CompanyUUID = CompanyUUID,
+                UsersUUIDLoggedIn = UsersUUIDLoggedIn,
+                FrogElementsUUID = Element.FrogElementsUUID,
+                FrogsUUID = Element.FormsUUID,
+                ItemName = value.ToString()
+            };
+            
+
+        var result = await FrogService.Save(element);
+        if (result == null) return;
+        if (result.isSuccess != null && result.isSuccess.Value) _active = "active";
+        await OnValueChanged.InvokeAsync(Element.FrogElementsUUID);
+
+
+    }
+}

@@ -1,0 +1,115 @@
+﻿@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy
+@using OneCoreAssessUI.Components.Pages.Tools
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@implements IDisposable
+
+<RadzenStack class="container">
+    <RadzenStack>
+        <RadzenText Text="Departments" Style="font-weight: 700; font-size: 25px;" />
+    </RadzenStack>
+    @if (_departments != null)
+    {
+        <MultiListExtra Data=@_departments
+                        TItem="EmployeeDepartmentBaseModel"
+                        Name="Departments"
+                        StatsName="Positions"
+                        OnAddNew="OnAddNew_Click"
+                        OnItemSelect="RowSelect_Click"
+                        ShowCategories=true>
+            <Columns>
+                <RadzenDataGridColumn TItem="EmployeeDepartmentBaseModel" Property="EmployeeBusinessUnits" Title="Business Units" />
+            </Columns>
+        </MultiListExtra>
+
+    }
+</RadzenStack>
+
+@code {
+    [Inject] public IDepartmentService employeeDepartment { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<EmployeeDepartmentBaseModel>? _departments = null;
+    private EmployeeDepartmentBaseModel? _departmentSelected = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the OnDataRefresh event
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+        await LoadBusinessUnits();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadBusinessUnits()
+    {
+        try
+        {
+            // Load business units from the service
+            _departments = await employeeDepartment.GetDepartments();
+            // Trigger state change to update UI
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading business units: {ex.Message}");
+            // Handle error as needed
+        }
+    }
+
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Only respond to refresh events for our specific control type
+        if (controlType == Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Department)
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadBusinessUnits();
+            });
+        }
+    }
+
+    private async Task RowSelect_Click(EmployeeDepartmentBaseModel? employeeBase)
+    {
+        _departmentSelected = employeeBase;
+        _rightSidebarService.SharedContext = employeeBase;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Department);
+    }
+
+    private async Task OnAddNew_Click()
+    {
+        _departmentSelected = null;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Department, true);
+    }
+
+    /// <summary>
+    /// Public method that can be called externally to refresh data
+    /// </summary>
+    public async Task RefreshData()
+    {
+        await LoadBusinessUnits();
+    }
+
+    /// <summary>
+    /// Manually trigger a refresh event (useful for testing or external triggers)
+    /// </summary>
+    public void TriggerRefresh()
+    {
+        _rightSidebarService?.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Department);
+    }
+
+    /// <summary>
+    /// Clean up event subscription to prevent memory leaks
+    /// </summary>
+    public void Dispose()
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+        }
+    }
+}

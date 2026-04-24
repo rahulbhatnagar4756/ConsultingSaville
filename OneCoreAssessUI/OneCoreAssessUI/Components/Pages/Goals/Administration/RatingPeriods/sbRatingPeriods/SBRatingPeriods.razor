@@ -1,0 +1,967 @@
+﻿@using Library.API.Goals.Models
+@using Library.API.Goals.Models.RatingPeriod
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@using Radzen
+@implements IDisposable
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IJSRuntime JSRuntime
+
+<!-- Mobile Modal/Drawer Overlay -->
+<div class="mobile-overlay @(_isModalOpen ? "show" : "")" @onclick="@CloseModal"></div>
+
+<!-- Sidebar/Modal Container -->
+<div class="sidebar-container @(_isModalOpen ? "modal-open" : "")">
+    <!-- Mobile Header with Close Button -->
+    <div class="mobile-header d-lg-none">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" class="rz-px-3 rz-py-2">
+            <RadzenText Text="Rating Period Details" Style="font-weight: 700; font-size: 18px;" />
+        </RadzenStack>
+        <div class="header-underline mb-2"></div>
+    </div>
+
+    <!-- Desktop Header -->
+    <RadzenStack class="header-custom">
+        <RadzenStack class="header-outer">
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Rating Period" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenStack>
+
+    <div class="header-underline mb-2 d-none d-lg-block"></div>
+
+    <!-- Content -->
+    <div class="sidebar-content">
+        @if (_isLoading)
+        {
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem" class="rz-p-4">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                <RadzenText Text="Loading..." />
+            </RadzenStack>
+        }
+        else if (_ratingPeriod != null)
+        {
+            <RadzenTabs @bind-SelectedIndex="_selectedTabIndex" TabPosition="TabPosition.Top">
+                <Tabs>
+                    <!-- Basic Tab -->
+                    <RadzenTabsItem Text="Basic">
+                        <div class="basic-tab-content">
+                            <RadzenStack Gap="10px" class="rz-p-3 tab-content">
+                                <RadzenStack class="rz-mt-2">
+                                    <RadzenStack Gap="1rem">
+                                        <!-- Name Field -->
+                                        <RadzenStack>
+                                            <RadzenText Text="Name *" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                            <RadzenTextBox @bind-Value="_editRatingPeriod.Name"
+                                                           Placeholder="Enter rating period name..."
+                                                           Style="width: 100%; border-radius: 0.5rem;" />
+                                        </RadzenStack>
+
+                                        <!-- Display Name Field -->
+                                        <RadzenStack>
+                                            <RadzenText Text="Display Name *" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                            <RadzenTextBox @bind-Value="_editRatingPeriod.DisplayName"
+                                                           Placeholder="Enter display name..."
+                                                           Style="width: 100%; border-radius: 0.5rem;" />
+                                        </RadzenStack>
+
+                                        <!-- Status Message -->
+                                        @if (!string.IsNullOrEmpty(_basicStatusMessage))
+                                        {
+                                            <RadzenAlert AlertStyle="@(_isBasicSuccessMessage? AlertStyle.Success: AlertStyle.Danger)"
+                                                         Variant="Variant.Flat"
+                                                         Shade="Shade.Lighter"
+                                                         AllowClose="false">
+                                                @_basicStatusMessage
+                                            </RadzenAlert>
+                                        }
+
+                                        <!-- Save Button -->
+                                        <RadzenColumn Size="12" class="mt-5">
+                                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                                                <RadzenButton style="flex: 1;"
+                                                              Icon="save"
+                                                              BusyText="Saving..."
+                                                              Click="@SaveBasicDetails"
+                                                              Text="Save" />
+
+                                                @if (!string.IsNullOrEmpty(_editRatingPeriod?.UUID))
+                                                {
+                                                    <RadzenButton Icon="delete"
+                                                                  Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                                                  Click="OnDeleteBasic" />
+                                                }
+                                            </RadzenStack>
+                                        </RadzenColumn>
+
+                                    </RadzenStack>
+                                </RadzenStack>
+                            </RadzenStack>
+                        </div>
+                    </RadzenTabsItem>
+
+                    @if (_editRatingPeriod.UUID != null)
+                    {
+                        <!-- Dates Tab -->
+                        <RadzenTabsItem Text="Dates">
+                        <div class="dates-tab-scroll">
+                            <RadzenStack Gap="1rem" class="rz-p-3 tab-content">
+                               
+
+                                <!-- Existing Dates Data -->
+                                @if (_ratingPeriodDates != null && _ratingPeriodDates.Any())
+                                {
+                                    <!-- Desktop View -->
+                                    <RadzenDataGrid Data="@_ratingPeriodDates"
+                                                    TItem="RatingPeriodDateDto"
+                                                    AllowPaging="false"
+                                                    AllowSorting="true"
+                                                    AllowFiltering="true"
+                                                    AllowColumnResize="true"
+                                                    FilterMode="FilterMode.Advanced"
+                                                    ResizableColumns="true"
+                                                    class="d-none d-lg-block">
+                                        <Columns>
+                                            <RadzenDataGridColumn TItem="RatingPeriodDateDto" Property="Name" Title="Name"
+                                                                  Filterable="true" Sortable="true" Resizable="true" />
+                                            <RadzenDataGridColumn TItem="RatingPeriodDateDto" Title="Start Date"
+                                                                  Filterable="true" Sortable="true" Resizable="true">
+                                                <Template Context="data">
+                                                    @(data.DateStart?.ToString("dd/MM/yyyy") ?? "Not set")
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn TItem="RatingPeriodDateDto" Title="End Date"
+                                                                  Filterable="true" Sortable="true" Resizable="true">
+                                                <Template Context="data">
+                                                    @(data.DateEnd?.ToString("dd/MM/yyyy") ?? "Not set")
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn TItem="RatingPeriodDateDto" Title="Open Date"
+                                                                  Filterable="true" Sortable="true" Resizable="true">
+                                                <Template Context="data">
+                                                    @(data.DateOpen?.ToString("dd/MM/yyyy") ?? "Not set")
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn TItem="RatingPeriodDateDto" Title="Close Date"
+                                                                  Filterable="true" Sortable="true" Resizable="true">
+                                                <Template Context="data">
+                                                    @(data.DateClose?.ToString("dd/MM/yyyy") ?? "Not set")
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn TItem="RatingPeriodDateDto"
+                                                                  Width="200px"
+                                                                  Title="Actions"
+                                                                  Resizable="false"
+                                                                  Sortable="false"
+                                                                  Filterable="false">
+                                                <Template Context="data">
+                                                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                        <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Info"
+                                                                      Click="@(() => StartEditDatePeriod(data))"
+                                                                      @onclick:stopPropagation="true" />
+                                                        <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger"
+                                                                      Click="@(() => OnDeleteDateRow(data.UUID ?? "", data.Name))"
+                                                                      @onclick:stopPropagation="true" />
+
+                                                        <RadzenButton Text="@(data.isActive ? "Deactivate" : "Activate")"
+                                                                      ButtonStyle="@(data.isActive ? ButtonStyle.Secondary : ButtonStyle.Success)"
+                                                                      Size="ButtonSize.Small"
+                                                                      Click="@(() => ToggleActiveStatus(data))"
+                                                                      Style="border-radius:0.5rem; min-width:90px;" />
+                                                    </RadzenStack>
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                        </Columns>
+                                    </RadzenDataGrid>
+
+                                    <!-- Mobile View -->
+                                    <div class="d-lg-none">
+                                        <table class="table table-striped" style="background: white; border-radius: 8px; overflow: hidden;">
+                                            <thead style="background-color: #f8f9fa;">
+                                                <tr>
+                                                    <th style="padding: 12px; font-weight: 600; border-bottom: 2px solid #dee2e6;">Name</th>
+                                                    <th style="padding: 12px; font-weight: 600; border-bottom: 2px solid #dee2e6;">Period</th>
+                                                    <th style="padding: 12px; font-weight: 600; text-align: center; width: 120px; border-bottom: 2px solid #dee2e6;">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var data in _ratingPeriodDates)
+                                                {
+                                                    <tr>
+                                                        <td style="padding: 12px; vertical-align: middle;">
+                                                            @(string.IsNullOrEmpty(data.Name) ? "Unnamed" : data.Name)
+                                                        </td>
+                                                        <td style="padding: 12px; vertical-align: middle; font-size: 12px;">
+                                                            @(data.DateStart?.ToString("dd/MM/yyyy") ?? "N/A") - @(data.DateEnd?.ToString("dd/MM/yyyy") ?? "N/A")
+                                                        </td>
+                                                        <td style="padding: 12px; text-align: center; vertical-align: middle;">
+                                                            <div style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
+                                                                <RadzenButton Icon="edit" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Info"
+                                                                              Click="@(() => StartEditDatePeriod(data))"
+                                                                              @onclick:stopPropagation="true" />
+                                                                <RadzenButton Icon="delete" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Danger"
+                                                                              Click="@(() => OnDeleteDateRow(data.UUID ?? "" ,data.Name))"
+                                                                              @onclick:stopPropagation="true" />
+                                                                <RadzenButton Text="@(data.isActive ? "Deactivate" : "Activate")"
+                                                                              ButtonStyle="@(data.isActive ? ButtonStyle.Secondary : ButtonStyle.Success)"
+                                                                              Size="ButtonSize.ExtraSmall"
+                                                                              Click="@(() => ToggleActiveStatus(data))"
+                                                                              Style="border-radius:0.25rem; min-width:70px; font-size:10px;" />
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <RadzenAlert AlertStyle="AlertStyle.Info"
+                                                 Variant="Variant.Flat"
+                                                 Shade="Shade.Lighter"
+                                                 class="rz-mt-4">
+                                        No rating period dates found for this period.
+                                    </RadzenAlert>
+                                }
+
+                                <!-- Edit Date Form (shown when editing) -->
+                                @if (_isEditingDate && _editingDatePeriod != null)
+                                {
+                                    <RadzenCard class="rz-mt-4" Style="border: 2px solid #3b82f6; background-color: #eff6ff;">
+                                        <RadzenStack Gap="1rem">
+                                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                                                <RadzenText Text="Edit Rating Period Date" Style="font-weight: 600; font-size: 16px; color: #1e40af;" />
+                                                <RadzenButton Text="Cancel"
+                                                              ButtonStyle="ButtonStyle.Light"
+                                                              Size="ButtonSize.Small"
+                                                              Click="@CancelEditDatePeriod"
+                                                              Style="border-radius:0.5rem;" />
+                                            </RadzenStack>
+
+                                            <!-- Name Field -->
+                                            <RadzenStack>
+                                                <RadzenText Text="Name *" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                <RadzenTextBox @bind-Value="_editingDatePeriod.Name"
+                                                               Placeholder="Enter date period name..."
+                                                               Style="width: 100%; border-radius: 0.5rem;" />
+                                            </RadzenStack>
+
+                                            <!-- Date Fields Row -->
+                                            <RadzenRow Gap="1rem">
+                                                <RadzenColumn Size="12" SizeSM="6">
+                                                    <RadzenStack>
+                                                        <RadzenText Text="Start Date *" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                        <RadzenDatePicker @bind-Value="_editingDatePeriod.DateStart"
+                                                                          Style="width: 100%; border-radius: 0.5rem;"
+                                                                          DateFormat="dd/MM/yyyy" />
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                                <RadzenColumn Size="12" SizeSM="6">
+                                                    <RadzenStack>
+                                                        <RadzenText Text="End Date *" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                        <RadzenDatePicker @bind-Value="_editingDatePeriod.DateEnd"
+                                                                          Style="width: 100%; border-radius: 0.5rem;"
+                                                                          DateFormat="dd/MM/yyyy" />
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                            </RadzenRow>
+
+                                            <RadzenRow Gap="1rem">
+                                                <RadzenColumn Size="12" SizeSM="6">
+                                                    <RadzenStack>
+                                                        <RadzenText Text="Open Date" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                        <RadzenDatePicker @bind-Value="_editingDatePeriod.DateOpen"
+                                                                          Style="width: 100%; border-radius: 0.5rem;"
+                                                                          DateFormat="dd/MM/yyyy" />
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                                <RadzenColumn Size="12" SizeSM="6">
+                                                    <RadzenStack>
+                                                        <RadzenText Text="Close Date" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                        <RadzenDatePicker @bind-Value="_editingDatePeriod.DateClose"
+                                                                          Style="width: 100%; border-radius: 0.5rem;"
+                                                                          DateFormat="dd/MM/yyyy" />
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                            </RadzenRow>
+
+                                            <!-- Edit Buttons -->
+                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                <RadzenButton Text="Update Date Period"
+                                                              Click="@UpdateDatePeriod"
+                                                              ButtonStyle="ButtonStyle.Success"
+                                                              IsBusy="_isSavingDate"
+                                                              BusyText="Updating..."
+                                                              Disabled="@(string.IsNullOrWhiteSpace(_editingDatePeriod.Name) || !_editingDatePeriod.DateStart.HasValue || !_editingDatePeriod.DateEnd.HasValue)"
+                                                              Style="border-radius:0.75rem; min-width:120px;" />
+                                            </RadzenStack>
+
+
+                                                <RadzenColumn Size="12" class="mt-5">
+                                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                                                        <RadzenButton style="flex: 1;"
+                                                                      Icon="save"
+                                                                      BusyText="Saving..."
+                                                                      Click="@UpdateDatePeriod"
+                                                                      Text="Save" />
+
+                                                        @if (!string.IsNullOrEmpty(_editingDatePeriod?.UUID))
+                                                        {
+                                                            <RadzenButton Icon="delete"
+                                                                          Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                                                          Click="OnDelete" />
+                                                        }
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+
+
+                                        </RadzenStack>
+                                    </RadzenCard>
+                                }
+
+                                <!-- Add New Date Form (shown when not editing) -->
+                                @if (!_isEditingDate)
+                                {
+                                    <RadzenCard class="rz-mt-4">
+                                        <RadzenStack Gap="1rem">
+                                            <RadzenText Text="Add New Rating Period Date" Style="font-weight: 500; font-size: 16px;" />
+
+                                            <!-- Name Field -->
+                                            <RadzenStack>
+                                                <RadzenText Text="Name *" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                <RadzenTextBox @bind-Value="_newRatingPeriodDate.Name"
+                                                               Placeholder="Enter date period name..."
+                                                               Style="width: 100%; border-radius: 0.5rem;" />
+                                            </RadzenStack>
+
+                                            <!-- Date Fields Row -->
+                                            <RadzenRow Gap="1rem">
+                                                <RadzenColumn Size="12" SizeSM="6">
+                                                    <RadzenStack>
+                                                        <RadzenText Text="Start Date *" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                        <RadzenDatePicker @bind-Value="_newRatingPeriodDate.DateStart"
+                                                                          Style="width: 100%; border-radius: 0.5rem;"
+                                                                          DateFormat="dd/MM/yyyy" />
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                                <RadzenColumn Size="12" SizeSM="6">
+                                                    <RadzenStack>
+                                                        <RadzenText Text="End Date *" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                        <RadzenDatePicker @bind-Value="_newRatingPeriodDate.DateEnd"
+                                                                          Style="width: 100%; border-radius: 0.5rem;"
+                                                                          DateFormat="dd/MM/yyyy" />
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                            </RadzenRow>
+
+                                            <RadzenRow Gap="1rem">
+                                                <RadzenColumn Size="12" SizeSM="6">
+                                                    <RadzenStack>
+                                                        <RadzenText Text="Open Date" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                        <RadzenDatePicker @bind-Value="_newRatingPeriodDate.DateOpen"
+                                                                          Style="width: 100%; border-radius: 0.5rem;"
+                                                                          DateFormat="dd/MM/yyyy" />
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                                <RadzenColumn Size="12" SizeSM="6">
+                                                    <RadzenStack>
+                                                        <RadzenText Text="Close Date" Style="font-weight: 600; font-size: 14px; color:#374151;" />
+                                                        <RadzenDatePicker @bind-Value="_newRatingPeriodDate.DateClose"
+                                                                          Style="width: 100%; border-radius: 0.5rem;"
+                                                                          DateFormat="dd/MM/yyyy" />
+                                                    </RadzenStack>
+                                                </RadzenColumn>
+                                            </RadzenRow>
+                                            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                                                <!-- Add Date Button -->
+                                                <RadzenButton Text="Add Date Period"
+                                                    Icon="add"
+                                                              Click="@AddDatePeriod"
+                                                              ButtonStyle="ButtonStyle.Primary"
+                                                              IsBusy="_isSavingDate"
+                                                              BusyText="Adding..."
+                                                              Disabled="@(string.IsNullOrWhiteSpace(_newRatingPeriodDate.Name) || !_newRatingPeriodDate.DateStart.HasValue || !_newRatingPeriodDate.DateEnd.HasValue)"
+                                                              Style="border-radius:0.75rem; min-width:120px;" />
+                                            </div>     
+                                            
+
+
+
+                                        </RadzenStack>
+                                    </RadzenCard>
+                                }
+
+                                <!-- Status Message -->
+                                @if (!string.IsNullOrEmpty(_datesStatusMessage))
+                                {
+                                    <RadzenAlert AlertStyle="@(_isDatesSuccessMessage? AlertStyle.Success: AlertStyle.Danger)"
+                                                 Variant="Variant.Flat"
+                                                 Shade="Shade.Lighter"
+                                                 AllowClose="false">
+                                        @_datesStatusMessage
+                                    </RadzenAlert>
+                                }
+                            </RadzenStack>
+                        </div>
+                    </RadzenTabsItem>
+                    }
+                </Tabs>
+            </RadzenTabs>
+        }
+    </div>
+</div>
+
+<style>
+    @@media only screen and (max-width:767px) {
+        .sb-sidebar-right {
+            max-width: 80vw;
+        }
+
+        body:has(.sb-sidebar-right[style*="right: 0"]):after {
+            content: "";
+            position: fixed;
+            top: 50px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0000008f;
+            z-index: 19;
+        }
+    }
+
+    .dates-tab-scroll, .basic-tab-content {
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+        padding-right: 8px;
+    }
+
+    .dates-tab-scroll::-webkit-scrollbar, .basic-tab-content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .dates-tab-scroll::-webkit-scrollbar-thumb, .basic-tab-content::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+    .dates-tab-scroll::-webkit-scrollbar-thumb:hover, .basic-tab-content::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>
+
+@code {
+    // Cascading parameter for controlling the right sidebar's state and actions
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    #region Services
+    [Inject] public IRatingPeriodsServices RatingPeriodsService { get; set; }
+    #endregion
+
+    #region Models and Variables
+    private RatingPeriodDto? _ratingPeriod;
+    private RatingPeriodDto _editRatingPeriod = new();
+    private RatingPeriodDateDto _newRatingPeriodDate = new();
+    private List<RatingPeriodDateDto>? _ratingPeriodDates = new();
+
+    // Edit functionality variables
+    private bool _isEditingDate = false;
+    private RatingPeriodDateDto? _editingDatePeriod = null;
+
+    private int _selectedTabIndex = 0;
+    private bool _isLoading = true;
+    private bool _isModalOpen = false;
+
+    // Basic tab variables
+    private bool _isSavingBasic = false;
+    private string _basicStatusMessage = string.Empty;
+    private bool _isBasicSuccessMessage = false;
+
+    // Dates tab variables
+    private bool _isSavingDate = false;
+    private string _datesStatusMessage = string.Empty;
+    private bool _isDatesSuccessMessage = false;
+    #endregion
+
+    /// <summary>
+    /// Lifecycle method called when the component is first initialized.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+
+    /// <summary>
+    /// Lifecycle method called when parameters are set or updated.
+    /// Handles loading data for the selected rating period when the sidebar opens.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        var context = _rightSidebarService.GetSharedContext<RatingPeriodDto>();
+
+        // Only reload if a new rating period is provided AND sidebar is not already open
+        if (context != null && !_isModalOpen)
+        {
+            _ratingPeriod = context;
+            _isLoading = false;
+
+            _editRatingPeriod = new RatingPeriodDto
+            {
+                UUID = _ratingPeriod.UUID,
+                Name = _ratingPeriod.Name,
+                DisplayName = _ratingPeriod.DisplayName,
+                isDeleted = _ratingPeriod.isDeleted
+            };
+
+            _newRatingPeriodDate.RatingPeriodsUUID = _ratingPeriod.UUID;
+            await LoadRatingPeriodDates();
+
+            _isModalOpen = true;
+        }
+        else if (context == null)
+        {
+            // Sidebar closed → clear data, don't fetch again
+            _isModalOpen = false;
+            _ratingPeriod = null;
+            _ratingPeriodDates?.Clear();
+            _isEditingDate = false;
+            _editingDatePeriod = null;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    /// <summary>
+    /// Loads rating period dates for the currently selected rating period.
+    /// </summary>
+    private async Task LoadRatingPeriodDates()
+    {
+        if (_ratingPeriod?.UUID == null) return;
+
+        try
+        {
+            _ratingPeriodDates = await RatingPeriodsService.GetRatingPeriodDates(_ratingPeriod.UUID);
+            _ratingPeriodDates = _ratingPeriodDates?.Where(d => !d.isDeleted).ToList() ?? new();
+        }
+        catch (Exception ex)
+        {
+            _datesStatusMessage = $"Error loading dates: {ex.Message}";
+            _isDatesSuccessMessage = false;
+        }
+    }
+
+    /// <summary>
+    /// Closes the modal and resets state.
+    /// </summary>
+    private void CloseModal()
+    {
+        _isModalOpen = false;
+    }
+
+    /// <summary>
+    /// Saves the basic details of the rating period (name, display name).
+    /// </summary>
+    private async Task SaveBasicDetails()
+    {
+        if (_editRatingPeriod == null) return;
+
+        _isSavingBasic = true;
+        _basicStatusMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var result = await RatingPeriodsService.CreateRatingPeriodType(_editRatingPeriod);
+
+            if (result?.isValid == true)
+            {
+                _isBasicSuccessMessage = true;
+
+                // Update the original rating period
+                if (_ratingPeriod != null)
+                {
+                    _ratingPeriod.Name = _editRatingPeriod.Name;
+                    _ratingPeriod.DisplayName = _editRatingPeriod.DisplayName;
+                }
+
+                // Trigger data refresh for parent component
+                _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_RatingPeriods);
+
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Success",
+                    Detail = "Rating period basic details saved successfully!",
+                    Duration = 3000
+                });
+            }
+            else
+            {
+                _basicStatusMessage = result?.Message ?? "Failed to save basic details.";
+                _isBasicSuccessMessage = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _basicStatusMessage = $"Error saving basic details: {ex.Message}";
+            _isBasicSuccessMessage = false;
+        }
+        finally
+        {
+            _isSavingBasic = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Adds a new rating period date.
+    /// </summary>
+    private async Task AddDatePeriod()
+    {
+        if (_ratingPeriod?.UUID == null) return;
+
+        _isSavingDate = true;
+        _datesStatusMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            var result = await RatingPeriodsService.CreateRatingPeriodDate(_newRatingPeriodDate);
+
+            if (result?.isValid == true)
+            {
+                _isDatesSuccessMessage = true;
+                _datesStatusMessage = "Rating period date added successfully!";
+
+                // Reset form and reload dates
+                _newRatingPeriodDate = new RatingPeriodDateDto { RatingPeriodsUUID = _ratingPeriod.UUID };
+                await LoadRatingPeriodDates();
+
+                // Trigger data refresh for parent component
+                _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_RatingPeriods);
+
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Success",
+                    Detail = "Rating period date added successfully!",
+                    Duration = 3000
+                });
+            }
+            else
+            {
+                _datesStatusMessage = result?.Message ?? "Failed to add date period.";
+                _isDatesSuccessMessage = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _datesStatusMessage = $"Error adding date period: {ex.Message}";
+            _isDatesSuccessMessage = false;
+        }
+        finally
+        {
+            _isSavingDate = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Starts editing a specific date period.
+    /// </summary>
+    private void StartEditDatePeriod(RatingPeriodDateDto datePeriod)
+    {
+        _isEditingDate = true;
+        _editingDatePeriod = new RatingPeriodDateDto
+        {
+            UUID = datePeriod.UUID,
+            Name = datePeriod.Name,
+            DateStart = datePeriod.DateStart,
+            DateEnd = datePeriod.DateEnd,
+            DateOpen = datePeriod.DateOpen,
+            DateClose = datePeriod.DateClose,
+            RatingPeriodsUUID = datePeriod.RatingPeriodsUUID,
+            isActive = datePeriod.isActive,
+            isDeleted = datePeriod.isDeleted
+        };
+
+        // Clear any existing status messages
+        _datesStatusMessage = string.Empty;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Cancels the editing process and resets the edit state.
+    /// </summary>
+    private void CancelEditDatePeriod()
+    {
+        _isEditingDate = false;
+        _editingDatePeriod = null;
+        _datesStatusMessage = string.Empty;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Updates the currently edited date period.
+    /// </summary>
+    private async Task UpdateDatePeriod()
+    {
+        if (_editingDatePeriod == null) return;
+
+        _isSavingDate = true;
+        _datesStatusMessage = string.Empty;
+        StateHasChanged();
+
+        try
+        {
+            // Use the same CreateRatingPeriodDate method but with existing UUID
+            var result = await RatingPeriodsService.CreateRatingPeriodDate(_editingDatePeriod);
+
+            if (result?.isValid == true)
+            {
+                _isDatesSuccessMessage = true;
+
+                // Reset edit state and reload dates
+                _isEditingDate = false;
+                _editingDatePeriod = null;
+                await LoadRatingPeriodDates();
+
+                // Trigger data refresh for parent component
+                _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_RatingPeriods);
+
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Success,
+                    Summary = "Success",
+                    Detail = "Rating period date updated successfully!",
+                    Duration = 3000
+                });
+            }
+            else
+            {
+                _datesStatusMessage = result?.Message ?? "Failed to update date period.";
+                _isDatesSuccessMessage = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _datesStatusMessage = $"Error updating date period: {ex.Message}";
+            _isDatesSuccessMessage = false;
+        }
+        finally
+        {
+            _isSavingDate = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Deletes a specific date period after confirmation.
+    /// </summary>
+    private async Task OnDeleteDateRow(string uuid, string? name = null)
+    {
+        var confirm = await DialogService.Confirm(
+            $"Are you sure you want to delete the date period '{name}'?",
+            "Confirm Delete");
+
+        if (confirm == true)
+        {
+            try
+            {
+                var result = await RatingPeriodsService.DeleteRatingPeriodDate(uuid ?? "");
+
+                if (result?.isValid == true)
+                {
+                    await LoadRatingPeriodDates();
+
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Deleted",
+                        Detail = "Rating period date deleted successfully!",
+                        Duration = 3000
+                    });
+                }
+                else
+                {
+                    _datesStatusMessage = result?.Message ?? "Failed to delete date period.";
+                    _isDatesSuccessMessage = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _datesStatusMessage = $"Error deleting date period: {ex.Message}";
+                _isDatesSuccessMessage = false;
+            }
+        }
+    }
+
+
+    /// <summary>
+    /// Toggles the active status of a given date period (activate/deactivate).
+    /// </summary>
+    private async Task ToggleActiveStatus(RatingPeriodDateDto data)
+    {
+        var action = data.isActive ? "deactivate" : "activate";
+        var confirm = await DialogService.Confirm(
+            $"Are you sure you want to {action} the date period '{data.Name}'?",
+            $"Confirm {action}");
+
+        if (confirm == true)
+        {
+            try
+            {
+                var result = await RatingPeriodsService.UpdateRatingPeriodDateIsActive(data.UUID ?? "", !data.isActive);
+
+                if (result?.isValid == true)
+                {
+                    // Reload the list to get updated status
+                    await LoadRatingPeriodDates();
+
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Success",
+                        Detail = $"Date period {(data.isActive ? "deactivated" : "activated")} successfully!",
+                        Duration = 3000
+                    });
+                }
+                else
+                {
+                    _datesStatusMessage = result?.Message ?? "Failed to update status.";
+                    _isDatesSuccessMessage = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _datesStatusMessage = $"Error updating status: {ex.Message}";
+                _isDatesSuccessMessage = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Deletes the currently edited rating period date after confirmation.
+    /// </summary>
+    private async Task OnDelete()
+    {
+        if (_editingDatePeriod?.UUID == null) return;
+
+        var confirm = await DialogService.Confirm(
+            $"Are you sure you want to delete the date period '{_editingDatePeriod.Name}'?",
+            "Confirm Delete",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirm == true)
+        {
+            try
+            {
+                var result = await RatingPeriodsService.DeleteRatingPeriodDate(_editingDatePeriod.UUID);
+
+                if (result?.isValid == true)
+                {
+                    // Reset edit state and reload dates
+                    _isEditingDate = false;
+                    _editingDatePeriod = null;
+                    await LoadRatingPeriodDates();
+
+                    // Trigger data refresh for parent component
+                    _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_RatingPeriods);
+
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Deleted",
+                        Detail = "Rating period date deleted successfully!",
+                        Duration = 3000
+                    });
+
+                    _datesStatusMessage = "Rating period date deleted successfully!";
+                    _isDatesSuccessMessage = true;
+                }
+                else
+                {
+                    _datesStatusMessage = result?.Message ?? "Failed to delete date period.";
+                    _isDatesSuccessMessage = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _datesStatusMessage = $"Error deleting date period: {ex.Message}";
+                _isDatesSuccessMessage = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Deletes the entire rating period after confirmation.
+    /// This will delete the rating period type itself.
+    /// </summary>
+    private async Task OnDeleteBasic()
+    {
+        if (_editRatingPeriod?.UUID == null) return;
+
+        var confirm = await DialogService.Confirm(
+            $"Are you sure you want to delete the rating period '{_editRatingPeriod.Name}'? This will also delete all associated date periods.",
+            "Confirm Delete",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirm == true)
+        {
+            _isSavingBasic = true;
+            _basicStatusMessage = string.Empty;
+            StateHasChanged();
+
+            try
+            {
+                var result = await RatingPeriodsService.DeleteRatingPeriodType(_editRatingPeriod.UUID);
+
+                if (result?.isValid == true)
+                {
+                    // Trigger data refresh for parent component
+                    _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_RatingPeriods);
+                    
+                    // Close the sidebar since the item no longer exists
+                    _rightSidebarService.Close();
+
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Deleted",
+                        Detail = "Rating period deleted successfully!",
+                        Duration = 3000
+                    });
+                }
+                else
+                {
+                    _basicStatusMessage = result?.Message ?? "Failed to delete rating period.";
+                    _isBasicSuccessMessage = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _basicStatusMessage = $"Error deleting rating period: {ex.Message}";
+                _isBasicSuccessMessage = false;
+            }
+            finally
+            {
+                _isSavingBasic = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Dispose method to clean up resources and event subscriptions when the component is destroyed.
+    /// </summary>
+    public void Dispose()
+    {
+        _ratingPeriod = null;
+        _ratingPeriodDates?.Clear();
+        _editingDatePeriod = null;
+    }
+}

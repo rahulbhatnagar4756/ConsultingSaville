@@ -1,0 +1,173 @@
+﻿@using Library.API.Base.Models
+@using Library.API.Base.Models.Users
+@using Library.API.Base.Services.Users
+@using OneCoreAssessUI.Services
+
+<style>
+
+
+
+    
+
+</style>
+
+
+@if (_User != null)
+{
+    <RadzenCard class="rz-my-12 rz-mx-auto"  style="margin-bottom: 15px !important;">
+
+        <RadzenRow Gap="1rem"  >
+            <RadzenColumn Size="12" SizeSM="2" Style="text-align:center;">
+
+                @if (_User != null && !string.IsNullOrWhiteSpace(_User.UsersImageURL))
+                {
+                    <RadzenImage Path="@_User.UsersImageURL" class="employee-image"></RadzenImage>
+                }
+                else
+                {
+                    @if (_loggedInInformation != null && _loggedInInformation.Company != null && _loggedInInformation.Company.URLAddress != null)
+                    {
+                        <RadzenImage Path="@string.Format("{0}Images/Avatars/anonymous-avatar.jpg", _loggedInInformation.Company.URLAddress)" class="employee-image"></RadzenImage>
+                    }
+                }
+
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="10">
+
+                <RadzenRow Gap="1rem" class="rz-mb-4">
+
+                    <RadzenColumn Size="12" SizeSM="6">
+                        <RadzenFormField Text="ID Number" Variant="@_radzenVariant" class="rz-w-100">
+                            <RadzenTextBox @bind-Value="@_User.IDNumber"></RadzenTextBox>
+                        </RadzenFormField>
+                    </RadzenColumn>
+
+                </RadzenRow>
+
+                <RadzenRow Gap="1rem" class="rz-mb-4">
+
+                    <RadzenColumn Size="12" SizeSM="6">
+                        <RadzenFormField Text="First Name" Variant="@_radzenVariant" class="rz-w-100">
+                            <RadzenTextBox @bind-Value="@_User.FirstName"></RadzenTextBox>
+                        </RadzenFormField>
+                    </RadzenColumn>
+
+                    <RadzenColumn Size="12" SizeSM="6">
+                        <RadzenFormField Text="Last Name" Variant="@_radzenVariant" class="rz-w-100">
+                            <RadzenTextBox @bind-Value="@_User.LastName"></RadzenTextBox>
+                        </RadzenFormField>
+                    </RadzenColumn>
+
+                </RadzenRow>
+            </RadzenColumn>
+
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem" class="rz-mb-4">
+
+            <RadzenColumn Size="12" SizeSM="8">
+                <RadzenFormField Text="Email" Variant="@_radzenVariant" class="rz-w-100">
+                    <RadzenTextBox @bind-Value="@_User.Email"></RadzenTextBox>
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="4">
+                <RadzenFormField Text="Mobile" Variant="@_radzenVariant" class="rz-w-100">
+
+                    <RadzenTextBox @bind-Value="@_User.Mobile"></RadzenTextBox>
+
+                </RadzenFormField>
+            </RadzenColumn>
+
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem" class="rz-mb-4">
+
+            <RadzenColumn Size="12" SizeSM="4">
+                <RadzenFormField Text="Gender" Variant="@_radzenVariant" class="rz-w-100">
+                    <RadzenDropDown Data=@_gender AllowClear="true" TextProperty="Name" ValueProperty="Name" @bind-Value="_User.Gender"></RadzenDropDown>
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="4">
+                <RadzenFormField Text="Ethnicity" Variant="@_radzenVariant" class="rz-w-100">
+                    <RadzenDropDown Data=@_ethnicity AllowClear="true" TextProperty="Name" ValueProperty="Name" @bind-Value="_User.Ethnicity"></RadzenDropDown>
+                </RadzenFormField>
+            </RadzenColumn>
+
+            <RadzenColumn Size="12" SizeSM="4">
+                <RadzenFormField Text="Date of Birth" Variant="@_radzenVariant" class="rz-w-100">
+                    <RadzenDatePicker AllowClear="true" DateFormat="dd MMMM yyyy" @bind-Value="_User.DateOfBirth"></RadzenDatePicker>
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+
+
+
+    </RadzenCard>
+}
+
+@code {
+
+    [Inject] IUsersService _usersService { get; set; }
+
+    [CascadingParameter] private LoggedInInformationModel _loggedInInformation { get; set; }
+
+    [Parameter] public string? UsersUUID { get; set; }
+    [Parameter] public EventCallback<string?> UsersUUIDChanged { get; set; }
+
+    private string? PreviousUsersUUID = null;
+    private UserBasicInformationModel _User = new();
+    private List<LookupBasicModel>? _gender = new();
+    private List<LookupBasicModel>? _ethnicity = new();
+
+    private Radzen.Variant _radzenVariant = Variant.Flat;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if(PreviousUsersUUID != UsersUUID)
+        {
+            if(string.IsNullOrWhiteSpace(UsersUUID))
+            {
+                _User = new();
+            }
+            else
+            {
+                _User = await _usersService.GetUserBasicInformationByUUID(UsersUUID);
+            }
+
+            PreviousUsersUUID = UsersUUID;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetDropdownData();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task GetDropdownData()
+    {
+        if (_usersService == null) return;
+        _gender = await _usersService.GetGender();
+        _ethnicity = await _usersService.GetEthnicity();
+
+        if (_gender == null) _ethnicity = new();
+        if (_ethnicity == null) _ethnicity = new();
+    }
+
+    /// <summary>
+    /// save users information to the database
+    /// </summary>
+    /// <returns>this will return the UUID of the User</returns>
+    public async Task<UserBasicInformationModel?> Save()
+    {
+        return null;
+    }
+
+
+
+}

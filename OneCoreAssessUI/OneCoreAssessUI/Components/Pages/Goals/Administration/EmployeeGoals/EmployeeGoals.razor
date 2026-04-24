@@ -1,0 +1,1387 @@
+﻿@using Library.API.Goals.Models.ContractPeriod
+@using Library.API.Goals.Models.Employee
+@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using Radzen
+@using ClosedXML.Excel;
+@using System.IO;
+
+@implements IDisposable
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject IJSRuntime JSRuntime
+
+
+<RadzenStack Class="main_container">
+
+
+
+    @if (_isLoading)
+    {
+        <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="height: 100vh;">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+            <RadzenText Text="Loading contract results..." Style="margin-top: 10px; color: #666;" />
+        </RadzenStack>
+    }
+    else if (_hasError)
+    {
+        <RadzenCard Style="margin: 20px;">
+            <RadzenStack Gap="10px" AlignItems="AlignItems.Center">
+                <RadzenIcon Icon="error" Style="font-size: 48px; color: #dc3545;" />
+                <RadzenText Text="Failed to load contract results" Style="font-size: 18px; font-weight: 600; color: #333;" />
+                <RadzenText Text="@_errorMessage" Style="font-size: 14px; color: #666;" />
+                <RadzenButton Text="Retry" Icon="refresh" Click="@(async () => await LoadData(null))" />
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        <!-- Header with Search -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween"
+                     Class="header_section">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px">
+                <RadzenIcon Icon="flag" Style="font-size: 32px; color: #444;" />
+                <RadzenText Text="Goal Plan Dashboard" Style="font-weight: 600; font-size: 22px; color: #333;" />
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" AlignItems="AlignItems.Center">
+                <RadzenTextBox @bind-Value="@_searchText" Placeholder="Search goals..." Style="width: 280px;"
+                               @oninput="@((args) => OnSearchChanged(args.Value?.ToString()))" />
+                <RadzenButton Icon="search" ButtonStyle="ButtonStyle.Primary" Click="@PerformSearch" />
+                <RadzenText Text="@($"{GetFilteredKpisCount()} Goals Listed")" Style="font-size: 13px; color: #777; margin-left: 15px;" />
+            </RadzenStack>
+        </RadzenStack>
+
+        <!-- Contract Info Card -->
+        @if (_contractResults != null)
+        {
+            <RadzenCard Style="margin-bottom: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <RadzenStack Gap="10px">
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Start">
+                        <RadzenStack Gap="5px">
+                            <RadzenText Text="@_contractResults.ContractOwnerName" Style="font-size: 20px; font-weight: 600;" />
+                            <RadzenText Text="@_contractResults.Company" Style="font-size: 14px; opacity: 0.9;" />
+                        </RadzenStack>
+                        <RadzenBadge Text="@(_contractResults.IsActive ? "Active" : "Inactive")"
+                                     Style="@($"background: {(_contractResults.IsActive ? "#28a745" : "#6c757d")}; font-size: 12px;")" />
+                    </RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="20px">
+                        <RadzenStack Gap="3px">
+                            <RadzenText Text="Contract Period" Style="font-size: 11px; opacity: 0.8;" />
+                            <RadzenText Text="@_contractResults.ContractPeriods" Style="font-size: 13px; font-weight: 500;" />
+                        </RadzenStack>
+                        <RadzenStack Gap="3px" Style="flex-direction: row !important; width: max-content;">
+                            <RadzenStack Gap="3px" Style="flex-direction: column !important;">
+                                <RadzenText Text="Duration" Style="font-size: 11px; opacity: 0.8;" />
+                                <RadzenText Text="@($"{_contractResults.DateStart:dd MMM yyyy} - {_contractResults.DateEnd:dd MMM yyyy}")"
+                                            Style="font-size: 13px; font-weight: 500;" />
+                            </RadzenStack>
+
+
+
+                            <RadzenStack Orientation="Orientation.Horizontal"
+                                         AlignItems="AlignItems.Center"
+                                         JustifyContent="JustifyContent.Center"
+                                         class="period-navigation" Style="flex-wrap: nowrap;">
+
+                                <RadzenButton Icon="arrow_left"
+                                              Disabled="@(!_hasPreviousPeriod || _isPeriodTransitioning)"
+                                              Click="@GoToPreviousPeriod"
+                                              class="nav-btn nav-btn-left" />
+
+                                <RadzenStack Gap="3px" Style="flex-direction: column !important;">
+                                    <RadzenText Text="Rating Period" Style="font-size: 11px; opacity: 0.8;" />
+                                    <RadzenText Text="@_activePeriodLabel" Style="font-size: 13px; font-weight: 500;" class="period-label" />
+                                </RadzenStack>
+
+                                <RadzenButton Icon="arrow_right"
+                                              Disabled="@(!_hasNextPeriod || _isPeriodTransitioning)"
+                                              Click="@GoToNextPeriod"
+                                              class="nav-btn nav-btn-right" />
+
+                            </RadzenStack>
+
+
+
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenCard>
+        }
+
+        <!-- Statistics Cards -->
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="15px" Class="stats_section">
+            <RadzenCard Class="@GetStatCardClass("all")" @onclick="@(() => FilterByStatus("all"))" Style="cursor: pointer;">
+                <RadzenStack Gap="5px">
+                    <RadzenText Text="All Goals" Style="font-size: 12px; color: #666;" />
+                    <RadzenText Text="@GetTotalKpisCount()" Style="font-size: 24px; font-weight: 600; color: #333;" />
+                </RadzenStack>
+            </RadzenCard>
+            <RadzenCard Class="@GetStatCardClass("high")" @onclick="@(() => FilterByStatus("high"))" Style="cursor: pointer;">
+                <RadzenStack Gap="5px">
+                    <RadzenText Text="High Performance" Style="font-size: 12px; color: #666;" />
+                    <RadzenText Text="@GetStatusCount("high")" Style="font-size: 24px; font-weight: 600; color: #28a745;" />
+                </RadzenStack>
+            </RadzenCard>
+            <RadzenCard Class="@GetStatCardClass("medium")" @onclick="@(() => FilterByStatus("medium"))" Style="cursor: pointer;">
+                <RadzenStack Gap="5px">
+                    <RadzenText Text="Medium Performance" Style="font-size: 12px; color: #666;" />
+                    <RadzenText Text="@GetStatusCount("medium")" Style="font-size: 24px; font-weight: 600; color: #ffc107;" />
+                </RadzenStack>
+            </RadzenCard>
+            <RadzenCard Class="@GetStatCardClass("low")" @onclick="@(() => FilterByStatus("low"))" Style="cursor: pointer;">
+                <RadzenStack Gap="5px">
+                    <RadzenText Text="Low Performance" Style="font-size: 12px; color: #666;" />
+                    <RadzenText Text="@GetStatusCount("low")" Style="font-size: 24px; font-weight: 600; color: #dc3545;" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenStack>
+
+        <!-- Action Buttons -->
+        <RadzenStack Orientation="Orientation.Horizontal" Class="action_section">
+            <RadzenCheckBox @bind-Value="@_selectAll" Change="EventCallback.Factory.Create<bool>(this, OnSelectAllChanged)" />
+            <RadzenText Text="Select All" Style="font-size: 13px; color: #333; margin-right: 15px;" />
+            <RadzenButton Text="Export Selected"
+                          Icon="file_download"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Size="ButtonSize.Small"
+                          Disabled="@(!HasSelectedItems())"
+                          Click="@ExportSelected" />
+            <RadzenButton Text="Duplicate Results"
+                          Icon="content_copy"
+                          ButtonStyle="ButtonStyle.Secondary"
+                          Size="ButtonSize.Small"
+                          Disabled="@(!HasSelectedItems())"
+                          Click="@DuplicateResults" />
+        </RadzenStack>
+
+        <!-- Enterprise Structures & Pillars -->
+        @if (_contractResults?.EnterpriseStructures != null && _contractResults.EnterpriseStructures.Any() && _contractResults.EnterpriseStructures.Any(x => x.Pillars?.Any(p => p.KPA?.Any() == true) == true))
+        {
+            @foreach (var structure in _contractResults.EnterpriseStructures)
+            {
+                @if (structure.Pillars != null && structure.Pillars.Any())
+                {
+                    @foreach (var pillar in structure.Pillars)
+                    {
+                        var pillarKpis = GetFilteredKpisByPillar(pillar);
+
+                        @if (pillarKpis != null && pillarKpis.Any())
+                        {
+                            <RadzenCard Class="pillar_card">
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                             JustifyContent="JustifyContent.SpaceBetween"
+                                             @onclick="@(() => TogglePillarExpanded(pillar))"
+                                             Style="cursor: pointer;">
+                                    <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" AlignItems="AlignItems.Center">
+                                        @if (!string.IsNullOrEmpty(pillar.Icons))
+                                        {
+                                            <RadzenIcon Icon="@pillar.Icons" Style="@($"color: {pillar.IconColor ?? "#333"};")" />
+                                        }
+                                        <RadzenText Text="@($"{pillar.Name} ({pillarKpis.Count})")"
+                                                    Style="font-weight: 600; font-size: 16px; color: #333;" />
+                                        @if (pillar.Weight.HasValue)
+                                        {
+                                            <RadzenBadge Text="@($"Weight: {pillar.Weight:0}%")"
+                                                         Style="background: #6c757d; font-size: 11px;" />
+                                        }
+                                    </RadzenStack>
+                                    <RadzenIcon Icon="@(IsPillarExpanded(pillar) ? "remove" : "add")" />
+                                </RadzenStack>
+                            </RadzenCard>
+
+                            @if (IsPillarExpanded(pillar))
+                            {
+                                <div class="kpi_list fade-container @(_isPeriodTransitioning ? "fade-out" : "fade-in")">
+                                    <!-- Column Headers -->
+                                    <RadzenCard Class="kpi_header">
+                                        <RadzenStack Orientation="Orientation.Horizontal" Gap="20px" AlignItems="AlignItems.Center">
+                                            <div style="width: 24px;"></div>
+                                            <RadzenStack Style="flex: 1;">
+                                                <RadzenText Text="RATING PERIOD DETAILS"
+                                                            Style="font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase;" />
+                                            </RadzenStack>
+                                            <RadzenStack Style="min-width: 120px;" AlignItems="AlignItems.Center">
+                                                <RadzenText Text="STATUS"
+                                                            Style="font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase;" />
+                                            </RadzenStack>
+                                            <RadzenStack Style="min-width: 160px;" AlignItems="AlignItems.Center">
+                                                <RadzenText Text="RESULTS"
+                                                            Style="font-size: 11px; color: #666; font-weight: 600; text-transform: uppercase;" />
+                                            </RadzenStack>
+                                        </RadzenStack>
+                                    </RadzenCard>
+
+                                    @foreach (var item in pillarKpis)
+                                    {
+                                        @if (item.Type == "KPA")
+                                        {
+                                            <!-- KPA Card - Full Width -->
+                                            <RadzenCard Class="kpa_item" Style="background: #f8f9fa; border-left: 4px solid #2C5AA0;">
+                                                <RadzenStack Orientation="Orientation.Horizontal" Gap="20px" AlignItems="AlignItems.Start">
+                                                    <RadzenCheckBox @bind-Value="@item.IsSelected" Style="margin-top: 4px;"
+                                                                    Change="@((bool value) => OnKpiSelectionChanged(value))" />
+
+                                                    <!-- KPA Details -->
+                                                    <RadzenStack Style="flex: 1;" Gap="6px">
+                                                        <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" AlignItems="AlignItems.Center">
+                                                            <RadzenBadge Text="@(item.RatingPeriodsDisplay ?? item.RatingPeriods ?? "N/A")"
+                                                                         Style="background: white; color: #333; border: 1px solid #ccc; font-size: 11px; padding: 2px 8px;" />
+                                                            <RadzenBadge Text="KPA"
+                                                                         Style="background: #2C5AA0; color: white; font-size: 11px; padding: 2px 8px; font-weight: 600;" />
+                                                            @if (item.Weight.HasValue)
+                                                            {
+                                                                <RadzenText Text="@($"Weight: {item.Weight:0}%")"
+                                                                            Style="font-size: 11px; color: #666;" />
+                                                            }
+                                                        </RadzenStack>
+
+                                                        @if (!string.IsNullOrWhiteSpace(item.Template))
+                                                        {
+                                                            <RadzenText Text="@($"Template: {item.Template}")"
+                                                                        Style="font-size: 11px; color: #666;" />
+                                                        }
+
+                                                        <RadzenText Text="@item.Name"
+                                                                    Style="font-size: 15px; color: #2C5AA0; font-weight: 700; cursor: pointer;"
+                                                                    @onclick="(() => OpenSidebarWithItem(item))"
+                                                                    @onmousedown:stopPropagation="true" />
+
+
+                                                        @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                        {
+                                                            <RadzenText Text="@item.Description"
+                                                                        Style="font-size: 12px; color: #666;" />
+                                                        }
+
+
+                                                    </RadzenStack>
+
+                                                    <!-- Status Column for KPA -->
+                                                    <RadzenStack Style="min-width: 120px;" Gap="5px" AlignItems="AlignItems.Center">
+                                                        @{
+                                                            var kpaStatus = GetPerformanceStatus((double?)item.ScoreEmployee, (double?)item.ScoreManager);
+                                                        }
+                                                        <RadzenBadge Text="@GetStatusDisplayText(kpaStatus)"
+                                                                     Style="@GetStatusBadgeStyle(kpaStatus)" />
+                                                    </RadzenStack>
+
+
+
+                                                    <!-- Progress Bars -->
+                                                    <RadzenStack Style="min-width: 200px; padding: 4px;" Gap="6px">
+
+                                                        <!-- Employee Section -->
+                                                        <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" AlignItems="AlignItems.Center">
+                                                                <RadzenText Text="Employee" Style="font-size: 11px; color: #666;" />
+                                                                @if (item.ScoreEmployee?.ToString("0.00") == "0.00")
+                                                                {
+                                                                    <RadzenIcon Icon="warning" Style="font-size: 14px; color: #ffc107;" Title="Not rated yet" />
+                                                                }
+                                                            </RadzenStack>
+                                                            <RadzenText Text="@($"{(item.ScoreEmployee ?? 0):0.0}%")"
+                                                                        Style="font-size: 11px; font-weight: 600; color: #90C850; min-width: 45px; text-align: right;" />
+                                                        </RadzenStack>
+
+                                                        <div class="progress_bar_container" style="width: 100%; height: 6px; background-color: #eee; border-radius: 4px; overflow: hidden;">
+                                                            <div class="progress_bar employee @GetProgressColorClass(item.ScoreEmployee)"
+                                                                 style="width: @(item.ScoreEmployee ?? 0)%; height: 100%; transition: width 0.3s ease;"></div>
+                                                        </div>
+
+                                                        <!-- Manager Section -->
+                                                        <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" AlignItems="AlignItems.Center">
+                                                                <RadzenText Text="Manager" Style="font-size: 11px; color: #666;" />
+                                                                @if (item.ScoreManager?.ToString("0.00") == "0.00")
+                                                                {
+                                                                    <RadzenIcon Icon="warning" Style="font-size: 14px; color: #ffc107;" Title="Not rated yet" />
+                                                                }
+                                                            </RadzenStack>
+                                                            <RadzenText Text="@($"{(item.ScoreManager ?? 0):0.0}%")"
+                                                                        Style="font-size: 11px; font-weight: 600; color: #4A90E2; min-width: 45px; text-align: right;" />
+                                                        </RadzenStack>
+
+                                                        <div class="progress_bar_container" style="width: 100%; height: 6px; background-color: #eee; border-radius: 4px; overflow: hidden;">
+                                                            <div class="progress_bar manager @GetProgressColorClass(item.ScoreManager)"
+                                                                 style="width: @(item.ScoreManager ?? 0)%; height: 100%; transition: width 0.3s ease;"></div>
+                                                        </div>
+
+                                                        @if (_isManagerOrAdmin)
+                                                        {
+                                                            <!-- RIGHT-SIDE COMMENT BUTTON -->
+                                                            <RadzenStack Style="min-width: 60px; align-items: center; justify-content: center;">
+                                                                <RadzenButton Icon="comment"
+                                                                              Size="ButtonSize.Small"
+                                                                              Variant="Variant.Text"
+                                                                              Click="@(() => OpenGlobalCommentsSidebarWithItem(item))"
+                                                                              Style="color:#4A90E2; border-radius:50%; width:32px; height:32px;" />
+                                                            </RadzenStack>
+                                                        }
+
+                                                    </RadzenStack>
+
+                                                </RadzenStack>
+                                            </RadzenCard>
+                                        }
+                                        else
+                                        {
+                                            <!-- KPI Card - Indented and Narrower -->
+                                            <div style="margin-left: 40px; width: calc(100% - 40px);">
+                                                <RadzenCard Class="kpi_item" Style="background: white; border-left: 3px solid #4A90E2;">
+                                                    <RadzenStack Orientation="Orientation.Horizontal" Gap="20px" AlignItems="AlignItems.Start">
+                                                        <RadzenCheckBox @bind-Value="@item.IsSelected" Style="margin-top: 4px;"
+                                                                        Change="@((bool value) => OnKpiSelectionChanged(value))" />
+
+                                                        <!-- KPI Details -->
+                                                        <RadzenStack Style="flex: 1;" Gap="6px">
+                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="10px" AlignItems="AlignItems.Center">
+                                                                <RadzenBadge Text="@(item.RatingPeriodsDisplay ?? item.RatingPeriods ?? "N/A")"
+                                                                             Style="background: white; color: #333; border: 1px solid #ccc; font-size: 11px; padding: 2px 8px;" />
+                                                                <RadzenText Text="KPI"
+                                                                            Style="font-size: 11px; color: #4A90E2; font-weight: 500;" />
+                                                                @if (item.Weight.HasValue)
+                                                                {
+                                                                    <RadzenText Text="@($"Weight: {item.Weight:0}%")"
+                                                                                Style="font-size: 11px; color: #666;" />
+                                                                }
+                                                            </RadzenStack>
+
+                                                            @if (!string.IsNullOrWhiteSpace(item.Template))
+                                                            {
+                                                                <RadzenText Text="@($"Template: {item.Template}")"
+                                                                            Style="font-size: 11px; color: #666;" />
+                                                            }
+
+                                                            <RadzenText Text="@item.Name"
+                                                                        Style="font-size: 14px; color: #2C5AA0; font-weight: 600; cursor: pointer;"
+                                                                        @onclick="(() => OpenSidebarWithItem(item))"
+                                                                        @onmousedown:stopPropagation="true" />
+
+
+                                                            @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                            {
+                                                                <RadzenText Text="@item.Description"
+                                                                            Style="font-size: 12px; color: #666;" />
+                                                            }
+
+                                                            @* @if (!string.IsNullOrWhiteSpace(item.Status))
+                                                            {
+                                                                <RadzenBadge Text="@item.Status"
+                                                                             Style="@($"background: {item.StatusScoreColor ?? "#6c757d"}; font-size: 11px;")" />
+                                                            } *@
+                                                        </RadzenStack>
+
+                                                        <!-- Status Column (empty for KPI) -->
+                                                        <RadzenStack Style="min-width: 120px;" Gap="5px" AlignItems="AlignItems.Center">
+                                                            @{
+                                                                var kpiStatus = GetPerformanceStatus((double?)item.ScoreEmployee, (double?)item.ScoreManager);
+                                                            }
+                                                            <RadzenBadge Text="@GetStatusDisplayText(kpiStatus)"
+                                                                         Style="@GetStatusBadgeStyle(kpiStatus)" />
+                                                        </RadzenStack>
+
+                                                        <!-- Progress Bars -->
+                                                        <RadzenStack Style="min-width: 200px; padding: 4px;" Gap="6px">
+
+                                                            <!-- Employee Section -->
+                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                                                                <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" AlignItems="AlignItems.Center">
+                                                                    <RadzenText Text="Employee" Style="font-size: 11px; color: #666;" />
+                                                                    @if (item.ScoreEmployee?.ToString("0.00") == "0.00")
+                                                                    {
+                                                                        <RadzenIcon Icon="warning" Style="font-size: 14px; color: #ffc107;" Title="Not rated yet" />
+                                                                    }
+                                                                </RadzenStack>
+                                                                <RadzenText Text="@($"{(item.ScoreEmployee ?? 0):0.0}%")"
+                                                                            Style="font-size: 11px; font-weight: 600; color: #90C850; min-width: 45px; text-align: right;" />
+                                                            </RadzenStack>
+
+                                                            <div class="progress_bar_container" style="width: 100%; height: 6px; background-color: #eee; border-radius: 4px; overflow: hidden;">
+                                                                <div class="progress_bar employee @GetProgressColorClass(item.ScoreEmployee)"
+                                                                     style="width: @(item.ScoreEmployee ?? 0)%; height: 100%; transition: width 0.3s ease;"></div>
+                                                            </div>
+
+                                                            <!-- Manager Section -->
+                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                                                                <RadzenStack Orientation="Orientation.Horizontal" Gap="5px" AlignItems="AlignItems.Center">
+                                                                    <RadzenText Text="Manager" Style="font-size: 11px; color: #666;" />
+                                                                    @if (item.ScoreManager?.ToString("0.00") == "0.00")
+                                                                    {
+                                                                        <RadzenIcon Icon="warning" Style="font-size: 14px; color: #ffc107;" Title="Not rated yet" />
+                                                                    }
+                                                                </RadzenStack>
+                                                                <RadzenText Text="@($"{(item.ScoreManager ?? 0):0.0}%")"
+                                                                            Style="font-size: 11px; font-weight: 600; color: #4A90E2; min-width: 45px; text-align: right;" />
+                                                            </RadzenStack>
+
+                                                            <div class="progress_bar_container" style="width: 100%; height: 6px; background-color: #eee; border-radius: 4px; overflow: hidden;">
+                                                                <div class="progress_bar manager @GetProgressColorClass(item.ScoreManager)"
+                                                                     style="width: @(item.ScoreManager ?? 0)%; height: 100%; transition: width 0.3s ease;"></div>
+                                                            </div>
+
+                                                            @if (_isManagerOrAdmin)
+                                                            {
+                                                                <!-- RIGHT-SIDE COMMENT BUTTON -->
+                                                                <RadzenStack Style="min-width: 60px; align-items: center; justify-content: center;">
+                                                                    <RadzenButton Icon="comment"
+                                                                                  Size="ButtonSize.Small"
+                                                                                  Variant="Variant.Text"
+                                                                                  Click="@(() => OpenGlobalCommentsSidebarWithItem(item))"
+                                                                                  Style="color:#4A90E2; border-radius:50%; width:32px; height:32px;" />
+                                                                </RadzenStack>
+                                                            }
+
+                                                        </RadzenStack>
+
+
+                                                    </RadzenStack>
+                                                </RadzenCard>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
+                        }
+                    
+                    }
+                }
+            }
+        }
+        else
+        {
+            <RadzenCard>
+                <RadzenText Text="No goals data available" Style="color: #6c757d; text-align: center;" />
+            </RadzenCard>
+        }
+    }
+</RadzenStack>
+
+<style>
+
+    /* Period transition animation (Blazor-safe) */
+    .fade-container {
+        opacity: 1;
+        transition: opacity 250ms ease-in-out;
+    }
+
+        .fade-container.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .fade-container.fade-in {
+            opacity: 1;
+        }
+
+    .kpi_item {
+        animation: fadeSlideIn 250ms ease forwards;
+    }
+
+    .fade-container {
+        transition: opacity 250ms ease-in-out, transform 250ms ease-in-out;
+    }
+
+    .fade-in {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .fade-out {
+        opacity: 0;
+        transform: translateY(6px);
+        pointer-events: none;
+    }
+
+
+    .period-navigation {
+        padding: 10px;
+        gap: 0px;
+        border-radius: 6px;
+        width: 100%;
+        margin: auto;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* Navigation Buttons */
+    .nav-btn {
+        min-width: 36px;
+        min-height: 36px;
+        border-radius: none !important %;
+        color: black !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none !important;
+        margin-top: 19px;
+    }
+
+    .nav-btn-left {
+        padding-right: 0px !important;
+    }
+
+    .nav-btn-right {
+        padding-left: 0px !important;
+    }
+
+    .nav-btn span i {
+        font-size: 53px !important;
+    }
+    /* Middle label */
+    .period-label {
+        background-color: white;
+        border-radius: 6px;
+        padding: 4px 20px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        min-width: 200px;
+        text-align: center;
+        user-select: none;
+    }
+
+    .main_container {
+        width: 100%;
+        height: 100vh;
+        padding: 25px 40px;
+        background: #F9FAFB;
+        overflow-y: auto;
+    }
+
+    .header_section {
+        margin-bottom: 20px;
+    }
+
+    .stats_section {
+        margin-bottom: 20px;
+    }
+
+    .stat_card {
+        flex: 1;
+        background: white;
+        padding: 16px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+        .stat_card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        .stat_card.active {
+            border-color: #4A90E2;
+            background: #F0F7FF;
+        }
+
+    .action_section {
+        margin-bottom: 20px;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .pillar_card {
+        background: #EAEAEA;
+        padding: 14px 18px;
+        border: none;
+        border-radius: 6px;
+        margin-bottom: 8px;
+    }
+
+    .kpi_list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+
+    .kpi_header {
+        background: #F5F5F5;
+        padding: 12px 18px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        border: 1px solid #E0E0E0;
+    }
+
+    .kpi_item {
+        background: white;
+        padding: 18px;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        transition: all 0.2s ease;
+    }
+
+        .kpi_item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+    .progress_bar_container {
+        height: 8px;
+        background: #E0E0E0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress_bar {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+        .progress_bar.employee {
+            background: #90C850;
+        }
+
+        .progress_bar.manager {
+            background: #4A90E2;
+        }
+
+        .progress_bar.progress-green {
+            background: #28a745;
+        }
+
+        .progress_bar.progress-yellow {
+            background: #ffc107;
+        }
+
+        .progress_bar.progress-red {
+            background: #dc3545;
+        }
+
+        .progress_bar.employee.progress-green {
+            background: #28a745;
+        }
+
+        .progress_bar.employee.progress-yellow {
+            background: #ffc107;
+        }
+
+        .progress_bar.employee.progress-red {
+            background: #dc3545;
+        }
+
+        .progress_bar.manager.progress-green {
+            background: #1e7e34;
+        }
+
+        .progress_bar.manager.progress-yellow {
+            background: #e0a800;
+        }
+
+        .progress_bar.manager.progress-red {
+            background: #bd2130;
+        }
+</style>
+
+@code {
+    [Inject] public IContractResultsService? ContractResultsService { get; set; }
+
+    [CascadingParameter] public RightSidebarService? _rightSidebarService { get; set; }
+    [CascadingParameter] public LayoutCascadeMenuModel? _menuNav { get; set; }
+
+    [Parameter] public Enumerables.MenuItemSubTypes ItemSub { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemSubTypes> ItemSubChanged { get; set; }
+
+
+    private string _selectedUsersUUID = string.Empty;
+
+    private const string DEFAULT_CONTRACT_UUID = "52483E04-30AD-489D-9951-AB788B312EA5";
+
+    private ContractResults? _contractResults;
+    private List<KpiDisplayItem> _allKpiItems = new();
+
+    private Dictionary<string, bool> _pillarExpandedState = new();
+    private string _searchText = string.Empty;
+    private string _activeStatusFilter = "all";
+    private bool _selectAll = false;
+    private bool _isLoading = true;
+    private bool _hasError = false;
+    private string _errorMessage = string.Empty;
+    private bool _isManagerOrAdmin = false;
+
+    // Animation state
+    private bool _isPeriodTransitioning = false;
+    private const int FadeDurationMs = 500;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+
+        var contextString = _menuNav.GetSharedContext<string>();
+        if (!string.IsNullOrEmpty(contextString))
+        {
+            var parts = contextString.Split(';')
+                                        .Select(p => p.Split('='))
+                                        .Where(p => p.Length == 2)
+                                        .ToDictionary(a => a[0], a => a[1]);
+
+            _selectedUsersUUID = parts.ContainsKey("UsersUUID") ? parts["UsersUUID"] : null;
+        }
+
+        await LoadData();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadData(string? ratingPeriodUUID = null)
+    {
+        _isLoading = true;
+        _hasError = false;
+        StateHasChanged();
+
+        try
+        {
+            if (ContractResultsService == null)
+            {
+                throw new Exception("ContractResultsService is not available");
+            }
+
+            ContractResultsResponse? response = new ContractResultsResponse();
+
+            if (ratingPeriodUUID == null)
+            {
+                
+                if (!string.IsNullOrEmpty(_selectedUsersUUID))
+                {
+                    // Filter the data to only matching _usersUUID
+                    response = await ContractResultsService.GetContractResults(DEFAULT_CONTRACT_UUID, _selectedUsersUUID);
+                }
+                else
+                {
+                    response = await ContractResultsService.GetContractResults(DEFAULT_CONTRACT_UUID,null);
+                }
+
+                _ratingPeriodsDto = await ContractResultsService.GetRatingPeriods();
+                _activePeriodIndex = 0;
+            }
+            else
+            {
+                response = await FilterContractsByRatingPeriod(ratingPeriodUUID);
+            }
+
+
+            if (response?.Data == null || !response.Data.Any())
+            {
+                _hasError = true;
+                _errorMessage = "No contract results found";
+                return;
+            }
+
+            _contractResults = response.Data.First();
+
+            _isManagerOrAdmin = _contractResults.IsManagerOrAdmin;
+
+            ProcessContractData();
+
+            NotificationService?.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Data Loaded",
+                Detail = "Contract results loaded successfully",
+                Duration = 3000
+            });
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = ex.Message;
+            NotificationService?.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Error",
+                Detail = $"Failed to load contract results: {ex.Message}",
+                Duration = 5000
+            });
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Opens the RightSidebar with the selected KPA or KPI item.
+    /// </summary>
+    private void OpenSidebarWithItem(KpiDisplayItem item)
+    {
+        if (_rightSidebarService != null && _contractResults != null)
+        {
+            var context = new KpiSidebarContext
+            {
+                ContractResults = _contractResults,
+                SelectedItem = item
+            };
+
+            _rightSidebarService.Open(ControlTypes.sb_Goals_EmployeeGoals, context);
+        }
+    }
+
+    /// <summary>
+    /// Opens the RightSidebar with the selected KPA or KPI item.
+    /// </summary>
+    private void OpenGlobalCommentsSidebarWithItem(KpiDisplayItem item)
+    {
+        if (_rightSidebarService != null && _contractResults != null)
+        {
+            var context = new KpiSidebarContext
+            {
+                ContractResults = _contractResults,
+                SelectedItem = item
+            };
+
+            _rightSidebarService.Open(ControlTypes.sb_Goals_GlobalComments, context);
+        }
+    }
+
+
+    private void ProcessContractData()
+    {
+        _allKpiItems.Clear();
+        _pillarExpandedState.Clear();
+
+        if (_contractResults?.EnterpriseStructures == null) return;
+
+        foreach (var structure in _contractResults.EnterpriseStructures)
+        {
+            if (structure.Pillars == null) continue;
+
+            foreach (var pillar in structure.Pillars)
+            {
+                // Initialize pillar as expanded by default using Dictionary
+                if (pillar.UUID != null)
+                {
+                    _pillarExpandedState[pillar.UUID] = true;
+                }
+
+                if (pillar.KPA == null) continue;
+
+                foreach (var kpa in pillar.KPA)
+                {
+                    // Add KPA as KPI item
+                    _allKpiItems.Add(new KpiDisplayItem
+                    {
+                        UUID = kpa.UUID,
+                        PillarRef = pillar,
+                        Name = kpa.Name ?? "Unnamed KPA",
+                        Description = kpa.Description,
+                        Type = "KPA",
+                        RatingPeriods = kpa.RatingPeriods,
+                        RatingPeriodsDisplay = kpa.RatingPeriodsDisplay,
+                        RatingPeriodDates = kpa.RatingPeriodDates,
+                        Status = kpa.Status,
+                        StatusScoreColor = kpa.StatusScoreColor,
+                        Template = kpa.Template,
+                        Weight = kpa.Weight,
+                        ScoreEmployee = kpa.ScoreEmployee,
+                        ScoreManager = kpa.ScoreManager,
+                        IsActive = kpa.IsActive
+                    });
+
+                    // Add child KPIs
+                    if (kpa.KPI != null)
+                    {
+                        foreach (var kpi in kpa.KPI)
+                        {
+                            _allKpiItems.Add(new KpiDisplayItem
+                            {
+                                UUID = kpi.UUID,
+                                PillarRef = pillar,
+                                Name = kpi.Name ?? "Unnamed KPI",
+                                Description = kpi.Description,
+                                Type = "KPI",
+                                RatingPeriods = kpi.RatingPeriods,
+                                RatingPeriodsDisplay = kpi.RatingPeriodsDisplay,
+                                RatingPeriodDates = kpi.RatingPeriodDates,
+                                Status = kpi.Status,
+                                StatusScoreColor = kpi.StatusScoreColor,
+                                Template = kpi.Template,
+                                Weight = kpi.Weight,
+                                ScoreEmployee = kpi.ScoreEmployee,
+                                ScoreManager = kpi.ScoreManager,
+                                IsActive = kpi.IsActive,
+                                Target = kpi.Target
+                            });
+                        }
+                    }
+
+                    // Add linked KPIs
+                    if (kpa.KPILinked != null)
+                    {
+                        foreach (var linkedKpi in kpa.KPILinked)
+                        {
+                            _allKpiItems.Add(new KpiDisplayItem
+                            {
+                                UUID = linkedKpi.UUID,
+                                PillarRef = pillar,
+                                Name = linkedKpi.Name ?? "Unnamed Linked KPI",
+                                Description = linkedKpi.Description,
+                                Type = "Linked KPI",
+                                RatingPeriods = linkedKpi.RatingPeriods,
+                                RatingPeriodsDisplay = linkedKpi.RatingPeriodsDisplay,
+                                RatingPeriodDates = linkedKpi.RatingPeriodDates,
+                                Status = linkedKpi.Status,
+                                StatusScoreColor = linkedKpi.StatusScoreColor,
+                                Template = linkedKpi.Template,
+                                Weight = linkedKpi.Weight,
+                                ScoreEmployee = linkedKpi.ScoreEmployee,
+                                ScoreManager = linkedKpi.ScoreManager,
+                                IsActive = true
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void OnSearchChanged(string? searchValue)
+    {
+        _searchText = searchValue ?? string.Empty;
+        StateHasChanged();
+    }
+
+    private void PerformSearch()
+    {
+        StateHasChanged();
+    }
+
+    private List<KpiDisplayItem> GetFilteredKpis()
+    {
+        var filtered = _allKpiItems.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(_searchText))
+        {
+            filtered = filtered.Where(k =>
+                k.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                (k.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (k.Template?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        if (_activeStatusFilter != "all")
+        {
+            filtered = filtered.Where(k => GetPerformanceLevel(k) == _activeStatusFilter);
+        }
+
+        return filtered.ToList();
+    }
+
+    private int GetFilteredKpisCount() => GetFilteredKpis().Count;
+    private string GetTotalKpisCount() => _allKpiItems.Count.ToString();
+
+    private List<KpiDisplayItem> GetFilteredKpisByPillar(Library.API.Goals.Models.Contracts.Pillar pillar)
+    {
+        return GetFilteredKpis().Where(k => k.PillarRef == pillar).ToList();
+    }
+
+    private void FilterByStatus(string status)
+    {
+        _activeStatusFilter = status;
+        StateHasChanged();
+    }
+
+    private string GetStatCardClass(string status)
+    {
+        return $"stat_card {(_activeStatusFilter == status ? "active" : "")}";
+    }
+
+    private string GetStatusCount(string status)
+    {
+        return _allKpiItems.Count(k => GetPerformanceLevel(k) == status).ToString();
+    }
+
+    private string GetPerformanceLevel(KpiDisplayItem kpi)
+    {
+        var avgScore = ((kpi.ScoreEmployee ?? 0) + (kpi.ScoreManager ?? 0)) / 2;
+        if (avgScore >= 80) return "high";
+        if (avgScore >= 50) return "medium";
+        return "low";
+    }
+
+    private void OnSelectAllChanged(bool value)
+    {
+        _selectAll = value;
+        foreach (var kpi in GetFilteredKpis())
+            kpi.IsSelected = value;
+        StateHasChanged();
+    }
+
+    private void OnKpiSelectionChanged(bool value)
+    {
+        var filteredKpis = GetFilteredKpis();
+        _selectAll = filteredKpis.Any() && filteredKpis.All(k => k.IsSelected);
+        StateHasChanged();
+    }
+
+    private bool HasSelectedItems() => _allKpiItems.Any(k => k.IsSelected);
+
+
+    private async Task ExportSelected()
+    {
+        try
+        {
+            var selectedKpis = _allKpiItems.Where(k => k.IsSelected).ToList();
+            if (!selectedKpis.Any())
+            {
+                await DialogService.Alert("No items selected for export.", "Export");
+                return;
+            }
+
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Selected KPIs");
+
+            // Updated headers — moved Type after Parent_Goal
+            string[] headers = new[]
+            {
+            "GoalidParent", "Goalid","Type", "Parent_Goal", "Goal", "Description",
+            "Employee", "IDNumber", "EmployeeNumber", "BusinessUnits", "Department",
+            "Position", "Target",
+            "Jan Employee Score", "Jan Manager Score",
+            "Feb Employee Score", "Feb Manager Score",
+            "Mar Employee Score", "Mar Manager Score",
+            "Apr Employee Score", "Apr Manager Score",
+            "May Employee Score", "May Manager Score",
+            "Jun Employee Score", "Jun Manager Score",
+            "Jul Employee Score", "Jul Manager Score",
+            "Aug Employee Score", "Aug Manager Score",
+            "Sep Employee Score", "Sep Manager Score",
+            "Oct Employee Score", "Oct Manager Score",
+            "Nov Employee Score", "Nov Manager Score",
+            "Dec Employee Score", "Dec Manager Score",
+            "Comments"
+        };
+
+            // Add headers
+            for (int i = 0; i < headers.Length; i++)
+            {
+                worksheet.Cell(1, i + 1).Value = headers[i];
+            }
+
+            // Create lookup of KPA items
+            var kpaItems = _allKpiItems.Where(k => k.Type == "KPA").ToList();
+
+            // Group data so each KPA is followed by its KPIs
+            var groupedData = new List<KpiDisplayItem>();
+            foreach (var kpa in kpaItems)
+            {
+                // Add the KPA first
+                if (selectedKpis.Any(k => k.UUID == kpa.UUID))
+                    groupedData.Add(kpa);
+
+                // Then add KPIs belonging to this KPA
+                var relatedKpis = _allKpiItems
+                    .Where(k => (k.Type == "KPI" || k.Type == "Linked KPI") && k.PillarRef == kpa.PillarRef)
+                    .ToList();
+
+                foreach (var kpi in relatedKpis)
+                {
+                    if (selectedKpis.Any(k => k.UUID == kpi.UUID))
+                        groupedData.Add(kpi);
+                }
+            }
+
+            // Add any orphan KPIs (no parent KPA)
+            var orphanKpis = selectedKpis
+                .Where(k => k.Type != "KPA" && !groupedData.Any(g => g.UUID == k.UUID))
+                .ToList();
+            groupedData.AddRange(orphanKpis);
+
+            // Fill data
+            for (int i = 0; i < groupedData.Count; i++)
+            {
+                var kpi = groupedData[i];
+                int row = i + 2;
+
+                string parentGoal = string.Empty;
+                string goal = kpi.Name;
+                string goalIdParent = string.Empty;
+
+                if (kpi.Type == "KPA")
+                {
+                    parentGoal = "";
+                    goalIdParent = kpi.UUID;
+                }
+                else if (kpi.Type == "KPI" || kpi.Type == "Linked KPI")
+                {
+                    var parentKpa = _allKpiItems
+                        .Where(k => k.Type == "KPA" && k.PillarRef == kpi.PillarRef)
+                        .LastOrDefault(k => _allKpiItems.IndexOf(k) < _allKpiItems.IndexOf(kpi));
+
+                    if (parentKpa != null)
+                    {
+                        parentGoal = parentKpa.Name;
+                        goalIdParent = parentKpa.UUID;
+                    }
+                }
+
+                worksheet.Cell(row, 1).Value = goalIdParent; // GoalidParent
+                worksheet.Cell(row, 2).Value = kpi.UUID; // Goalid
+                worksheet.Cell(row, 3).Value = kpi.Type; // Type
+                worksheet.Cell(row, 4).Value = parentGoal; // Parent_Goal
+                worksheet.Cell(row, 5).Value = goal; // Goal
+                worksheet.Cell(row, 6).Value = kpi.Description ?? "";
+                worksheet.Cell(row, 7).Value = _contractResults?.ContractOwnerName ?? "";
+                worksheet.Cell(row, 8).Value = _contractResults?.EmployeeDetails?.IDNumber ?? "";
+                worksheet.Cell(row, 9).Value = _contractResults?.EmployeeDetails?.EmployeeNumber ?? "";
+                worksheet.Cell(row, 10).Value = _contractResults?.EmployeeDetails?.EmployeeBusinessUnits ?? "";
+                worksheet.Cell(row, 11).Value = _contractResults?.EmployeeDetails?.EmployeeDepartments ?? "";
+                worksheet.Cell(row, 12).Value = _contractResults?.EmployeeDetails?.EmployeeJobs ?? "";
+                worksheet.Cell(row, 13).Value = kpi.Target ?? 0;
+                worksheet.Cell(row, 38).Value = kpi.Status ?? ""; // Comments
+            }
+
+            // Define range
+            var tableRange = worksheet.Range(1, 1, groupedData.Count + 1, headers.Length);
+            var table = tableRange.CreateTable("KpiExportTable");
+            table.Theme = XLTableTheme.TableStyleMedium2;
+
+            worksheet.Columns().AdjustToContents();
+            worksheet.SheetView.FreezeRows(1);
+            worksheet.Row(1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            worksheet.Row(1).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            stream.Position = 0;
+
+            var base64 = Convert.ToBase64String(stream.ToArray());
+            var fileName = $"Selected_KPIs_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", base64, fileName);
+
+            NotificationService?.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Export Successful",
+                Detail = $"Exported {groupedData.Count} items successfully",
+                Duration = 3000
+            });
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Export failed: {ex.Message}", "Export");
+        }
+    }
+
+
+    private async Task DuplicateResults()
+    {
+        var selectedKpis = _allKpiItems.Where(k => k.IsSelected).ToList();
+        if (selectedKpis?.Any() == true)
+            await DialogService.Alert($"{selectedKpis.Count} item(s) selected for duplication.", "Duplicate");
+    }
+
+    /// <summary>
+    /// Handles refresh events triggered by the RightSidebarService.
+    /// Reloads data and updates the UI when certain control types are refreshed.
+    /// </summary>
+    /// <param name="controlType">Type of control that triggered refresh.</param>
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        if (controlType == ControlTypes.sb_Goals_EmployeeGoals)
+        {
+            await InvokeAsync(async () => await LoadData());
+            StateHasChanged(); //  UI updates
+        }
+        else if (controlType == ControlTypes.sb_Goals_GlobalComments)
+        {
+            await InvokeAsync(async () => await LoadData());
+            StateHasChanged(); //  UI updates
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_rightSidebarService != null)
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+
+        // Clear the shared context
+        _menuNav?.SetSharedContext(null);
+    }
+
+    private string GetProgressColorClass(decimal? score)
+    {
+        if (score == null) return "progress-gray";
+        if (score >= 80) return "progress-green";
+        if (score >= 50) return "progress-yellow";
+        return "progress-red";
+    }
+
+    // Helper methods for managing pillar expanded state
+    private bool IsPillarExpanded(Library.API.Goals.Models.Contracts.Pillar pillar)
+    {
+        if (pillar.UUID == null) return true;
+        return _pillarExpandedState.TryGetValue(pillar.UUID, out var isExpanded) && isExpanded;
+    }
+
+    private void TogglePillarExpanded(Library.API.Goals.Models.Contracts.Pillar pillar)
+    {
+        if (pillar.UUID == null) return;
+
+        if (_pillarExpandedState.ContainsKey(pillar.UUID))
+        {
+            _pillarExpandedState[pillar.UUID] = !_pillarExpandedState[pillar.UUID];
+        }
+        else
+        {
+            _pillarExpandedState[pillar.UUID] = false;
+        }
+        StateHasChanged();
+    }
+
+    // Calculate performance status based on scores
+    private PerformanceStatus GetPerformanceStatus(double? scoreEmployee, double? scoreManager)
+    {
+        // Calculate average of both scores
+        var avgScore = ((scoreEmployee ?? 0) + (scoreManager ?? 0)) / 2;
+
+        if (avgScore == 0)
+            return PerformanceStatus.NotStarted;
+        else if (avgScore < 50)
+            return PerformanceStatus.BelowTarget;
+        else if (avgScore >= 50 && avgScore < 70)
+            return PerformanceStatus.OnTarget;
+        else if (avgScore >= 70 && avgScore < 90)
+            return PerformanceStatus.Excellent;
+        else // avgScore >= 90
+            return PerformanceStatus.SuperStar;
+    }
+
+    // Get status display text
+    private string GetStatusDisplayText(PerformanceStatus status)
+    {
+        return status switch
+        {
+            PerformanceStatus.SuperStar => "Super Star",
+            PerformanceStatus.Excellent => "Excellent",
+            PerformanceStatus.OnTarget => "On Target",
+            PerformanceStatus.BelowTarget => "Below Target",
+            PerformanceStatus.NotStarted => "Not Started",
+            _ => "Unknown"
+        };
+    }
+
+    // Get status badge style with color coding
+    private string GetStatusBadgeStyle(PerformanceStatus status)
+    {
+        var (backgroundColor, textColor) = status switch
+        {
+            PerformanceStatus.SuperStar => ("#FFD700", "#000"),   // Gold with black text
+            PerformanceStatus.Excellent => ("#90C850", "#fff"),   // Green
+            PerformanceStatus.OnTarget => ("#4A90E2", "#fff"),    // Blue
+            PerformanceStatus.BelowTarget => ("#FFA500", "#fff"), // Orange
+            PerformanceStatus.NotStarted => ("#6c757d", "#fff"),  // Gray
+            _ => ("#6c757d", "#fff")
+        };
+
+        return $"background: {backgroundColor}; color: {textColor}; font-size: 11px; padding: 4px 12px; font-weight: 500; white-space: nowrap;";
+    }
+
+
+    private List<RatingPeriodsDto?> _ratingPeriodsDto = new();
+
+    // Active period navigation state
+    private int _activePeriodIndex = 0;
+
+    // Computed properties
+    private bool _hasPreviousPeriod => _activePeriodIndex > 0;
+    private bool _hasNextPeriod => _activePeriodIndex < _ratingPeriodsDto.Count - 1;
+
+    private string _activePeriodLabel =>
+        _ratingPeriodsDto.Count == 0
+            ? "No Period"
+            : _ratingPeriodsDto[_activePeriodIndex]?.RatingPeriodName ?? "Unknown";
+
+
+    private async Task GoToPreviousPeriod()
+    {
+        if (!_hasPreviousPeriod) return;
+
+        _isPeriodTransitioning = true;
+        StateHasChanged();
+
+        await Task.Delay(FadeDurationMs);
+
+        _activePeriodIndex--;
+        var period = _ratingPeriodsDto[_activePeriodIndex];
+
+        await LoadData(period?.RatingPeriodUUID);
+
+        _isPeriodTransitioning = false;
+        StateHasChanged();
+    }
+
+    private async Task GoToNextPeriod()
+    {
+        if (!_hasNextPeriod) return;
+
+        _isPeriodTransitioning = true;
+        StateHasChanged();
+
+        await Task.Delay(FadeDurationMs);
+
+        _activePeriodIndex++;
+        var period = _ratingPeriodsDto[_activePeriodIndex];
+
+        await LoadData(period?.RatingPeriodUUID);
+
+        _isPeriodTransitioning = false;
+        StateHasChanged();
+    }
+
+
+
+
+    public async Task<ContractResultsResponse> FilterContractsByRatingPeriod(string ratingPeriodUUID)
+    {
+        var response = await ContractResultsService.GetContractResults(DEFAULT_CONTRACT_UUID);
+        var data = response?.Data;
+
+        if (data == null || !data.Any())
+            return new ContractResultsResponse { Data = new List<ContractResults>() };
+
+        // Take the first contract and filter it
+        var contract = data.First();
+
+        foreach (var structure in contract.EnterpriseStructures ?? new List<EnterpriseStructure>())
+        {
+            foreach (var pillar in structure.Pillars ?? new List<Pillar>())
+            {
+                // Filter KPA by RatingPeriodsUUID
+                pillar.KPA = pillar.KPA?
+                    .Where(kpa => kpa.RatingPeriodsUUID == ratingPeriodUUID)
+                    .ToList();
+
+                // Filter KPI inside remaining KPAs
+                foreach (var kpa in pillar.KPA ?? new List<KPA>())
+                {
+                    kpa.KPI = kpa.KPI?
+                        .Where(kpi => kpi.RatingPeriodsUUID == ratingPeriodUUID)
+                        .ToList();
+                }
+            }
+        }
+
+        // Wrap the filtered contract inside ContractResultsResponse
+        return new ContractResultsResponse
+        {
+            Data = new List<ContractResults> { contract }
+        };
+    }
+
+}
+
+
+

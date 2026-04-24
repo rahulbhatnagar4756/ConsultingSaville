@@ -1,0 +1,91 @@
+﻿<RadzenAutoComplete Data="@presetNumbers"
+                    TValue="string"
+                    @bind-Value="@currentText"
+                    Placeholder="Type or select number..."
+                    AllowClear="true"
+                    OpenOnFocus="true"
+                    Style="width:150px"
+                    @oninput="OnTyping"
+                    @onchange="OnValueChanged"
+                    @onclick="OnClick"
+                    @onfocus="OnFocus"
+                    @onblur="OnBlur" />
+
+@code {
+    [Parameter] public EventCallback<decimal?> OnWeightChanged { get; set; }
+    [Parameter] public EventCallback OnWeightClicked { get; set; }
+
+    private string currentText;
+    private decimal? selectedNumber;
+    private List<string> presetNumbers = Enumerable.Range(1, 20).Select(i => (i * 5).ToString()).ToList();
+
+    private async Task OnTyping(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString() ?? "";
+
+        // Keep only digits and at most one dot
+        int dotCount = 0;
+        string cleaned = new string(text.Where(c =>
+        {
+            if (char.IsDigit(c)) return true;
+            if (c == '.' && dotCount == 0)
+            {
+                dotCount++;
+                return true;
+            }
+            return false;
+        }).ToArray());
+
+        currentText = cleaned;
+        await UpdateSelectedNumber();
+    }
+
+    private async Task OnValueChanged(object value)
+    {
+        currentText = value?.ToString() ?? "";
+        await UpdateSelectedNumber();
+    }
+
+    private async Task OnClick(MouseEventArgs e)
+    {
+        await OnWeightClicked.InvokeAsync();
+    }
+
+    private async Task OnFocus(FocusEventArgs e)
+    {
+        // Handle focus event if needed
+        Console.WriteLine("Weight control focused");
+    }
+
+    private async Task OnBlur(FocusEventArgs e)
+    {
+        // Handle blur event - good place for validation
+        await UpdateSelectedNumber();
+    }
+
+    private async Task UpdateSelectedNumber()
+    {
+        if (decimal.TryParse(currentText, out var num))
+        {
+            selectedNumber = num;
+            await OnWeightChanged.InvokeAsync(selectedNumber);
+        }
+        else
+        {
+            selectedNumber = null;
+            await OnWeightChanged.InvokeAsync(null);
+        }
+    }
+
+    // Public method to get current value
+    public decimal? GetValue() => selectedNumber;
+
+    // Public method to set value programmatically
+    public async Task SetValue(decimal? value)
+    {
+        selectedNumber = value;
+        currentText = value?.ToString() ?? "";
+        await OnWeightChanged.InvokeAsync(selectedNumber);
+        StateHasChanged();
+    }
+}

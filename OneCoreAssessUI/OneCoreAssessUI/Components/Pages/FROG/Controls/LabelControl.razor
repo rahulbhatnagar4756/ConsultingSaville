@@ -1,0 +1,31 @@
+﻿@using Library.Frog.Services
+
+@if(!string.IsNullOrWhiteSpace(_labelValue))
+{
+    //set the _labelValue to be HTML rendered
+    <RadzenStack class=@string.Format("form {0}", Element.CSSClass)>
+        <span Style=@Element.Style>@((MarkupString)_labelValue)</span>
+    </RadzenStack>
+}
+
+
+@code {
+    [Inject] IFrogService FrogService { get; set; }
+    [Parameter] public Library.Frog.Models.FrogElementModel Element { get; set; }
+
+    private List<Library.Frog.Models.FrogLookupModel> _Lookups = new();
+    private string _labelValue = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PopulateElement(Element);
+    }
+
+    private async Task PopulateElement(Library.Frog.Models.FrogElementModel element)
+    {
+        if (element == null || string.IsNullOrWhiteSpace(element.Label)) return;
+        _labelValue = element.Label;
+    }
+
+    
+}

@@ -1,0 +1,68 @@
+﻿.instructions-wrapper {
+    margin-right: auto;
+    margin-left: auto;
+    padding-right: 15px;
+    padding-left: 15px;
+    max-width: 1140px;
+
+    .instructions-header {
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--rz-border-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .instructions-title {
+        color: var(--sc-primary-colour1, #0F1F38);
+        font-weight: 600;
+    }
+
+    .instructions-body {
+        flex: 1;
+        padding: 1rem 0;
+        line-height: 1.6;
+    }
+
+    .instructions-body .card {
+        border-style: none !important;
+    }
+
+    .instructions-footer {
+        padding: 1.5rem 0 1rem 0;
+        border-top: 1px solid var(--rz-border-color);
+        margin-top: 1.5rem;
+    }
+
+    .start-button {
+        width: 100%;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+    }
+
+    .mobile-warning {
+        margin-bottom: 1rem;
+    }
+
+    .mobile-warning-icon {
+        margin-right: 0.5rem;
+        vertical-align: middle;
+    }
+
+    .no-test-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 3rem 1rem;
+        min-height: 300px;
+    }
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .instructions-header,
+        .instructions-body,
+        .instructions-footer {
+            padding-left: 0;
+            padding-right: 0;
+        }
+    }
+}

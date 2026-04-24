@@ -1,0 +1,119 @@
+﻿@using Library.API.Base.Models.Employees
+@using Library.API.Base.Services
+@using Library.API.TalentManagement.Models.Box9
+@using Library.API.TalentManagement.Services
+@using Library.API.TalentManagement.Validators.Box9
+@using Library.API.TalentManagement.Mapper.Box9 
+@using Library.API.Base.Validators
+@using Radzen;
+@using Radzen.Blazor;
+
+
+
+<RadzenStack class="Level9Box">
+
+
+
+    @if (_box9Employees != null)
+    {
+
+        <RadzenStack class="header-outer">
+
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label">
+                    @_box9Name
+                </RadzenText>
+            </RadzenStack>
+
+            <RadzenRow>
+                @foreach (var Item in _box9Employees.OrderBy(x => x.Order))
+                {
+                    <RadzenColumn Size="2" gap="5px">
+                        <RadzenCard class="card-level">
+                            <RadzenStack>
+                                @Item.Level
+                            </RadzenStack>
+                            <RadzenStack JustifyContent="JustifyContent.Center">
+                                <RadzenText class="inner-count">
+                                    @Item?.Employees?.GroupBy(e => e.EmployeeNumber).Select(g => g.First()).ToList().Count()
+                                </RadzenText>
+                            </RadzenStack>
+                        </RadzenCard>
+                    </RadzenColumn>
+                }
+
+            </RadzenRow>
+
+        </RadzenStack>
+
+        <RadzenStack class="pt-4">
+
+            <RadzenTabs>
+                <Tabs>
+                    @foreach (var Item in _box9Employees.OrderBy(x => x.Order))
+                    {
+                        <RadzenTabsItem Text="@(Item.Level)">
+
+                            <RadzenDataGrid ColumnWidth="150px" 
+                                Data="@Item?.Employees?.GroupBy(e => e.EmployeeNumber).Select(g => g.First()).ToList()" 
+                                AllowFiltering="true" 
+                                AllowPaging="true" 
+                                PageSize="100" 
+                                AllowSorting="true" 
+                                Style="height: calc(100vh - 450px)">
+                                <Columns>
+                                    <RadzenDataGridColumn Property="@nameof(EmployeesModel.Fullname)" Title="Name & Surname" />
+                                    <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeBusinessUnits)" Title="BU" Width="100px" />
+                                    <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeJobs)" Title="Positions" />
+                                    <RadzenDataGridColumn Sortable="false" Filterable="false" Width="60px">
+                                        <Template Context="data">
+                                            <RadzenButton click="(async() => await OnEmployeeClick(data))" Icon="person_edit" class="employee-edit-button"></RadzenButton>
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+
+                        </RadzenTabsItem>
+                    }
+                </Tabs>
+            </RadzenTabs>
+        </RadzenStack>
+    }
+</RadzenStack>
+
+@code {
+    [Inject] IBox9Service _box9Service { get; set; }
+
+    [Parameter] public Library.API.Base.Models.Employees.EmployeeSearchModel Search9Box { get; set; }
+    [Parameter] public EventCallback<Library.API.Base.Models.Employees.EmployeeSearchModel> Search9BoxChanged { get; set; }
+
+    private Library.API.Base.Models.Employees.EmployeeSearchModel? _search9BoxCurrent = new();
+    private List<Box9EmployeesModel>? _box9Employees;
+
+    private string? _box9Name = "Unknown";
+
+    protected override async Task OnParametersSetAsync()
+    {
+
+        if (Search9Box != null && _box9Service != null && !_search9BoxCurrent.CompareEmployeeSearchModels(Search9Box))
+        {
+            _box9Employees = await _box9Service.GetBox9Employees(Search9Box);
+            _search9BoxCurrent = (EmployeeSearchModel)Search9Box.Clone();
+            if (_box9Employees != null && _box9Employees.Count() > 0)
+            {
+                _box9Name = _box9Employees.FirstOrDefault()?.Box9 ?? "Unknown";
+            }
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task OnEmployeeClick(EmployeesModel employee)
+    {
+        if (Search9Box.UsersUUID == null) Search9Box.UsersUUID = new();
+        Search9Box.UsersUUID.Clear();
+        Search9Box.UsersUUID.Add(employee.UsersUUID);
+        await Search9BoxChanged.InvokeAsync(Search9Box);
+    }
+
+}

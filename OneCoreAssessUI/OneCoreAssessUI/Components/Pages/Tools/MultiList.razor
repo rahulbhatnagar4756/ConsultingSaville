@@ -1,0 +1,128 @@
+﻿@using Library.API.Base.Models.BusinessHierarchy
+@if (EmployeeBaseList != null)
+{
+    <RadzenTabs TabPosition="TabPosition.TopRight">
+        <Tabs>
+            <RadzenTabsItem Icon="view_comfy_alt">
+
+                <RadzenRow class="list-custom-tile  ">
+
+                    @if (isAdd)
+                    {
+                        <RadzenColumn Size="6" SizeXS="6" SizeMD="4" SizeLG="2" class="wrapper-tile">
+                            <button onclick=@(async () => await OnAddNew_Click()) style="border: none; width: 100%;">
+
+                                <RadzenCard class="card-custom">
+                                    <RadzenStack>
+
+                                        <RadzenStack class="count-custom"></RadzenStack>
+
+                                        <RadzenStack class="icon-custom" Style="margin-top: 4px;">
+                                            <RadzenIcon Icon="add" Style="color: var(--sc-secondary-color4)" />
+                                        </RadzenStack>
+
+                                        <RadzenStack class="label-custom">
+                                            <RadzenText Text="Add" />
+                                        </RadzenStack>
+
+                                    </RadzenStack>
+                                </RadzenCard>
+                            </button>
+                        </RadzenColumn>
+                    }
+
+                    @foreach (var Item in EmployeeBaseList.OrderBy(x => x.OrderVal).ThenBy(x => x.Name))
+                    {
+                        <RadzenColumn Size="6" SizeXS="6" SizeMD="4" SizeLG="2" class="wrapper-tile">
+                            <button onclick=@(async() => await RowSelect(Item)) style="border: none; width: 100%;" >
+
+                                <RadzenCard class="card-custom">
+                                    <RadzenStack class="mt-4">
+
+                                        <RadzenStack class="count-custom">
+                                            @if (isStats)
+                                            {
+                                                <RadzenText Style="font-size: 10px" Text=@(string.Format("{0} {1}", Item.Count, StatsName)) />
+                                            }
+                                        </RadzenStack>
+
+                                        <RadzenStack class="icon-custom">
+                                            <RadzenIcon Icon=@Item.Icon IconColor=@Item.IconColor />
+                                        </RadzenStack>
+
+                                        <RadzenStack class="label-custom">
+                                            <RadzenText Text=@Item.Name />
+                                        </RadzenStack>
+
+                                    </RadzenStack>
+                                </RadzenCard>
+                            </button>
+
+                        </RadzenColumn>
+                    }
+                </RadzenRow>
+            </RadzenTabsItem>
+            <RadzenTabsItem Icon="event_list">
+
+                <RadzenDataGrid AllowFiltering="true"
+                                AllowColumnResize="true"
+                                TItem="EmployeeBaseModel"
+                                AllowAlternatingRows="false"
+                                FilterMode="FilterMode.Advanced"
+                                AllowSorting="true"
+                                PageSize="20"
+                                AllowPaging="true"
+                                PagerHorizontalAlign="HorizontalAlign.Left"
+                                ShowPagingSummary="true"
+                                Data=@EmployeeBaseList.OrderBy(x => x.OrderVal).ThenBy(x => x.Name)
+                                ColumnWidth="300px"
+                                LogicalFilterOperator="LogicalFilterOperator.Or"
+                                SelectionMode="DataGridSelectionMode.Single"
+                                AllowRowSelectOnRowClick="true"
+                                RowSelect="RowSelect">
+                    <Columns>
+                        <RadzenDataGridColumn Width="60px" Sortable="false" Filterable="false">
+                            <Template Context="data">
+                                <RadzenIcon Icon=@data.Icon Style=@(string.Format("color: {0};", data.IconColor)) />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn Property="@nameof(EmployeeBaseModel.Name)" Title=@Name />
+                        <RadzenDataGridColumn Property="@nameof(EmployeeBaseModel.Description)" Title="Description"   />
+                        <RadzenDataGridColumn Property="@nameof(EmployeeBaseModel.Count)"
+                                              Title=@(StatsName ?? "")
+                                              Filterable="false"
+                                              Width="120px" 
+                                              TextAlign="TextAlign.Center"
+                                              Visible=@isStats />
+                    </Columns>
+                </RadzenDataGrid>
+
+
+
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+
+}
+
+@code {
+
+    [Parameter] public List<EmployeeBaseModel>? EmployeeBaseList { get; set; } = null;
+    //create a event to handle row selection
+    [Parameter] public EventCallback<EmployeeBaseModel?> OnItemSelect { get; set; }
+    [Parameter] public EventCallback OnAddNew { get; set; }
+
+    [Parameter] public string Name { get; set; } = "Name";
+    [Parameter] public bool isStats { get; set; } = true;
+    [Parameter] public string StatsName { get; set; } = "Departments";
+    [Parameter] public bool isAdd { get; set; } = true;
+
+    //RowSelect method to handle selection
+    private async Task RowSelect(EmployeeBaseModel? employeeBase) =>
+        await OnItemSelect.InvokeAsync(employeeBase);
+
+    private async Task OnAddNew_Click() =>
+        await OnAddNew.InvokeAsync();
+
+}

@@ -1,0 +1,624 @@
+﻿@using Library.API.Goals.Models.Employee
+@using Library.API.Goals.Models.PerformanceReview
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using Radzen
+@implements IDisposable
+@inject DialogService DialogService
+
+<RadzenStack Class=" main_card">
+
+    @if (_isLoading)
+    {
+        <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="height: 100vh;">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+            <RadzenText Text="Loading contract results..." Style="margin-top: 10px; color: #666;" />
+        </RadzenStack>
+    }
+    else
+    {
+
+        <!-- Header -->
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px" Class="mb-4">
+            <RadzenIcon Icon="groups" Style="font-size: 36px;" />
+            <RadzenText Text="Employees" Style="font-weight: 700; font-size: 28px; " />
+        </RadzenStack>
+
+        <!-- Search bar -->
+        <RadzenStack Orientation="Orientation.Horizontal" class="mb-3" Style="gap: 8px;">
+            <RadzenTextBox Placeholder="Search by Name or Email"
+                           @bind-Value="_searchTerm"
+                           @oninput="@OnSearchInput"
+                           Style=" width: 100%;"
+                           Icon="search" />
+
+            @if (!string.IsNullOrWhiteSpace(_searchTerm))
+            {
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Click="@ClearSearch" />
+            }
+
+        </RadzenStack>
+
+        <!-- Mobile Cards View (Hidden on larger screens) -->
+        <div class="d-block d-md-none">
+            @if (_filteredEmployees != null && _filteredEmployees.Any())
+            {
+                <RadzenStack Orientation="Orientation.Vertical" Gap="12px">
+                    @foreach (var employee in GetPaginatedEmployees())
+                    {
+                        <RadzenCard Class="single_card p-3 shadow-sm border" Style="@GetMobileCardStyle(employee)">
+                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                <!-- Employee Name -->
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="4px">
+                                    <RadzenText Text="@($"{employee.FirstName} {employee.LastName}")"
+                                                Style="font-weight: 600; font-size: 16px; margin: 0;" />
+                                </RadzenStack>
+
+                                <!-- Actions -->
+                                <RadzenStack Orientation="Orientation.Horizontal" Gap="8px">
+                                    <!-- Edit -->
+                                    <RadzenButton Icon="edit"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Info"
+                                                  Click="@(args => OnEdit(employee))"
+                                                  @onclick:stopPropagation="true" />
+
+                                    <!-- Contract -->
+                                    <RadzenButton Icon="gavel"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Primary"
+                                                  Click="@(args => OnContract(employee))"
+                                                  @onclick:stopPropagation="true" />
+
+                                    <!-- Delete -->
+                                    <RadzenButton Icon="delete"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Danger"
+                                                  Click="@(args => OnDelete(employee))"
+                                                  @onclick:stopPropagation="true" />
+                                    <!-- View employee goals -->
+                                    <RadzenButton Icon="info"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Primary"
+                                                  @onclick:stopPropagation="true"
+                                                  Click="(async () => await ViewEmployeeGoals(employee))"
+                                                  HtmlAttributes="@(new Dictionary<string, object> { { "title", "View employee goals" } })" />
+
+                                    <RadzenButton Icon="file_download"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Light"
+                                                  @onclick:stopPropagation="true"
+                                                  Click="(async () => await DownloadEmployeesDetails(employee))"
+                                                  HtmlAttributes="@(new Dictionary<string, object> { { "title", "Download" } })" />
+
+
+
+                                </RadzenStack>
+                            </RadzenStack>
+                        </RadzenCard>
+                    }
+                </RadzenStack>
+
+                <!-- Mobile Pagination -->
+                @if (TotalPages > 1)
+                {
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Class="mt-4" Gap="8px">
+                        <RadzenButton Text="Previous"
+                                      Size="ButtonSize.Small"
+                                      Disabled="@(CurrentPage <= 1)"
+                                      Click="@(() => ChangePage(CurrentPage - 1))" />
+
+                        <RadzenText Text="@($"Page {CurrentPage} of {TotalPages}")" Class="align-self-center" />
+
+                        <RadzenButton Text="Next"
+                                      Size="ButtonSize.Small"
+                                      Disabled="@(CurrentPage >= TotalPages)"
+                                      Click="@(() => ChangePage(CurrentPage + 1))" />
+                    </RadzenStack>
+                }
+            }
+            else
+            {
+                <div class="text-center text-gray-500 p-4">
+                    No employees found
+                </div>
+            }
+        </div>
+
+        <!-- Desktop Data Grid (Hidden on mobile) -->
+        <div class="d-none d-md-block">
+            <RadzenDataGrid TItem="Employee"
+                            Data="@_filteredEmployees"
+                            AllowPaging="true"
+                            PageSize="30"
+                            AllowSorting="true"
+                            AllowFiltering="true"
+                            FilterMode="FilterMode.Advanced"
+                            Responsive="true"
+                            RowRender="@OnRowRender"
+                            AllowColumnResize="true"
+                            Style="overflow-x: auto; display: block; white-space: nowrap;"
+                            Class="shadow-sm rounded-lg">
+
+                <Columns>
+                    <RadzenDataGridColumn TItem="Employee" Property="FirstName" Title="First Name" Filterable="true" />
+                    <RadzenDataGridColumn TItem="Employee" Property="LastName" Title="Last Name" Filterable="true" />
+                    <RadzenDataGridColumn TItem="Employee" Property="Email" Title="Email" Filterable="true" />
+                    <RadzenDataGridColumn TItem="Employee" Property="EmployeeBusinessUnits" Title="Business Unit" Filterable="true" />
+                    <RadzenDataGridColumn TItem="Employee" Property="EmployeeDepartments" Title="Department" Filterable="true" />
+                    <RadzenDataGridColumn TItem="Employee" Property="EmployeeJobs" Title="Job" Filterable="true" />
+                    <RadzenDataGridColumn TItem="Employee" Property="EmployeeLevels" Title="Level" Filterable="true" />
+                    <RadzenDataGridColumn TItem="Employee" Property="FullNameManager" Title="Manager" Filterable="true" />
+                    <!-- Contract Status Badge -->
+                    <RadzenDataGridColumn TItem="Employee" Title="Contract">
+                        <Template Context="data">
+                            <RadzenBadge Text="@(data.IsContractValid ? "Valid" : "No Contract")"
+                                         Style="@GetBadgeStyle(data.IsContractValid)" />
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <!-- Actions -->
+                    <RadzenDataGridColumn TItem="Employee" Title="Actions" Width="210px" Sortable="false" Filterable="false">
+                        <Template Context="data">
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                                <!-- Edit -->
+                                <RadzenButton Icon="edit"
+                                              Size="ButtonSize.Small"
+                                              ButtonStyle="ButtonStyle.Info"
+                                              Click="@(args => OnEdit(data))"
+                                              @onclick:stopPropagation="true"
+                                              Style="margin-right:5px;" />
+
+                                <!-- Contract -->
+                                <RadzenButton Icon="gavel"
+                                              Size="ButtonSize.Small"
+                                              ButtonStyle="ButtonStyle.Primary"
+                                              Click="@(args => OnContract(data))"
+                                              @onclick:stopPropagation="true"
+                                              Style="margin-right:5px;" />
+
+                                <!-- Delete -->
+                                <RadzenButton Icon="delete"
+                                              Size="ButtonSize.Small"
+                                              ButtonStyle="ButtonStyle.Danger"
+                                              Click="@(args => OnDelete(data))"
+                                              @onclick:stopPropagation="true" />
+                                <!-- View employee goals -->
+                                <RadzenButton Icon="info"
+                                              Size="ButtonSize.Small"
+                                              ButtonStyle="ButtonStyle.Primary"
+                                              @onclick:stopPropagation="true"
+                                              Click="(async () => await ViewEmployeeGoals(data))"
+                                              HtmlAttributes="@(new Dictionary<string, object> { { "title", "View employee goals" } })" />
+
+
+                                <RadzenButton Icon="file_download"
+                                              Size="ButtonSize.Small"
+                                              ButtonStyle="ButtonStyle.Light"
+                                              @onclick:stopPropagation="true"
+                                              Click="(async () => await DownloadEmployeesDetails(data))"
+                                              HtmlAttributes="@(new Dictionary<string, object> { { "title", "Download" } })" />
+
+                            </RadzenStack>
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                </Columns>
+
+                <!-- Empty data message -->
+                <EmptyTemplate>
+                    <div class="text-center text-gray-500 p-4">
+                        No data available
+                    </div>
+                </EmptyTemplate>
+
+            </RadzenDataGrid>
+        </div>
+
+    }
+</RadzenStack>
+
+<style>
+    .main_card {
+        width: calc(100% - 30px);
+        margin-left: 0 !important;
+    }
+
+    .single_card {
+        box-shadow: 0 5px 25px rgb(0 0 0 / 20%) !important;
+    }
+
+        .single_card > .rz-stack {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+        }
+</style>
+
+@code {
+    /// <summary>
+    /// Injected service for employee-related operations.
+    /// </summary>
+    [Inject] public IEmployeesService EmployeesService { get; set; }
+    [Inject] public IContractsService ContractsService { get; set; }
+    [Inject] public IJSRuntime JSRuntime { get; set; }
+    /// <summary>
+    /// Cascading service to handle right sidebar actions and state.
+    /// </summary>
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+
+    private bool _isLoading = true;
+
+    [Parameter] public Enumerables.MenuItemSubTypes ItemSub { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemSubTypes> ItemSubChanged { get; set; }
+
+    /// <summary>
+    /// List containing all employees loaded from the service.
+    /// </summary>
+    private List<Employee>? _employees;
+    /// <summary>
+    /// List of employees after applying the current search filter.
+    /// </summary>
+    private List<Employee>? _filteredEmployees;
+    /// <summary>
+    /// UUID of the currently selected employee.
+    /// </summary>
+    private string? _selectedUUID;
+    /// <summary>
+    /// Current search term used to filter employees.
+    /// </summary>
+    private string _searchTerm = string.Empty;
+
+    // Mobile pagination properties
+    private int CurrentPage = 1;
+    private int PageSize = 10;
+    private int TotalPages => _filteredEmployees != null ? (int)Math.Ceiling((double)_filteredEmployees.Count / PageSize) : 0;
+
+    /// <summary>
+    /// Lifecycle method called when the component is initialized.
+    /// Subscribes to sidebar data refresh events and loads initial data.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (_rightSidebarService != null)
+        {
+            // Subscribe to data refresh events from sidebar
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+        // Load employee data initially
+        await LoadData();
+        await base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Loads employee data asynchronously from the employee service.
+    /// Applies search filter after loading.
+    /// Shows error dialog if loading fails.
+    /// </summary>
+    private async Task LoadData()
+    {
+        try
+        {
+            _isLoading = true;
+
+            _employees = await EmployeesService.GetEmployees();
+
+            if (_employees == null)
+            {
+                await ShowError("Failed to load employees. Please try again.");
+                return;
+            }
+            // Apply search filter to the loaded data
+            ApplySearchFilter();
+        }
+        catch (Exception ex)
+        {
+            // Optional: log ex
+            await ShowError("An unexpected error occurred while loading employees.");
+        }
+        finally
+        {
+            _isLoading = false;
+            // Notify Blazor to update UI
+            StateHasChanged();
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        ApplySearchFilter();
+    }
+
+    /// <summary>
+    /// Applies the current search term to filter employees by first name, last name, or email.
+    /// Resets the pagination to the first page after filtering.
+    /// </summary>
+    private void ApplySearchFilter()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            // No search term, display all employees
+            _filteredEmployees = _employees;
+        }
+        else
+        {
+            var term = _searchTerm.Trim().ToLower();
+            _filteredEmployees = _employees
+                .Where(e =>
+                    (e.FirstName?.ToLower().Contains(term) ?? false) ||
+                    (e.LastName?.ToLower().Contains(term) ?? false) ||
+                    (e.Email?.ToLower().Contains(term) ?? false))
+                .ToList();
+        }
+
+        // Reset to first page when filtering
+        CurrentPage = 1;
+    }
+
+    /// <summary>
+    /// Updates the search term and reapplies the search filter.
+    /// </summary>
+    /// <param name="value">New search term from user input.</param>
+    private void OnSearchChanged(string value)
+    {
+        _searchTerm = value;
+        ApplySearchFilter();
+    }
+
+    /// <summary>
+    /// Retrieves the subset of employees to display on the current page.
+    /// </summary>
+    /// <returns>Paginated list of employees.</returns>
+    private List<Employee> GetPaginatedEmployees()
+    {
+        if (_filteredEmployees == null) return new List<Employee>();
+
+        return _filteredEmployees
+            .Skip((CurrentPage - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Changes the current page to the specified page number if valid.
+    /// Triggers UI update.
+    /// </summary>
+    /// <param name="newPage">The new page number to navigate to.</param>
+    private void ChangePage(int newPage)
+    {
+        if (newPage >= 1 && newPage <= TotalPages)
+        {
+            CurrentPage = newPage;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles sidebar data refresh events by reloading employee data if relevant.
+    /// </summary>
+    /// <param name="controlType">Type of control requesting the refresh.</param>
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        if (controlType == ControlTypes.sb_Goals_Employees)
+        {
+            await InvokeAsync(async () => await LoadData());
+        }
+    }
+
+    /// <summary>
+    /// Returns CSS styles for badges indicating contract validity.
+    /// Green background if valid, red if not.
+    /// </summary>
+    /// <param name="isValid">Indicates if contract is valid.</param>
+    /// <returns>CSS style string.</returns>
+    private string GetBadgeStyle(bool isValid)
+    {
+        var color = isValid ? "#22c55e" : "#ef4444"; // green or red
+        return $"background-color:{color}; color:white; padding:0.25rem 0.5rem; border-radius:0.25rem; font-size: 12px;";
+    }
+
+    /// <summary>
+    /// Returns inline CSS style for mobile card UI based on employee contract validity.
+    /// Changes background and border colors if contract is invalid.
+    /// </summary>
+    /// <param name="employee">Employee data.</param>
+    /// <returns>CSS style string.</returns>
+    private string GetMobileCardStyle(Employee employee)
+    {
+        var baseStyle = "border-radius: 8px;";
+        if (!employee.IsContractValid)
+        {
+            baseStyle += " background-color: #fef2f2; border-color: #fecaca;";
+        }
+        return baseStyle;
+    }
+
+
+    /// <summary>
+    /// Unsubscribes from sidebar refresh events when the component is disposed.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+        }
+    }
+
+
+    /// <summary>
+    /// Displays an error dialog with the specified message.
+    /// </summary>
+    /// <param name="message">Error message to display.</param>
+    private async Task ShowError(string message)
+    {
+        await DialogService.Alert(message, "Error", new AlertOptions() { OkButtonText = "Close" });
+    }
+
+    /// <summary>
+    /// Custom row rendering logic for the employee grid.
+    /// Highlights rows with invalid contracts by changing background color.
+    /// </summary>
+    /// <param name="args">Row rendering event arguments.</param>
+    private void OnRowRender(RowRenderEventArgs<Employee> args)
+    {
+        if (!args.Data.IsContractValid)
+        {
+            args.Attributes["style"] = "background-color:#fef2f2;";
+        }
+    }
+
+    /// <summary>
+    /// Handles the edit action for the selected employee.
+    /// Sets the selected employee UUID and opens the right sidebar for editing.
+    /// </summary>
+    /// <param name="employee">The employee to edit.</param>
+    private void OnEdit(Employee employee)
+    {
+        _selectedUUID = employee.UsersUUID; // set selected item UUID
+        _rightSidebarService.SharedContext = employee; // pass the selected employee as context
+        _rightSidebarService.Open(ControlTypes.sb_Goals_Employees); // open sidebar for editing
+    }
+
+    /// <summary>
+    /// Handles the contract view/edit action for the selected employee.
+    /// Opens the contract sidebar with the employee context.
+    /// </summary>
+    /// <param name="employee">The employee whose contract to view/edit.</param>
+    private async Task OnContract(Employee employee)
+    {
+        try
+        {
+            // Get or create the latest contract for the employee
+            var result = await ContractsService.GetOrCreateLatestUserContract(employee.UsersUUID);
+
+            if (result == null && !result.isValid.Value && string.IsNullOrEmpty(result.UUID))
+            {
+                await ShowError("Failed to get or create contract for the employee. " + result.Message);
+                return;
+            }
+
+            // Set the contract UUID in the shared context and navigate to contract view
+            if (_menuNav != null)
+            {
+                _menuNav.SetSharedContext(result.UUID);
+                _menuNav.MenuItemSubType = MenuItemSubTypes.ContractGoalContract;
+            }
+
+            await ItemSubChanged.InvokeAsync(MenuItemSubTypes.ContractGoalContract);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"An error occurred while accessing the contract: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Handles deletion of an employee after user confirmation.
+    /// Reloads employee data after successful deletion.
+    /// </summary>
+    /// <param name="employee">The employee to delete.</param>
+    private async Task OnDelete(Employee employee)
+    {
+        var confirm = await DialogService.Confirm($"Are you sure you want to delete {employee.FirstName} {employee.LastName}?", "Confirm Delete");
+        if (confirm.HasValue && confirm.Value)
+        {
+            // Call service to delete employee
+            // await EmployeesService.DeleteEmployee(employee.UsersUUID);
+
+            await LoadData();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        _searchTerm = string.Empty;
+        ApplySearchFilter();
+    }
+
+    private async Task ViewEmployeeGoals(Employee employee)
+    {
+        try
+        {
+            if (_menuNav != null)
+            {
+                string data = $"UsersUUID={employee.UsersUUID}";
+                _menuNav.SetSharedContext(data);
+                _menuNav.MenuItemSubType = MenuItemSubTypes.EmployeeGoals;
+            }
+
+            await ItemSubChanged.InvokeAsync(MenuItemSubTypes.EmployeeGoals);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"An error occurred while loading the employee goals: {ex.Message}");
+        }
+    }
+
+
+
+    private async Task DownloadEmployeesDetails(Employee employee)
+    {
+        try
+        {
+
+            var employeeData = await ContractsService.GetEmployeesBYUserUUID(employee.UsersUUID);
+
+            if (employeeData != null)
+            {
+                employeeData.CompanyLogo = Convert.ToString(GetImageBase64("PerformanceReviewLogo.png"));
+
+
+                var result = await ContractsService.DownloadEmployeesDetails(employeeData);
+
+
+                if (result == null)
+                {
+                    await ShowError("Performance review downgrading is failing.");
+                }
+                // Convert byte array to base64
+                var base64 = Convert.ToBase64String(result.PdfData);
+
+                // Call JS to trigger download
+                await JSRuntime.InvokeVoidAsync("downloadFileFromBytes",
+                    result.FileName,
+                    base64,
+                    "application/pdf");
+            }
+            else
+            {
+                await ShowError("No performance review exists for this employee.");
+            }
+
+
+
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"An error occurred while loading the employee goals: {ex.Message}");
+        }
+    }
+
+
+    public static string GetImageBase64(string fileName)
+    {
+        var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", fileName);
+
+        if (!File.Exists(imagePath))
+            throw new FileNotFoundException($"Image file not found: {imagePath}");
+
+        byte[] imageBytes = File.ReadAllBytes(imagePath);
+        return Convert.ToBase64String(imageBytes);
+    }
+
+
+}
+
+
+

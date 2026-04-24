@@ -1,0 +1,260 @@
+﻿@using Library.API.Goals.Models.ContractPeriod
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@using Radzen
+
+<!-- Title -->
+<RadzenStack class="header-custom">
+	<RadzenStack class="header-outer">
+		<RadzenStack>
+			<RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Contract Period Details" />
+		</RadzenStack>
+	</RadzenStack>
+</RadzenStack>
+
+<RadzenStack Class=" p-4 w-full max-w-2xl mx-auto  ">
+    <RadzenStack Gap="10px">
+
+
+        <!-- Error Message -->
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="p-2 bg-red-100 text-red-700 rounded-md flex items-center gap-2">
+                <RadzenIcon Icon="exclamation-triangle" Style="color: #B91C1C;" />
+                @_errorMessage
+            </div>
+        }
+
+        <!-- Name -->
+        <RadzenLabel Text="Name" Component="TextBox" />
+        <RadzenTextBox @bind-Value="_period.Name" Placeholder="Enter contract period name" Style="width:100%" />
+
+        <!-- Description -->
+        <RadzenLabel Text="Description" Component="TextArea" />
+        <RadzenTextArea @bind-Value="_period.Description" Placeholder="Add description"
+                        Rows="3" Style="width:100%" />
+
+		<RadzenLabel Text="Year" Component="DropDown" />
+		<RadzenDropDown @bind-Value="_period.Year"
+                        Data="_yearOptions"
+                        Style="width:100%"
+                        Placeholder="Select year..."
+                        Name="YearDropDown"
+                        Change="@OnYearChanged" />
+
+        <!-- Dates & Year -->
+        <RadzenRow>
+
+			<RadzenColumn Size="6">
+				<RadzenText Text="Start Date"   />
+				<RadzenDatePicker @bind-Value="_period.DateStart"
+								  DateFormat="dd MMM yyyy"
+								  Style="width:100%" />
+			</RadzenColumn>
+			<RadzenColumn Size="6">
+
+                <RadzenText Text="End Date" />
+				<RadzenDatePicker @bind-Value="_period.DateEnd"
+								  DateFormat="dd MMM yyyy"
+								  Style="width:100%" />
+			</RadzenColumn>
+             
+
+
+        </RadzenRow>
+
+
+        <!-- Active Checkbox -->
+        <RadzenCheckBox @bind-Value="_period.isActive" TValue="bool" />
+        <RadzenLabel Text="Active" Class="ml-2" />
+
+        <!-- Actions -->
+ 
+
+        <RadzenColumn Size="12" class="mt-5">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                <RadzenButton style="flex: 1;"
+                              Icon="save"
+                              BusyText="Saving..."
+                              Click="@OnSave"
+                              Text="Save" />
+
+                @if (!string.IsNullOrEmpty(_period?.UUID))
+                {
+                    <RadzenButton Icon="delete"
+                                  Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                  Click="OnDelete" />
+                }
+            </RadzenStack>
+        </RadzenColumn>
+
+
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+    [Inject] public IContractPeriodsService ContractPeriodsService { get; set; }
+    [Inject] public DialogService DialogService { get; set; }
+
+    /// <summary>
+    /// Holds the contract period being added or edited.
+    /// </summary>
+    private ContractPeriod _period = new();
+
+    /// <summary>
+    /// Holds error message for display in the UI.
+    /// </summary>
+    private string? _errorMessage;
+
+    // Year dropdown options (starts from last year and spans 10 years)
+    private List<int> _yearOptions = new();
+
+    /// <summary>
+    /// Handles parameter changes for the component.
+    /// This method is triggered whenever parameters are set or updated.
+    /// It initializes the contract period for editing or creating a new one.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        // Build year options: start from last year and include 10 years total
+        var startYear = DateTime.Today.Year - 1;
+        _yearOptions = Enumerable.Range(startYear, 10).ToList();
+
+        // Check if the shared context from the right sidebar contains a selected contract period
+        if (_rightSidebarService?.SharedContext is ContractPeriod selected)
+        {
+            // Editing an existing contract period: populate the _period object with selected values
+            _period = new ContractPeriod
+            {
+                UUID = selected.UUID,
+                Name = selected.Name,
+                Description = selected.Description,
+                DateStart = selected.DateStart,
+                DateEnd = selected.DateEnd,
+                Year = selected.Year,
+                isActive = selected.isActive
+            };
+
+            // Ensure the existing year is in the dropdown options (add and sort if necessary)
+            if (!_yearOptions.Contains(_period.Year))
+            {
+                _yearOptions.Add(_period.Year);
+                _yearOptions = _yearOptions.OrderBy(y => y).ToList();
+            }
+        }
+        else
+        {
+            // Adding a new contract period: set default values
+            _period = new ContractPeriod
+            {
+                // start is the beginning of the current year (1 Jan yyyy)
+                DateStart = new DateTime(DateTime.Today.Year, 1, 1),
+                DateEnd = new DateTime(DateTime.Today.Year, 12, 31),
+                Year = DateTime.Today.Year,
+                isActive = true
+            };
+
+            // If default Year isn't in options (e.g., current year beyond range), add it
+            if (!_yearOptions.Contains(_period.Year))
+            {
+                _yearOptions.Add(_period.Year);
+                _yearOptions = _yearOptions.OrderBy(y => y).ToList();
+            }
+        }
+        // Call the base implementation to ensure default Blazor lifecycle behavior
+        await base.OnParametersSetAsync();
+    }
+
+    /// <summary>
+    /// Saves the current contract period.
+    /// If the operation is successful, refreshes the sidebar data and closes the panel.
+    /// Displays an error message if saving fails.
+    /// </summary>
+    private async Task OnSave()
+    {
+        // Call the service to save the current contract period
+        var result = await ContractPeriodsService.SaveContractPeriod(_period);
+        // Check if the result is invalid or failed
+        if (result?.isValid != true)
+        {
+            // Display error message if available, otherwise show default error
+            _errorMessage = result?.Message ?? "An unexpected error occurred while saving.";
+            return;  // Exit method as save failed
+        } 
+
+        _errorMessage = null; // Clear previous errors if successful
+        // Notify other components about data change
+        _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_Administration_ContractPeriods);
+        _rightSidebarService.Close();     // Close the right sidebar panel
+    }
+
+    /// <summary>
+    /// Deletes the current contract period after user confirmation.
+    /// If successful, refreshes the sidebar data and closes the panel.
+    /// Displays an error message if deletion fails.
+    /// </summary>
+    private async Task OnDelete()
+    {
+        // Ask user for confirmation before deleting the contract period
+        var confirm = await DialogService.Confirm("Are you sure you want to delete this contract period?", "Confirm",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        // Proceed only if user confirmed and a valid UUID exists
+        if (confirm == true && !string.IsNullOrEmpty(_period.UUID))
+        {
+            // Call the service to delete the contract period using its UUID
+            var result = await ContractPeriodsService.DeleteContractPeriod(_period.UUID);
+            // Check if deletion failed
+            if (result?.isValid != true)
+            {
+                // Display error message if available, otherwise show default message
+                _errorMessage = result?.Message ?? "An unexpected error occurred while deleting."; 
+                return;   // Exit method as deletion failed
+            }
+
+            _errorMessage = null; // Clear error if successful
+            // Notify other components about data change
+            _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_Administration_ContractPeriods);
+            // Close the right sidebar panel
+            _rightSidebarService.Close();
+        }
+    }
+
+    private void OnYearChanged(object value)
+    {
+        // If the Year dropdown value changes, update the _period.Year and adjust dates accordingly
+        if (value != null)
+        {
+            _period.Year = (int)value;
+
+            // Optionally, adjust the start and end dates based on new year selection
+            var newStart = new DateTime(_period.Year, _period.DateStart.Month, _period.DateStart.Day);
+            var newEnd = new DateTime(_period.Year, _period.DateEnd.Month, _period.DateEnd.Day);
+
+            // Only update if the new dates are different from current
+            if (_period.DateStart != newStart || _period.DateEnd != newEnd)
+            {
+                _period.DateStart = newStart;
+                _period.DateEnd = newEnd;
+            }
+        }
+    }
+}
+
+<style>
+    .error-alert {
+        background-color: #FEE2E2;
+        color: #B91C1C;
+        border: 1px solid #FCA5A5;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+</style>

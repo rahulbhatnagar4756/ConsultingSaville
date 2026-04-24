@@ -1,0 +1,194 @@
+﻿@using Library.API.Admin.Models
+@using Library.API.Base.Models
+@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Mappers
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using Library.API.Admin.Services
+
+@inject DialogService DialogService
+
+<RadzenStack class="header-custom">
+    <RadzenStack class="header-outer">
+        <RadzenStack>
+            <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Level" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenStack>
+
+@* create a log for messages from _logMessage *@
+@if (_logMessage != null)
+{
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+        @* Replace the RadzenAlert with a custom message box that does not have a close (X) button and always shows when _logMessage is set *@
+        @if (_logMessage != null && _logMessage.isValid.HasValue)
+        {
+            <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+                <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+                <span>@_logMessage.Message</span>
+            </div>
+        }
+    }
+}
+
+@if (EmployeeLevel != null)
+{
+    <RadzenStack class="p-4 ">
+
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Name</RadzenText>
+            <RadzenTextBox Placeholder="Level Name ..."
+                           @bind-Value=EmployeeLevel.Name
+                           Style="width: 100%" aria-label="Level Name" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Description</RadzenText>
+            <RadzenTextArea oninput="event.target.style.height = Math.max(event.target.clientHeight, event.target.scrollHeight) + 'px';"
+                            @bind-Value=EmployeeLevel.Description
+                            Style="width: 100%"
+                            aria-label="Description" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Level Order</RadzenText>
+            <RadzenNumeric @bind-Value=EmployeeLevel.OrderVal
+                           Min="1"
+                           Max="999"
+                           Style="width: 100%"
+                           aria-label="Level Order" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" class="mt-5">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                <RadzenButton style="flex: 1;"
+                              Icon="save"
+                              BusyText="Saving ..."
+                              IsBusy=@busy
+                              Click=@OnSave_Click
+                              Text="Save" />
+
+                @if (!string.IsNullOrEmpty(EmployeeLevel?.UUID))
+                {
+                    <RadzenButton Icon="delete"
+                                  Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                  IsBusy=@busy
+                                  Click=OnDelete_Confirm />
+                }
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenStack>
+}
+
+@code {
+
+    [Inject] public IIconsService _IconsService { get; set; }
+    [Inject] public ILevelsService _LevelsService { get; set; }
+
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    [Parameter] public EmployeeBaseModel? EmployeeLevel { get; set; }
+    [Parameter] public EventCallback<EmployeeBaseModel> OnSaveComplete { get; set; }
+
+    private ResultsModel? _logMessage = null;
+
+    private EmployeeBaseModel? EmployeeLevelCurrent = null;
+    private bool busy = false;
+    private List<NameOnlyModel>? _Icons;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EmployeeLevel == null)
+        {
+            EmployeeLevel = new EmployeeBaseModel()
+            {
+                IconColor = "#362f21",
+                Icon = "stat_3", // Default to stat_3 icon as requested
+                OrderVal = 1
+            };
+        }
+
+        await OnLoad_Icons();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //get data if its sent to the right sidebar area
+        EmployeeLevelCurrent = _rightSidebarService.GetSharedContext<EmployeeBaseModel>();
+        if (EmployeeLevel != null && EmployeeLevelCurrent == null)
+        {
+            EmployeeLevel = new()
+            {
+                Icon = "stat_3",
+                IconColor = "#362f21",
+                OrderVal = 1
+            };
+        }
+
+        if (EmployeeLevelCurrent != null && EmployeeLevel != EmployeeLevelCurrent)
+        {
+            _logMessage = null;
+            EmployeeLevel = EmployeeLevelCurrent;
+
+            // Ensure stat_3 icon is set if not already set
+            if (string.IsNullOrEmpty(EmployeeLevel.Icon))
+            {
+                EmployeeLevel.Icon = "stat_3";
+            }
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task OnLoad_Icons()
+    {
+        _Icons = await _IconsService.GetIcons();
+    }
+
+    private async Task OnSave_Click()
+    {
+        busy = true;
+
+        if (EmployeeLevel == null)
+        {
+            busy = false;
+            return;
+        }
+
+        // Ensure stat_3 icon is always used for levels
+        EmployeeLevel.Icon = "stat_3";
+
+        // Convert EmployeeBaseModel to EmployeeLevelsBaseModel for the API
+        var levelToSave = EmployeeLevel.ToEmployeeLevelsBaseModel();
+
+        _logMessage = await _LevelsService.SaveLevels(levelToSave);
+        if (_logMessage != null && _logMessage.isValid.Value && EmployeeLevel.UUID == null)
+        {
+            EmployeeLevel.UUID = _logMessage.UUID;
+        }
+
+        await OnSaveComplete.InvokeAsync(EmployeeLevel);
+        _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Levels);
+        await InvokeAsync(StateHasChanged);
+        busy = false;
+    }
+
+    private async Task OnDelete_Confirm()
+    {
+        var result = await DialogService.Confirm("Are you sure?", "Delete Level", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (result.Value)
+        {
+            await OnDelete_Click();
+        }
+    }
+
+    private async Task OnDelete_Click()
+    {
+        _logMessage = await _LevelsService.DeleteLevels(EmployeeLevel.UUID);
+        _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Levels);
+    }
+}

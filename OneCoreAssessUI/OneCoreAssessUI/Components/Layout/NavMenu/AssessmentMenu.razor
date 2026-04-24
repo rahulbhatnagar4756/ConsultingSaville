@@ -1,0 +1,28 @@
+﻿@using OneCoreAssessUI.Enumerables
+
+<RadzenMenu>
+    <RadzenMenuItem Text="Dashboard"  Icon="dashboard" Click="(async() => await ChangeMenuItem(MenuItemTypes.ProjectDashboard))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Projects" Icon="tactic" Click="(async () => await ChangeMenuItem(MenuItemTypes.Projects))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Roles" Icon="work" Click="(async () => await ChangeMenuItem(MenuItemTypes.Roles))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Candidates" Icon="groups"    Click="(async() => await ChangeMenuItem(MenuItemTypes.ProjectCandidates))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Imports"    Icon="publish"   Click="(async() => await ChangeMenuItem(MenuItemTypes.ProjectImports))"></RadzenMenuItem>
+
+    <RadzenMenuItem Text="Reports" Icon="receipt_long">
+        <RadzenMenuItem Text="Individual Reports" Icon="engineering" Click="(async() => await ChangeMenuItem(MenuItemTypes.ProjectEmployeeReports))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Team Reports" Icon="diversity_3" Click="(async() => await ChangeMenuItem(MenuItemTypes.ProjectTeamReport))"></RadzenMenuItem>
+        <RadzenMenuItem Text="Organisational Reports" Icon="apartment" Click="(async() => await ChangeMenuItem(MenuItemTypes.ProjectTeamReport))"></RadzenMenuItem>
+    </RadzenMenuItem>
+
+</RadzenMenu>
+
+@code {
+
+    [Parameter] public Enumerables.MenuItemTypes Item { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemTypes> ItemChanged { get; set; }
+
+    private async Task ChangeMenuItem(MenuItemTypes Option) =>
+        await ItemChanged.InvokeAsync(Option);
+
+
+
+}

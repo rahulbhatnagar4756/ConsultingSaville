@@ -1,0 +1,45 @@
+﻿:root {
+  --rz-sidebar-width: 120px;
+}
+
+.sidebar-menu {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  display: block;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.sidebar-menu i {
+  font-size: 27px;
+  margin-bottom: 6px;
+}
+.sidebar-menu span {
+  font-size: 12px;
+}
+
+.sidebar-menu-active {
+  color: white;
+  background-color: #4340d2;
+}
+
+.sidebar-menu:hover {
+  color: white;
+  background-color: #4340d2;
+}
+
+.fixed-bottom-custom {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background-color: lightgray;
+  padding: 10px;
+}
+
+.radzen-sidebar {
+  text-align: center;
+}
+
+.radzen-sidebar .fa-solid {
+  margin-right: 8px; /* Adjust this to space the icon from text */
+}

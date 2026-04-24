@@ -1,0 +1,273 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Name>Database.Goals</Name>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectVersion>4.1</ProjectVersion>
+    <ProjectGuid>{7981a161-b54e-4af8-bfdd-b8a4e725a513}</ProjectGuid>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql160DatabaseSchemaProvider</DSP>
+    <OutputType>Database</OutputType>
+    <RootPath>
+    </RootPath>
+    <RootNamespace>Database.Goals</RootNamespace>
+    <AssemblyName>Database.Goals</AssemblyName>
+    <ModelCollation>1033,CI</ModelCollation>
+    <DefaultFileStructure>BySchemaAndSchemaType</DefaultFileStructure>
+    <DeployToDatabase>True</DeployToDatabase>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <TargetLanguage>CS</TargetLanguage>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <SqlServerVerification>False</SqlServerVerification>
+    <IncludeCompositeObjects>True</IncludeCompositeObjects>
+    <TargetDatabaseSet>True</TargetDatabaseSet>
+    <DefaultCollation>SQL_Latin1_General_CP1_CI_AS</DefaultCollation>
+    <DefaultFilegroup>PRIMARY</DefaultFilegroup>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputPath>bin\Release\</OutputPath>
+    <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <OutputPath>bin\Debug\</OutputPath>
+    <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">11.0</VisualStudioVersion>
+    <!-- Default to the v11.0 targets path if the targets file for the current VS version is not found -->
+    <SSDTExists Condition="Exists('$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets')">True</SSDTExists>
+    <VisualStudioVersion Condition="'$(SSDTExists)' == ''">11.0</VisualStudioVersion>
+  </PropertyGroup>
+  <Import Condition="'$(SQLDBExtensionsRefPath)' != ''" Project="$(SQLDBExtensionsRefPath)\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
+  <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
+  <ItemGroup>
+    <Folder Include="Properties" />
+    <Folder Include="Goals\" />
+    <Folder Include="Goals\Tables\" />
+    <Folder Include="audit\" />
+    <Folder Include="audit\Tables\" />
+    <Folder Include="Assess\" />
+    <Folder Include="Assess\Tables\" />
+    <Folder Include="dbo\" />
+    <Folder Include="dbo\Tables\" />
+    <Folder Include="Base\" />
+    <Folder Include="Base\Views\" />
+    <Folder Include="Goals\Views\" />
+    <Folder Include="admin\" />
+    <Folder Include="admin\Views\" />
+    <Folder Include="audit\Stored Procedures\" />
+    <Folder Include="Goals\Stored Procedures\" />
+    <Folder Include="Security\" />
+    <Folder Include="admin\Tables\" />
+    <Folder Include="dbo\Stored Procedures\" />
+    <Folder Include="Base\Stored Procedures\" />
+    <Folder Include="admin\Stored Procedures\" />
+    <Folder Include="Goals\Triggers" />
+  </ItemGroup>
+  <ItemGroup>
+    <Build Include="Goals\Tables\KPI.sql" />
+    <Build Include="Goals\Tables\ContractEnterpriseStructureTypes.sql" />
+    <Build Include="Goals\Tables\KPA.sql" />
+    <Build Include="Goals\Tables\ToleranceSets.sql" />
+    <Build Include="Goals\Tables\ToleranceRanges.sql" />
+    <Build Include="Goals\Tables\EnterpriseStructureTypes.sql" />
+    <Build Include="Goals\Tables\TemplateBusinessUnitDepartmentPositions.sql" />
+    <Build Include="Goals\Tables\Pillars.sql" />
+    <Build Include="audit\Tables\AuditLogActions.sql" />
+    <Build Include="Goals\Tables\EnterpriseStructureWeights.sql" />
+    <Build Include="audit\Tables\AuditLogs.sql" />
+    <Build Include="audit\Tables\AuditLogTableNames.sql" />
+    <Build Include="Goals\Tables\ContractUsersSync.sql" />
+    <Build Include="Goals\Tables\KPAKPI.sql" />
+    <Build Include="Goals\Tables\ContractPeriods.sql" />
+    <Build Include="audit\Tables\AuditLogFieldNames.sql" />
+    <Build Include="Goals\Tables\ContractPillarKPAs.sql" />
+    <Build Include="audit\Tables\AuditLogDetails.sql" />
+    <Build Include="Goals\Tables\StatusRanges.sql" />
+    <Build Include="Goals\Tables\TableName.sql" />
+    <Build Include="Goals\Tables\ContractPillars.sql" />
+    <Build Include="Goals\Tables\Templates.sql" />
+    <Build Include="Goals\Tables\Contracts.sql" />
+    <Build Include="Goals\Tables\Status.sql" />
+    <Build Include="Goals\Tables\LogDataChanges.sql" />
+    <Build Include="Base\Views\Companies.sql" />
+    <Build Include="Goals\Views\vwTemplates.sql" />
+    <Build Include="Base\Views\Users.sql" />
+    <Build Include="Base\Views\Employees.sql" />
+    <Build Include="Goals\Views\vwContracts_Employees.sql" />
+    <Build Include="Base\Views\vwEmployeeBusinessUnits.sql" />
+    <Build Include="Base\Views\vwEmployeeDepartments.sql" />
+    <Build Include="Base\Views\vwEmployeeJobs.sql" />
+    <Build Include="Base\Views\EmployeeHierarchy.sql" />
+    <Build Include="Base\Views\vwEmployees.sql" />
+    <Build Include="Goals\Views\vwContracts_Users.sql" />
+    <Build Include="Goals\Views\vwContracts_Templates.sql" />
+    <Build Include="admin\Views\Icon.sql" />
+    <Build Include="Base\Views\EmployeeLevels.sql" />
+    <Build Include="Base\Views\vwEmployeesCorporateAccessLevels.sql" />
+    <Build Include="Goals\Views\vwTemplateBusinessUnitDepartmentPositions.sql" />
+    <Build Include="Goals\Views\vwToleranceRanges.sql" />
+    <Build Include="Goals\Views\vwToleranceSets.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogDetails_Save.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Delete.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Delete_UUID.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Insert.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Insert_UUID.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Update.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Log_Update_UUID.sql" />
+    <Build Include="audit\Stored Procedures\spAuditLogs_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spContacts_Employees.sql" />
+    <Build Include="Goals\Stored Procedures\spContacts_Templates.sql" />
+    <Build Include="Goals\Stored Procedures\spContractPillarKPAs_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spContracts_Clone.sql" />
+    <Build Include="Goals\Stored Procedures\spContracts_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spEnterpriseStructureTypes.sql" />
+    <Build Include="Goals\Stored Procedures\spEnterpriseStructureTypes_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spEnterpriseStructureTypes_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spEnterpriseStructureWeights.sql" />
+    <Build Include="Goals\Stored Procedures\spEnterpriseStructureWeights_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spEnterpriseStructureWeights_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spKPA_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spKPA_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spKPI_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spKPI_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spLogDataChanges_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spPillars.sql" />
+    <Build Include="Goals\Stored Procedures\spPillars_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spPillars_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spStatus.sql" />
+    <Build Include="Goals\Stored Procedures\spStatus_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spStatus_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spStatusRanges.sql" />
+    <Build Include="Goals\Stored Procedures\spStatusRanges_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spStatusRanges_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spTemplateBusinessUnitDepartmentPositions_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spTemplateBusinessUnitDepartmentPositions_GetByTemplate.sql" />
+    <Build Include="Goals\Stored Procedures\spTemplateBusinessUnitDepartmentPositions_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spTemplates_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spTemplates_Information.sql" />
+    <Build Include="Goals\Stored Procedures\spTemplates_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spTempTable_Display.sql" />
+    <Build Include="Goals\Stored Procedures\spTempTable_StatusTable.sql" />
+    <Build Include="Goals\Stored Procedures\spTempTable_StatusTable_Display.sql" />
+    <Build Include="Goals\Stored Procedures\spTempTable_StatusTable_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spToleranceRanges.sql" />
+    <Build Include="Goals\Stored Procedures\spToleranceRanges_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spToleranceRanges_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spToleranceSets.sql" />
+    <Build Include="Goals\Stored Procedures\spToleranceSets_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spToleranceSets_Save.sql" />
+    <Build Include="Security\admin.sql" />
+    <Build Include="Security\Assess.sql" />
+    <Build Include="Security\audit.sql" />
+    <Build Include="Security\Base.sql" />
+    <Build Include="Security\Goals.sql" />
+    <Build Include="Goals\Stored Procedures\spContractPeriods_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spContractPeriods_Get.sql" />
+    <Build Include="Goals\Stored Procedures\spContractPeriods_Delete.sql" />
+    <Build Include="Goals\Tables\UserTemplates.sql" />
+    <Build Include="Goals\Stored Procedures\spContracts_Employee_Contacts.sql" />
+    <Build Include="Goals\Stored Procedures\spContracts.sql" />
+    <Build Include="Goals\Views\vwPillars.sql" />
+    <Build Include="Goals\Views\vwKPA.sql" />
+    <Build Include="Goals\Views\vwEnterpriseStructureTypes.sql" />
+    <Build Include="Goals\Tables\UserTemplates.sql" />
+    <Build Include="Goals\Views\vwKPI.sql" />
+    <Build Include="Goals\Stored Procedures\spContractPillars_Save.sql" />
+    <Build Include="Goals\Tables\RatingPeriods.sql" />
+    <Build Include="Goals\Tables\RatingPeriodDates.sql" />
+    <Build Include="Goals\Views\vwRatingPeriods.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriods.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriodDates_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriodDates_Get.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriodDates_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriodDates_UpdateIsActive.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriods_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriods_Get.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriods_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spScoringPeriods_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spScoringPeriods_Get.sql" />
+    <Build Include="Goals\Stored Procedures\spScoringPeriods_Save.sql" />
+    <Build Include="Goals\Tables\ScoringPeriods.sql" />
+    <Build Include="Goals\Tables\Results.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriods_Save_1.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriods_Get_1.sql" />
+    <Build Include="Goals\Stored Procedures\spRatingPeriods_Delete_1.sql" />
+    <Build Include="Goals\Stored Procedures\spKPAKPI_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spContracts_Results.sql" />
+    <Build Include="Goals\Views\vwContractPeriods.sql" />
+    <Build Include="Goals\Stored Procedures\spContracts_User_ContractPeriod.sql" />
+    <Build Include="Goals\Tables\KPALinkTypes.sql" />
+    <Build Include="Goals\Tables\KPALinks.sql" />
+    <Build Include="Goals\Stored Procedures\spKPALinks_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spKPALinks_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spKPALinks_ChangeWeight.sql" />
+    <Build Include="Goals\Stored Procedures\spContracts_Users_Latest.sql" />
+    <Build Include="Goals\Stored Procedures\spEmployees_GetDetails.sql" />
+    <Build Include="Goals\Stored Procedures\spComments.sql" />
+    <Build Include="Goals\Stored Procedures\spComments_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spComments_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spGetTableNameIdByUUID.sql" />
+    <Build Include="Goals\Tables\CommentTypes.sql" />
+    <Build Include="Goals\Tables\CommentAttachments.sql" />
+    <Build Include="Goals\Tables\Comments.sql" />
+    <Build Include="Goals\Stored Procedures\spCommentAttachments_Delete.sql" />
+    <Build Include="Goals\Stored Procedures\spCommentAttachments_Upsert.sql" />
+    <Build Include="Goals\Stored Procedures\spComments_WithAttachments.sql" />
+    <Build Include="Goals\Stored Procedures\spUsers_GetAll.sql" />
+    <Build Include="Goals\Stored Procedures\spUserTemplate_Save.sql" />
+    <Build Include="Goals\Stored Procedures\spAssignTemplateWithKPAsKPIs.sql" />
+    <Build Include="Goals\Stored Procedures\spLinkedUserTemplate_GetAll.sql" />
+    <Build Include="Goals\Stored Procedures\spDeleteAssignedTemplateWithKPAsKPIs.sql" />
+    <Build Include="admin\Tables\CommentTypes.sql" />
+    <Build Include="admin\Tables\Comments.sql" />
+    <Build Include="admin\Tables\CommentAttachments.sql" />
+    <Build Include="admin\Views\vwComments.sql" />
+    <Build Include="Goals\Stored Procedures\spUserTemplate_Save_1.sql" />
+    <Build Include="Goals\Stored Procedures\spResults_UPSERT.sql" />
+    <Build Include="Goals\Stored Procedures\spKPI_Duplicate.sql" />
+    <Build Include="Goals\Stored Procedures\spKPA_Save_1.sql" />
+    <Build Include="Goals\Stored Procedures\spKPA_Duplicate.sql" />
+    <Build Include="Goals\Stored Procedures\spEmployees_GetDetails_1.sql" />
+    <Build Include="Goals\Stored Procedures\spDeleteAssignedTemplateWithKPAsKPIs_1.sql" />
+    <Build Include="Goals\Stored Procedures\sp_IsUserManager.sql" />
+    <Build Include="dbo\Stored Procedures\GetUserRole.sql" />
+    <Build Include="Goals\Stored Procedures\spAssignTemplateToUserAndDuplicateKPAsKPIs.sql" />
+    <Build Include="Base\Stored Procedures\spEmployeeHierarchy_GetTeam.sql" />
+    <Build Include="admin\Stored Procedures\spGetTableNameIdByUUID.sql" />
+    <Build Include="admin\Stored Procedures\spComments_WithAttachments.sql" />
+    <Build Include="admin\Stored Procedures\spComments_Save.sql" />
+    <Build Include="admin\Stored Procedures\spComments_Delete.sql" />
+    <Build Include="admin\Stored Procedures\spComments.sql" />
+    <Build Include="admin\Stored Procedures\spCommentAttachments_Upsert.sql" />
+    <Build Include="admin\Stored Procedures\spCommentAttachments_Delete.sql" />
+    <Build Include="admin\Stored Procedures\GetUserRole.sql" />
+    <Build Include="Goals\Stored Procedures\sp_GlobalComments.sql" />
+    <Build Include="Goals\Stored Procedures\spCommentAttachments_GetByUUID.sql" />
+    <Build Include="Goals\Stored Procedures\sp_GetRatingPeriodsByCompany.sql" />
+    <Build Include="Goals\Stored Procedures\spGetUsersByUUID_Results.sql" />
+    <Build Include="Goals\Stored Procedures\spKPA_RecalculateScore.sql" />
+    <Build Include="Goals\Tables\ResultsKPA.sql" />
+    <Build Include="Goals\Tables\ResultsPillars.sql" />
+    <Build Include="Goals\Stored Procedures\sp_CalculatePillarScore.sql" />
+    <Build Include="Goals\Tables\Score.sql" />
+    <Build Include="Goals\Stored Procedures\sp_RecalculateFinalScore.sql" />
+    <Build Include="Goals\Stored Procedures\sp_IsUserEmployee.sql" />
+  </ItemGroup>
+</Project>

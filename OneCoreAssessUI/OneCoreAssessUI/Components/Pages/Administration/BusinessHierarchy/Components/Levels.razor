@@ -1,0 +1,113 @@
+﻿@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using OneCoreAssessUI.Components.Pages.Tools
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@using Library.API.Base.Mappers
+@implements IDisposable
+
+<RadzenStack class="container">
+    <RadzenStack>
+        <RadzenText Text="Levels" Style="font-weight: 700; font-size: 25px;" />
+    </RadzenStack>
+    @if (_levels != null)
+    {
+        <MultiListExtra Data=@_levels
+                        TItem="EmployeeBaseModel"
+                        Name="Levels"
+                        OnAddNew="OnAddNew_Click"
+                        OnItemSelect="RowSelect_Click"
+                        isStats=false
+                        isIcon=false
+                        ShowCategories=false>
+        </MultiListExtra>
+
+    }
+</RadzenStack>
+
+@code {
+    [Inject] public ILevelsService _levelsEmployeeBaseService { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<EmployeeBaseModel>? _levels = null;
+    private EmployeeBaseModel? _levelSelected = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the OnDataRefresh event
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+        await LoadLevels();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadLevels()
+    {
+        try
+        {
+            // Load levels from the service
+            var levels = await _levelsEmployeeBaseService.GetLevels();
+
+
+            // Sort by OrderVal to show levels in proper hierarchy order
+            if (levels != null)
+            {
+                _levels = levels.ToEmployeeBaseModel();
+                _levels = _levels.OrderBy(x => x.OrderVal).ToList();
+            }
+
+            // Trigger state change to update UI
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading levels: {ex.Message}");
+            // Handle error as needed
+        }
+    }
+
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Only respond to refresh events for our specific control type
+        if (controlType == Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Levels)
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadLevels();
+            });
+        }
+    }
+
+    private async Task RowSelect_Click(EmployeeBaseModel? employeeBase)
+    {
+        _levelSelected = employeeBase;
+        _rightSidebarService.SharedContext = employeeBase;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Levels);
+    }
+
+    private async Task OnAddNew_Click()
+    {
+        _levelSelected = null;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_Levels, true);
+    }
+
+    /// <summary>
+    /// Public method that can be called externally to refresh data
+    /// </summary>
+    public async Task RefreshData()
+    {
+        await LoadLevels();
+    }
+
+    public void Dispose()
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+        }
+    }
+}

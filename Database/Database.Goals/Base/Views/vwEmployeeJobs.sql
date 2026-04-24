@@ -1,0 +1,23 @@
+﻿
+CREATE VIEW [Base].[vwEmployeeJobs]
+AS
+SELECT j.[Recordid] [id]
+, j.[UUID]
+, j.[Companyid]
+, c.[UUID] [CompanyUUID]
+, c.[Name] [Company]
+, l.[UUID]  [EmployeeLevelsUUID]
+, l.[Name]  [EmployeeLevels]
+, cr.[UUID] [EmployeeJobsCriticalRolesUUID]
+, cr.[Name] [EmployeeJobsCriticalRoles]
+, jd.[UUID] [EmployeeJobDisciplinesUUID]
+, jd.[Name] [EmployeeJobDisciplines]
+, j.[Jobsid]
+, j.[Name]
+, j.[Code]
+, j.[isDeleted]
+FROM [Base].[dbo].[EmployeeJobs] j
+LEFT OUTER JOIN [Base].[Companies] c ON c.[recordID] = j.[Companyid] 
+LEFT OUTER JOIN [Base].[dbo].[EmployeeLevels] l ON l.[Id] = j.[EmployeeLevelsid]
+LEFT OUTER JOIN [Base].[dbo].[EmployeeJobsCriticalRoles] cr ON cr.[id] = j.[EmployeeJobsCriticalRolesid]
+LEFT OUTER JOIN [Base].[dbo].[EmployeeJobDisciplines] jd ON jd.[Id] = j.[EmployeeJobDisciplinesid] 

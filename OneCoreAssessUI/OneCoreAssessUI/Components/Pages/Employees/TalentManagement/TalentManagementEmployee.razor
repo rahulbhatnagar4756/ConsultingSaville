@@ -1,0 +1,331 @@
+﻿@using Library.API.Base.Services
+@using Library.API.TalentManagement.Models
+@using Library.API.TalentManagement.Models.Box9
+@using Library.API.TalentManagement.Services
+@using Library.Frog.Models
+@using Library.Frog.Services
+@using OneCoreAssessUI.Components.Pages.Employees.TalentManagement.Components
+@using OneCoreAssessUI.Services
+
+
+ 
+@if (_isSuccessionReadiness && _userInformation.GenericUUID != null)
+{
+    <OneCoreAssessUI.Components.Pages.Employees.SuccessionPlanning.SuccessionReadinessPosition GenericUUID="@_userInformation.GenericUUID" />
+}
+else
+{
+    <RadzenStack class="rz-mt-5">
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="4">
+                <EmployeePositionUserInformation UsersUUID=@UsersUUID UsersUUIDChanged=@OnUsersUUIDChanged />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="5">
+
+                <Box9Component UsersUUID=@UsersUUID />
+
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="3">
+
+                <RadzenStack class="employee-position-user">
+                    @* Status *@
+                    <RadzenCard class=" card-outer p-3 " style="box-shadow: var(--rz-shadow-5)">
+                        <RadzenRow>
+                            <RadzenColumn>
+                                <RadzenButton Click="OnSuccessionStatus_Click" class="p-0 w-100" Style="background-color: var(--sc-primary-colour2);">
+                                    <RadzenStack class="box-status">
+                                        <RadzenStack class="status-header">Succession Status</RadzenStack>
+                                        <RadzenStack class="status">@_userInformation.SuccessionPlanningStatus  </RadzenStack>
+                                    </RadzenStack>
+                                </RadzenButton>
+                            </RadzenColumn>
+                            <RadzenColumn>
+                                <a target="_blank" href="@_userInformation.IDPStatusURL" class="w-100">
+                                    <RadzenStack class="box-status">
+                                        <RadzenStack class="status-header">IDP Status</RadzenStack>
+                                        <RadzenStack class="status">@_userInformation.IDPStatus </RadzenStack>
+                                    </RadzenStack>
+                                </a>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenCard>
+
+                    @* Tenure In Company *@
+                    <RadzenCard class=" card-outer p-3 mt-1" style="box-shadow: var(--rz-shadow-5); font-size: 18px; ">
+                        <RadzenStack Orientation="Orientation.Horizontal">
+                            <RadzenText>Tenure In Company: </RadzenText>
+                            <RadzenText class="" Style="font-weight: 700">@_userInformation.TenureInCompany y</RadzenText>
+                        </RadzenStack>
+
+                        <RadzenStack Orientation="Orientation.Horizontal">
+                            <RadzenText>Tenure In Current Role: </RadzenText>
+                            <RadzenText Style="font-weight: 700">@_userInformation.TenureInCurrentRole y</RadzenText>
+                        </RadzenStack>
+
+                    </RadzenCard>
+
+                    @* Tenure In Company *@
+                    <RadzenCard class=" card-outer p-3 mt-1" style="box-shadow: var(--rz-shadow-5); font-size: 18px; ">
+                        <RadzenStack Orientation="Orientation.Horizontal">
+                            <RadzenText>Potential Rating: </RadzenText>
+                            <RadzenText Style="font-weight: 700">@_userInformation.PotentialRating</RadzenText>
+                        </RadzenStack>
+                    </RadzenCard>
+
+                    @*  Qualifications *@
+                    <RadzenCard class=" card-outer p-3 mt-1" style="box-shadow: var(--rz-shadow-5); font-size: 18px; ">
+                        <RadzenStack Orientation="Orientation.Vertical">
+                            <RadzenText Style="font-weight: 700">Qualifications: </RadzenText>
+                            <RadzenText>@((MarkupString)_userInformation?.Qualification)</RadzenText>
+                        </RadzenStack>
+                    </RadzenCard>
+
+                    <RadzenCard class=" card-outer p-2 mt-1 " style="box-shadow: var(--rz-shadow-5); font-size: 18px; text-align: center; background-color: var(--sc-primary-colour1); cursor: pointer;">
+                        <RadzenButton class="" 
+                                      Style="color: var(--rz-white)" 
+                                      Click="OnSuccessPlanning_Click"
+                                      Variant="Variant.Text">Succession Planning</RadzenButton>
+                    </RadzenCard>
+
+                    <RadzenCard class=" card-outer p-3 mt-1" style="box-shadow: var(--rz-shadow-5); font-size: 18px; text-align: center; background-color: var(--sc-card-background-colour-daker);">
+                        <RadzenStack Orientation="Orientation.Horizontal">
+
+                            <RadzenRow class="w-100 mb-3">
+                                <RadzenColumn Size="11">
+                                    <RadzenText Style="font-weight: 700; color: var(--rz-white); text-align: start;">
+                                        Readiness For Next Role
+                                    </RadzenText>
+                                </RadzenColumn>
+                                <RadzenColumn Size="1">
+                                    <RadzenButton Icon="tab_recent"
+                                                  Variant="Variant.Text"
+                                                  Click="ShowReadinessHistory"
+                                                  style="color: var(--rz-white)"
+                                                  title="History" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenStack>
+                        <RadzenDropDown @bind-value=@_frogLookupReadinessForNextRoleUUID
+                                        Data=@_frogLookupReadinessForNextRole
+                                        TextProperty="@nameof(Library.Frog.Models.FrogLookupModel.Name)"
+                                        ValueProperty="@nameof(Library.Frog.Models.FrogLookupModel.UUID)"
+                                        class=@string.Format("form-control mt-2 {0}", _active)
+                                        Change=@OnReadinessForNextRoleChange></RadzenDropDown>
+                    </RadzenCard>
+
+                    @if (_isReadinessHistory)
+                    {
+                        <RadzenCard class=" card-outer slide-in-animation p-3 mt-1" style="box-shadow: var(--rz-shadow-5); font-size: 18px; text-align: center; background-color: var(--sc-card-background-colour-daker);">
+                            <RadzenStack>
+
+                                <RadzenRow class="w-100 mb-3">
+                                    <RadzenColumn Size="11">
+                                        <RadzenText Style="font-weight: 700; color: var(--rz-white); text-align: start;">
+                                            Readiness History
+                                        </RadzenText>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="1">
+                                        <RadzenButton Icon="close"
+                                                      Variant="Variant.Text"
+                                                      Click="@(() => _isReadinessHistory = false)"
+                                                      style="color: var(--rz-danger)" />
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                            </RadzenStack>
+                            <RadzenDataGrid AllowFiltering="false"
+                                            AllowPaging="false"
+                                            PageSize="100"
+                                            AllowSorting="false"
+                                            Data="@_ReadinessHistory">
+                                <Columns>
+                                    <RadzenDataGridColumn Property="@nameof(FrogDataLogsModel.DateCaptured)" Title="Date" TextAlign="TextAlign.Start" FormatString="{0:dd MMM}" />
+
+                                    <RadzenDataGridColumn Property="@nameof(FrogDataLogsModel.NameChange)" Title="Name" TextAlign="TextAlign.Start" />
+
+                                    <RadzenDataGridColumn Property="@nameof(FrogDataLogsModel.ItemName)" Title="History" TextAlign="TextAlign.Start" />
+                                </Columns>
+                            </RadzenDataGrid>
+                        </RadzenCard>
+                    }
+
+                    <RadzenCard class=" card-outer p-3 mt-1" style="box-shadow: var(--rz-shadow-5); font-size: 18px; text-align: center; background-color: var(--sc-card-background-colour-daker); ">
+                        <RadzenStack Orientation="Orientation.Vertical">
+                            <RadzenText Style="font-weight: 700; color: var(--rz-white)">What is the Next Role? </RadzenText>
+                            @* <RadzenText Style="font-weight: 700;">@_userInformation?.WhatIsTheNextRole</RadzenText> *@
+
+                            <OneCoreAssessUI.Components.Pages.FROG.Controls.DropdownControl Element=@_elementNextRole
+                                                                                            CompanyUUID=@loggedInInformation.Company.CompanyUUID
+                                                                                            UsersUUIDLoggedIn=@loggedInInformation.User.UsersUUID
+                                                                                            isShowLabel=false
+                                                                                            CSSClass =" p-0 "
+                                                                                              />
+                             
+
+
+                        </RadzenStack>
+                    </RadzenCard>
+
+                    <RadzenCard class=" card-outer p-3 mt-1" style="box-shadow: var(--rz-shadow-5); font-size: 18px;   background-color: var(--sc-card-background-colour-daker); ">
+                        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center">
+                            <RadzenText Style="font-weight: 700; color: var(--rz-white)">Requirements for Next Role? </RadzenText>
+                            <RadzenStack AlignItems="AlignItems.Start">
+                                <RadzenText>@((MarkupString)_userInformation?.RequirementsForNextRole)</RadzenText>
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenStack>
+
+            </RadzenColumn>
+        </RadzenRow>
+
+    </RadzenStack>
+}
+
+
+
+@code {
+
+    [Inject] public IBox9Service _box9Service { get; set; }
+    [Inject] public IFrogService _frogService { get; set; }
+    [Inject] public IFrogDataLogsService _frogDataLogsService { get; set; }
+
+    [CascadingParameter] public LoggedInInformationModel loggedInInformation { get; set; }
+
+    [Parameter] public string? UsersUUID   { get; set; }
+
+    //setup and event succession readiness on click
+    [Parameter] public EventCallback<string?> SuccessionStatusChanged { get; set; }
+    private string? UsersUUIDCurrent   { get; set; }
+
+
+    private bool _isLoading = true;
+    private bool _isSuccessionReadiness = false;
+
+    private bool _isReadinessHistory = false;
+    private List<FrogDataLogsModel>? _ReadinessHistory = null;
+
+    private List<FrogLookupModel>? _frogLookupReadinessForNextRole;
+    private List<FrogLookupModel>? _frogLookupNextRole;
+
+    private string _frogLookupReadinessForNextRoleUUID;
+    private string _frogLookupNextRoleUUID;
+    private string _active = "";
+
+    private TalentManagementUserInformationModel? _userInformation = new TalentManagementUserInformationModel();
+
+    private string _IDPURLAddress = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_box9Service != null && UsersUUID != UsersUUIDCurrent)
+        {
+            UsersUUIDCurrent = UsersUUID;
+            await GetTalentManagementUserInformation();
+            await GetReadinessForNextRoleData();
+            await GetNextRoleData();
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task GetTalentManagementUserInformation()
+    {
+        _userInformation = await _box9Service.GetTalentManagementUserInformation(UsersUUID);
+        if (_userInformation == null) _userInformation = new();
+    }
+
+    private async Task GetReadinessForNextRoleData()
+    {
+        if (_userInformation == null || _userInformation.FrogLookupTypesidReadinessForNextRole == null) return;
+        _frogLookupReadinessForNextRole = await _frogService.GetLookups(_userInformation.FrogLookupTypesidReadinessForNextRole.Value);
+        if (_frogLookupReadinessForNextRole == null) return;
+        //find the UUID from the name in the _frogLookupReadinessForNextRole list
+        _frogLookupReadinessForNextRoleUUID = _frogLookupReadinessForNextRole?.Where(x => x.Name == _userInformation.ReadinessForNextRole)?.Select(x => x.UUID)?.FirstOrDefault() ?? null;
+    }
+
+    private FrogElementModel _elementNextRole;
+
+    /// <summary>
+    /// gets the frog element for the Next role
+    /// </summary>
+    /// <returns></returns>
+    private async Task GetNextRoleData()
+    {
+        if (loggedInInformation == null || _userInformation == null || _userInformation.FrogSetsUUID == null) return;
+        FormSetsAccessModel inputs = new() 
+        {
+            CompanyUUID = loggedInInformation.Company.CompanyUUID,
+            UsersUUIDLoggedIn = loggedInInformation.User.UsersUUID, 
+            UsersUUID = UsersUUID,
+            FrogSetsUUID = _userInformation.FrogSetsUUID 
+        };
+
+        _elementNextRole = await _frogService.GetElements(inputs, _userInformation.FrogElementsUUIDNextRole);
+    }
+
+
+    private async Task OnReadinessForNextRoleChange(object value)
+    {
+        FrogElementSaveLogModel elementResult = new() { 
+            CompanyUUID = loggedInInformation.Company.CompanyUUID,
+            UsersUUIDLoggedIn = loggedInInformation.User.UsersUUID,
+            FrogsUUID = _userInformation.FrogsUUID,
+            FrogElementsUUID = _userInformation.FrogElementsUUID,
+            ItemUUID = _frogLookupReadinessForNextRoleUUID
+        };
+
+        //get the name from the _frogLookupReadinessForNextRole _frogLookupReadinessForNextRoleUUID UUID from _frogLookupReadinessForNextRole get the name;
+        elementResult.ItemName = _frogLookupReadinessForNextRole?.Where(x => x.UUID == _frogLookupReadinessForNextRoleUUID)?.Select(x => x.Name)?.FirstOrDefault() ?? null;
+        await _frogService.Save(elementResult);
+        // Add your logic here to handle the change event
+        await Task.CompletedTask;
+    }
+
+    private async Task OnNextRole_Change(object value)
+    {
+        FrogElementSaveLogModel elementResult = new()
+        {
+            CompanyUUID = loggedInInformation.Company.CompanyUUID,
+            UsersUUIDLoggedIn = loggedInInformation.User.UsersUUID,
+            FrogsUUID = _userInformation.FrogsUUID,
+            FrogElementsUUID = _userInformation.FrogElementsUUID,
+            ItemUUID = _frogLookupNextRoleUUID
+        };
+
+        //get the name from the _frogLookupReadinessForNextRole _frogLookupReadinessForNextRoleUUID UUID from _frogLookupReadinessForNextRole get the name;
+        elementResult.ItemName = _frogLookupNextRole?.Where(x => x.UUID == _frogLookupNextRoleUUID)?.Select(x => x.Name)?.FirstOrDefault() ?? null;
+        await _frogService.Save(elementResult);
+        // Add your logic here to handle the change event
+        await Task.CompletedTask;
+    }
+
+    private async Task OnUsersUUIDChanged(string? newUUID)
+    {
+        UsersUUID = newUUID;
+        await GetTalentManagementUserInformation();
+        //update the state
+        StateHasChanged(); 
+    }
+
+    private async Task OnSuccessionStatus_Click()
+    {
+        await SuccessionStatusChanged.InvokeAsync(UsersUUID);
+    }
+    private async Task ShowReadinessHistory()
+    {
+        BaseModel baseModel = new()
+        {
+            CompanyUUID = loggedInInformation.Company.CompanyUUID,
+            UsersUUIDLoggedIn = loggedInInformation.User.UsersUUID,
+            UsersUUID = UsersUUID
+        };
+
+        _ReadinessHistory = await _frogDataLogsService.GetReadinessToMoveToNextRole(baseModel);
+        _isReadinessHistory = true;
+    }
+    private async Task OnSuccessPlanning_Click()
+    {
+        _isSuccessionReadiness = true;
+    }
+}

@@ -1,0 +1,43 @@
+﻿
+
+.list-custom-tile {
+    .card-custom {
+        cursor: pointer;
+        .wrapper-tile {
+            &:hover {
+                box-shadow: 4px 4px 4px #808080;
+            }
+        }
+
+        .count-custom {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: flex-end !important;
+            height: 0;
+
+            p {
+                padding: 5px;
+                background-color: var(--sc-secondary-color4);
+                width: 100px;
+                color: #ffffff;
+                margin-top: 15px;
+                margin-right: -15px;
+            }
+        }
+
+        .icon-custom {
+            margin-top: -20px;
+            z-index: 20;
+
+            i {
+                font-size: 60px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+
+        .label-custom {
+            text-align: center;
+        }
+    }
+}

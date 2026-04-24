@@ -1,0 +1,32 @@
+
+@import "generics.scss";
+@import "dashboard-settings.scss";
+@import "dashboard-sidebar.scss";
+@import "dashboard-search.scss";
+
+@import "RightSideBar/EmployeeLevel9Box.scss";
+
+@import "employee-user.scss";
+@import "box-9.scss";
+@import "box-controls.scss";
+@import "loading.scss";
+
+@import "employee-position-user.scss";
+@import "SuccessionReadiness.scss"; 
+@import "body-right-side";
+
+@import "modals.scss";
+@import "Lists/Tiles.scss";
+
+@import "RightSideBar/Headers.scss";
+@import "RightSideBar/rightsidebar-generic.scss";
+
+@import "login.scss";
+
+.radzen-sidebar {
+    text-align: center;
+}
+
+.radzen-sidebar .fa-solid {
+    margin-right: 8px; /* Adjust this to space the icon from text */
+}

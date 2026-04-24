@@ -1,0 +1,240 @@
+﻿@using Library.API.Assess.Models
+@using Library.API.Assess.Models.Projects
+@using Library.API.Assess.Services.Projects
+@using System.ComponentModel.DataAnnotations
+
+<div class="registration-container">
+    <div class="background-image"></div>
+
+    <div class="registration-content">
+        <div class="registration-card">
+            <RadzenCard class="registration-form-card">
+                <RadzenStack Gap="1.5rem">
+
+                    @* Header *@
+                    <RadzenStack AlignItems="AlignItems.Center" class="registration-header">
+                        <RadzenText Text="Registration"
+                                    TextStyle="TextStyle.H4"
+                                    class="registration-title" />
+                        @if (!string.IsNullOrEmpty(ProjectName))
+                        {
+                            <RadzenText Text="@ProjectName"
+                                        TextStyle="TextStyle.Subtitle1"
+                                        class="project-name" />
+                        }
+                    </RadzenStack>
+
+                    @* Registration Success State *@
+                    @if (_registrationSuccess)
+                    {
+                        <RadzenStack AlignItems="AlignItems.Center" Gap="1rem" class="success-section">
+                            <RadzenIcon Icon="check_circle"
+                                        Style="font-size: 3rem; color: var(--rz-success);" />
+                            <RadzenText Text="Registration Successful!"
+                                        TextStyle="TextStyle.H5"
+                                        Style="color: var(--rz-success);" />
+                            <RadzenText Text="@_successMessage"
+                                        TextStyle="TextStyle.Body1"
+                                        class="success-message" />
+                        </RadzenStack>
+                    }
+                    else
+                    {
+                        @* Registration Form *@
+                        <EditForm Model="_registrationModel" OnValidSubmit="HandleRegistration">
+                            <DataAnnotationsValidator />
+
+                            @* Error Message *@
+                            @if (!string.IsNullOrEmpty(_errorMessage))
+                            {
+                                <RadzenAlert AlertStyle="AlertStyle.Danger"
+                                             Variant="Variant.Flat"
+                                             Size="AlertSize.Medium">
+                                    @_errorMessage
+                                </RadzenAlert>
+                            }
+
+                            <RadzenStack Gap="1rem">
+
+                                @* Personal Information *@
+                                <RadzenRow Gap="1rem">
+                                    <RadzenColumn Size="12">
+                                        <RadzenStack Gap=".5" Variant="Variant.Outlined">
+                                            <RadzenText Text="First Name *" />
+                                            <RadzenTextBox @bind-Value="_registrationModel.FirstName"
+                                                           Placeholder="Enter your first name"
+                                                           MaxLength="150"
+                                                           class="registration-input w-100" />
+                                            <ValidationMessage For="@(() => _registrationModel.FirstName)" />
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12">
+                                        <RadzenStack Gap=".5" Variant="Variant.Outlined">
+                                            <RadzenText Text="Last Name *" />
+                                            <RadzenTextBox @bind-Value="_registrationModel.LastName"
+                                                           Placeholder="Enter your last name"
+                                                           MaxLength="150"
+                                                           class="registration-input w-100" />
+                                            <ValidationMessage For="@(() => _registrationModel.LastName)" />
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                @* Contact Information *@
+                                <RadzenRow Gap="1rem">
+                                    <RadzenColumn Size="12">
+                                        <RadzenStack Gap=".5" Variant="Variant.Outlined">
+                                            <RadzenText Text="Email Address *" />
+                                            <RadzenTextBox @bind-Value="_registrationModel.Email"
+                                                           Placeholder="Enter your email address"
+                                                           MaxLength="255"
+                                                           class="registration-input w-100" />
+                                            <ValidationMessage For="@(() => _registrationModel.Email)" />
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                <RadzenRow Gap="1rem">
+                                    <RadzenColumn Size="12">
+                                        <RadzenStack Gap=".5" Variant="Variant.Outlined">
+                                            <RadzenText Text="Mobile Number" />
+                                            <RadzenTextBox @bind-Value="_registrationModel.Mobile"
+                                                           Placeholder="Enter your mobile number"
+                                                           MaxLength="50"
+                                                           class="registration-input w-100" />
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12">
+                                        <RadzenStack Gap=".5" Variant="Variant.Outlined">
+                                            <RadzenText Text="ID Number" />
+                                            <RadzenTextBox @bind-Value="_registrationModel.IDNumber"
+                                                           Placeholder="Enter your ID number"
+                                                           class="registration-input w-100" />
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                @* Additional Information *@
+                                <RadzenRow Gap="1rem">
+                                    <RadzenColumn Size="12">
+                                        <RadzenStack Gap=".5" Variant="Variant.Outlined">
+                                            <RadzenText Text="Gender" />
+                                            <RadzenDropDown @bind-Value="_registrationModel.Gender"
+                                                            Data="_genderOptions"
+                                                            AllowClear="true"
+                                                            Placeholder="Select gender"
+                                                            class="registration-input w-100" />
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12">
+                                        <RadzenStack Gap=".5" Variant="Variant.Outlined">
+                                            <RadzenText Text="Ethnicity" />
+                                            <RadzenDropDown @bind-Value="_registrationModel.Ethnicity"
+                                                            Data="_ethnicityOptions"
+                                                            AllowClear="true"
+                                                            Placeholder="Select ethnicity"
+                                                            class="registration-input w-100" />
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12">
+                                        <RadzenStack Gap=".5" Variant="Variant.Outlined">
+                                            <RadzenText Text="Date of Birth" />
+                                            <RadzenDatePicker @bind-Value="_registrationModel.DateOfBirth"
+                                                              DateFormat="dd/MM/yyyy"
+                                                              Placeholder="Select date"
+                                                              ShowCalendarWeek="false"
+                                                              class="registration-input w-100" />
+                                        </RadzenStack>
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                @* Submit Button *@
+                                <RadzenStack class="submit-section">
+                                    <RadzenButton ButtonType="ButtonType.Submit"
+                                                  Text="Register for Assessment"
+                                                  Icon="person_add"
+                                                  IsBusy="_isSubmitting"
+                                                  BusyText="Registering..."
+                                                  Size="ButtonSize.Large"
+                                                  class="registration-submit-btn" />
+                                </RadzenStack>
+
+                            </RadzenStack>
+                        </EditForm>
+                    }
+                </RadzenStack>
+            </RadzenCard>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private ICandidateRegistrationService _candidateRegistrationService { get; set; }
+
+    [Parameter] public string CompanyUUID { get; set; } = string.Empty;
+    [Parameter] public string ProjectsUUID { get; set; } = string.Empty;
+    [Parameter] public string ProjectName { get; set; } = string.Empty;
+
+    private CandidateRegistrationModel _registrationModel = new();
+    private bool _isSubmitting = false;
+    private bool _registrationSuccess = false;
+    private string _errorMessage = string.Empty;
+    private string _successMessage = string.Empty;
+
+    private readonly List<string> _genderOptions = new() { "Male", "Female", "Other", "Prefer not to say" };
+    private readonly List<string> _ethnicityOptions = new()
+    {
+        "African", "Coloured", "Indian", "White", "Other", "Prefer not to say"
+    };
+
+    protected override void OnInitialized()
+    {
+        // Initialize the registration model with the provided UUIDs
+        _registrationModel.CompanyUUID = CompanyUUID;
+        _registrationModel.ProjectsUUID = ProjectsUUID;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Update the model if parameters change
+        _registrationModel.CompanyUUID = CompanyUUID;
+        _registrationModel.ProjectsUUID = ProjectsUUID;
+    }
+
+    private async Task HandleRegistration()
+    {
+        _isSubmitting = true;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            // Validate that we have the required UUIDs
+            if (string.IsNullOrEmpty(_registrationModel.CompanyUUID) ||
+                string.IsNullOrEmpty(_registrationModel.ProjectsUUID))
+            {
+                _errorMessage = "Invalid project information. Please try accessing the registration again.";
+                return;
+            }
+
+            var result = await _candidateRegistrationService.RegisterCandidateAsync(_registrationModel);
+
+            if (result.isValid)
+            {
+                _registrationSuccess = true;
+                _successMessage = "You have been successfully registered for the assessment. Please check your email for further instructions.";
+            }
+            else
+            {
+                _errorMessage = result.Message ?? "Registration failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

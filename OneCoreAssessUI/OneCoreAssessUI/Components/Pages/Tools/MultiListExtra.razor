@@ -1,0 +1,343 @@
+﻿@typeparam TItem
+
+@using System.Reflection
+
+@if (Data != null)
+{
+    <RadzenTabs TabPosition="TabPosition.TopRight">
+        <Tabs>
+            <RadzenTabsItem Icon="view_comfy_alt">
+
+                @* Search section *@
+                <RadzenStack Orientation="Orientation.Horizontal" class="mb-3" Style="gap: 8px;">
+                    <RadzenTextBox @bind-Value="_search" Placeholder="Search..." Style="width: 100%;" />
+                    <RadzenButton Icon="search" Text="Search" Click="@OnSearch" Style="width: 135px;" />
+                    @if (!string.IsNullOrWhiteSpace(_search))
+                    {
+                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Click="@ClearSearch" />
+                    }
+                </RadzenStack>
+
+                @* Parent filter buttons - only show when categories are enabled *@
+                @if (ShowCategories && isParentFilter && _parentFilterList != null && _parentFilterList.Count > 0)
+                {
+                    <RadzenStack class="mb-3"> 
+                        <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" Gap="8px">
+                            <RadzenButton Text="All" 
+                                         ButtonStyle="@(_selectedParentUUID == null ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                         Click="@(() => OnParentFilter(null, null))" />
+                            @foreach (var parent in _parentFilterList.OrderBy(x => x.Name))
+                            {
+                                <RadzenButton Text="@parent.Name" 
+                                             ButtonStyle="@(_selectedParentUUID == parent.UUID ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                             Click="@(() => OnParentFilter(parent.UUID, parent.Name))" />
+                            }
+                        </RadzenStack>
+                    </RadzenStack>
+                }
+
+                @if (ParentList != null)
+                {
+                    @foreach(var parent in ParentList.OrderBy(x => x.Name))
+                    {
+                        @* Only display the parent name if categories are enabled and it's not "All" *@
+                        @if(ShowCategories && parent.UUID != "0")
+                        {
+                            <RadzenStack Orientation="Orientation.Horizontal" class="parent-list pt-4 pb-4 pl-4">
+                                <RadzenText Text="@parent.Name" Style="font-size: 20px; font-weight: 500;" />
+                            </RadzenStack>
+                        }
+
+                        <RadzenRow class="list-custom-tile  ">
+
+                            @if (isAdd)
+                            {
+                                <RadzenColumn Size="6" SizeXS="6" SizeMD="4" SizeLG="2" class="wrapper-tile">
+                                    <button onclick=@(async () => await OnAddNew_Click(parent)) style="border: none; width: 100%;">
+
+                                        <RadzenCard class="card-custom">
+                                            <RadzenStack>
+
+                                                <RadzenStack class="count-custom"></RadzenStack>
+
+                                                <RadzenStack class="icon-custom" Style="margin-top: 4px;">
+                                                    <RadzenIcon Icon="add" Style="color: var(--sc-secondary-color4)" />
+                                                </RadzenStack>
+
+                                                <RadzenStack class="label-custom">
+                                                    <RadzenText Text="Add" />
+                                                </RadzenStack>
+
+                                            </RadzenStack>
+                                        </RadzenCard>
+                                    </button>
+                                </RadzenColumn>
+                            }
+
+                            @foreach (var Item in parent.item)
+                            {
+                                <RadzenColumn Size="6" SizeXS="6" SizeMD="4" SizeLG="2" class="wrapper-tile">
+                                    <button onclick=@(async () => await RowSelect(Item)) style="border: none; width: 100%;">
+
+                                        <RadzenCard class="card-custom">
+                                            <RadzenStack class="mt-4">
+
+                                                <RadzenStack class="count-custom">
+                                                    @if (isStats)
+                                                    {
+                                                        <RadzenText Style="font-size: 10px" Text=@(string.Format("{0} {1}", GetPropertyValue(Item, "Count"), StatsName)) />
+                                                    }
+                                                </RadzenStack>
+
+                                                <RadzenStack class="icon-custom">
+                                                    @{
+                                                        var icon = GetPropertyValue(Item, IconName)?.ToString();
+                                                        var iconColor = $"color: {GetPropertyValue(Item, "IconColor")?.ToString()}";
+                                                    }
+                                                    <RadzenIcon Icon="@icon" Style=@iconColor />
+                                                </RadzenStack>
+
+                                                <RadzenStack class="label-custom">
+                                                    <RadzenText Text="@(GetPropertyValue(Item, "Name")?.ToString())" />
+                                                </RadzenStack>
+
+                                            </RadzenStack>
+                                        </RadzenCard>
+                                    </button>
+
+                                </RadzenColumn>
+                            }
+                        </RadzenRow>
+
+                    }
+                }
+
+            </RadzenTabsItem>
+            <RadzenTabsItem Icon="event_list">
+                <RadzenDataGrid AllowFiltering="true"
+                                AllowColumnResize="true"
+                                TItem="TItem"
+                                AllowAlternatingRows="false"
+                                FilterMode="FilterMode.Advanced"
+                                AllowSorting="true"
+                                PageSize="20"
+                                AllowPaging="true"
+                                PagerHorizontalAlign="HorizontalAlign.Left"
+                                ShowPagingSummary="true"
+                                Data=@Data
+                                ColumnWidth="300px"
+                                LogicalFilterOperator="LogicalFilterOperator.Or"
+                                SelectionMode="DataGridSelectionMode.Single"
+                                AllowRowSelectOnRowClick="true"
+                                RowSelect="@(RowSelect)">
+                    <Columns>
+                        <RadzenDataGridColumn Width="60px" Sortable="false" Filterable="false">
+                            <Template Context="data">
+                                @{
+                                    var icon = GetPropertyValue(data, IconName)?.ToString();
+                                    var iconColor = $"color: {GetPropertyValue(data, "IconColor")?.ToString()}";
+                                }
+                                <RadzenIcon Icon="@icon" Style=@iconColor />
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn Property="Name" Title=@Name />
+                        <RadzenDataGridColumn Property="Description" Title="Description" />
+
+                        @if (Columns != null)
+                        {
+                            @Columns
+                        }
+
+                        <RadzenDataGridColumn Property="Count"
+                                              Title=@(StatsName ?? "")
+                                              Filterable="false"
+                                              Width="120px"
+                                              TextAlign="TextAlign.Center"
+                                              Visible=@isStats />
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+}
+
+@code {
+
+    private IEnumerable<TItem>? _data;
+    [Parameter] public IEnumerable<TItem>? Data
+    {
+        get => _data;
+        set
+        {
+            _data = value;
+            LoadParentFilterList();
+            LoadParentList();
+        }
+    }
+
+    [Parameter] public EventCallback<TItem?> OnItemSelect { get; set; }
+    [Parameter] public EventCallback OnAddNew { get; set; }
+
+    [Parameter] public string Name { get; set; } = "Name";
+    [Parameter] public string StatsName { get; set; } = "Statistics";
+    [Parameter] public string ParentName { get; set; } = "Business Unit Types";
+    [Parameter] public string IconName { get; set; } = "Icon";
+
+    [Parameter] public bool isStats { get; set; } = true;
+    [Parameter] public bool isAdd { get; set; } = true;
+    [Parameter] public bool isParent { get; set; } = true;
+    [Parameter] public bool isParentFilter { get; set; } = true;
+    [Parameter] public bool ShowCategories { get; set; } = false;
+    [Parameter] public bool isIcon { get; set; } = true;
+
+    // Allow extra columns to be injected
+    [Parameter] public RenderFragment? Columns { get; set; }
+
+    private string _search = string.Empty;
+    private string? _selectedParentUUID = null;
+    private List<(string UUID, string Name, List<TItem?> item)>? ParentList { get; set; }
+    private List<(string UUID, string Name)>? _parentFilterList { get; set; }
+
+    
+
+    private async Task RowSelect(TItem? item) =>
+        await OnItemSelect.InvokeAsync(item);
+
+    private async Task OnAddNew_Click((string UUID, string Name, List<TItem?> item)? parent)
+    {
+        if (parent == null || string.IsNullOrWhiteSpace(parent.Value.UUID) || parent.Value.UUID == "0" || parent.Value.UUID == "1")
+        {
+            await OnAddNew.InvokeAsync();
+        }
+        else
+        {
+            // Use Activator.CreateInstance to create an instance of TItem
+            TItem item = (TItem)Activator.CreateInstance(typeof(TItem))!;
+            
+            // Set the ParentsUUID property using reflection since TItem is a generic type
+            var parentUUIDProperty = typeof(TItem).GetProperty("ParentsUUID", BindingFlags.Public | BindingFlags.Instance);
+            var parentNameProperty = typeof(TItem).GetProperty("ParentsName", BindingFlags.Public | BindingFlags.Instance);
+            var parentColorProperty = typeof(TItem).GetProperty("Color", BindingFlags.Public | BindingFlags.Instance);
+            if (parentUUIDProperty != null && parentUUIDProperty.CanWrite) parentUUIDProperty.SetValue(item, parent.Value.UUID);
+            if (parentNameProperty != null && parentNameProperty.CanWrite) parentNameProperty.SetValue(item, parent.Value.Name);
+            if (parentColorProperty != null && parentColorProperty.CanWrite) parentColorProperty.SetValue(item, "#362f21");
+
+
+            await OnItemSelect.InvokeAsync(item);
+        }
+    }
+
+    // Helper to get property value by name
+    private object? GetPropertyValue(object obj, string propertyName)
+    {
+        return obj?.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(obj);
+    }
+
+    /// <summary>
+    /// Load the list of unique parents for filter buttons
+    /// </summary>
+    private void LoadParentFilterList()
+    {
+        if (_data == null || !isParentFilter)
+        {
+            _parentFilterList = null;
+            return;
+        }
+
+        _parentFilterList = _data
+            .GroupBy(x => new
+            {
+                Parent = GetPropertyValue(x, "Parents")?.ToString(),
+                ParentUUID = GetPropertyValue(x, "ParentsUUID")?.ToString()
+            })
+            .Select(g => (UUID: g.Key.ParentUUID, Name: g.Key.Parent))
+            .Where(x => !string.IsNullOrEmpty(x.UUID) && !string.IsNullOrEmpty(x.Name))
+            .ToList();
+    }
+
+    /// <summary>
+    /// get a list of parent uuid and name from the data
+    /// </summary>
+    private void LoadParentList()
+    {
+        if (_data == null || !isParent)
+        {
+            ParentList = null;
+            return;
+        }
+
+        // Apply search filter first
+        var filteredData = _data.AsEnumerable();
+        
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            filteredData = filteredData.Where(x => 
+                (GetPropertyValue(x, "Name")?.ToString() ?? string.Empty)
+                .Contains(_search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Apply parent filter if selected and categories are enabled
+        if (ShowCategories && !string.IsNullOrEmpty(_selectedParentUUID))
+        {
+            filteredData = filteredData.Where(x => 
+                GetPropertyValue(x, "ParentsUUID")?.ToString() == _selectedParentUUID);
+        }
+
+        ParentList = new List<(string UUID, string Name, List<TItem?> item)>();
+
+        // If categories are disabled, put all data in one group
+        if (!ShowCategories)
+        {
+            ParentList.Add(("0", "All", filteredData.ToList()));
+            return;
+        }
+
+        //get the distinct parent UUID and Name from the filtered data
+        var PList = filteredData
+            .GroupBy(x => new
+            {
+                Parent = GetPropertyValue(x, "Parents")?.ToString(),
+                ParentUUID = GetPropertyValue(x, "ParentsUUID")?.ToString()
+            })
+            .Select(g => (UUID: g.Key.ParentUUID, Name: g.Key.Parent))
+            .Where(x => !string.IsNullOrEmpty(x.UUID) && !string.IsNullOrEmpty(x.Name))
+            .ToList();
+
+        if (PList.Count == 0) 
+            ParentList.Add(("0", "All", filteredData.ToList()));
+
+        //loop through the parent list and add to the ParentList
+        foreach (var parent in PList)
+        {
+            var items = filteredData
+                .Where(x => GetPropertyValue(x, "ParentsUUID")?.ToString() == parent.UUID)
+                .ToList();
+            ParentList.Add((parent.UUID, parent.Name, items));
+        }
+    }
+
+    private void OnSearch()
+    {
+        if (_data == null || _data.Count() == 0) return;
+        LoadParentList();
+    }
+
+    /// <summary>
+    /// Filter data by parent UUID and name
+    /// </summary>
+    /// <param name="parentUUID">Parent UUID to filter by (null for all)</param>
+    /// <param name="parentName">Parent name for display</param>
+    private void OnParentFilter(string? parentUUID, string? parentName)
+    {
+        _selectedParentUUID = parentUUID;
+        LoadParentList();
+    }
+
+    private void ClearSearch()
+    {
+        _search = string.Empty;
+        _selectedParentUUID = null;
+        LoadParentList();
+    }
+}

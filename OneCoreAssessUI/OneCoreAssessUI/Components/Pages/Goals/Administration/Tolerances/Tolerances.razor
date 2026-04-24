@@ -1,0 +1,293 @@
+﻿@using Library.API.Goals.Models.Templates
+@using Library.API.Goals.Models.Tolerances
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using System.Text.RegularExpressions
+
+<RadzenStack Orientation="Orientation.Horizontal">
+    <RadzenIcon Icon="sensors" Style="font-size: 34px;" />
+    <RadzenText Text="Tolerance" Style="font-weight: 700; font-size: 25px;" />
+</RadzenStack>
+
+<RadzenStack Orientation="Orientation.Horizontal" class="mb-3" Style="gap: 8px;">
+    <RadzenTextBox @bind-Value="_searchTerm"
+                   @oninput="@OnSearchInput"
+                   Placeholder="Search tolerance sets..."
+                   Style="width: 100%;" />
+    @if (!string.IsNullOrWhiteSpace(_searchTerm))
+    {
+        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Click="@ClearSearch" />
+    }
+    <RadzenButton Icon="add" title="Add Tolerance Set" Click="@(async () => await EditToleranceSet(new ToleranceSetsModel()))" />
+</RadzenStack>
+
+@* Loading Indicator *@
+@if (_isLoading)
+{
+    <RadzenCard class="rz-text-align-center rz-p-4">
+        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+            <RadzenText Text="Loading tolerance sets..." />
+        </RadzenStack>
+    </RadzenCard>
+}
+else if (_filteredToleranceSets != null)
+{
+    @* Data Grid *@
+    <RadzenDataGrid @ref="@_dataGrid"
+                    Data="@_filteredToleranceSets"
+                    TItem="ToleranceSetsModel"
+                    AllowPaging="true"
+                    AllowSorting="true"
+                    AllowColumnResize="true"
+                    AllowFiltering="true"
+                    PageSize="50"
+                    PagerHorizontalAlign="HorizontalAlign.Left"
+                    ShowPagingSummary="true"
+                    PagingSummaryFormat="@("{0} - {1} of {2} tolerance sets")"
+                    EmptyText="No tolerance sets found."
+                    class="rz-mt-3">
+
+        <Columns>
+            <RadzenDataGridColumn TItem="ToleranceSetsModel" Property="Name" Title="Name" Width="250px">
+                <Template Context="toleranceSet">
+                    <RadzenText Text="@toleranceSet.Name" Style="font-weight: 500;" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ToleranceSetsModel" Property="Description" Title="Description" Width="300px">
+                <Template Context="toleranceSet">
+                    <RadzenText Text="@(TruncateText(StripHtmlTags(toleranceSet.Description), 50))" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ToleranceSetsModel" Property="MaxTotal" Title="Max Total" Width="120px">
+                <Template Context="toleranceSet">
+                    <RadzenText Text="@toleranceSet.MaxTotal.ToString("F0")" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ToleranceSetsModel"
+                                  Property="Ranges" 
+                                  Title="Ranges" 
+                                  Width="100px">
+                <Template Context="toleranceSet">
+                    <RadzenText Text="@toleranceSet.Ranges" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ToleranceSetsModel" Title="Actions" Width="100px" Sortable="false" Filterable="false">
+                <Template Context="toleranceSet">
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                        <RadzenButton Icon="edit"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => EditToleranceSet(toleranceSet))"
+                                      Tooltip="Edit Tolerance Set" />
+                        <RadzenButton Icon="delete"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Click="@(() => DeleteToleranceSet(toleranceSet))"
+                                      Tooltip="Delete Tolerance Set" />
+                    </RadzenStack>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+    @* Summary *@
+    <RadzenCard class="rz-mt-3">
+        <RadzenText Text="@($"Total: {_filteredToleranceSets.Count} tolerance sets")" Style="font-weight: 500;" />
+    </RadzenCard>
+}
+else
+{
+    <RadzenCard class="rz-text-align-center rz-p-4">
+        <RadzenText Text="No tolerance sets available." />
+    </RadzenCard>
+}
+
+@code {
+    [Inject] private ITolerancesServices TolerancesService { get; set; }
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<ToleranceSetsModel>? _toleranceSets = null;
+    private List<ToleranceSetsModel>? _filteredToleranceSets = null;
+    private RadzenDataGrid<ToleranceSetsModel>? _dataGrid;
+    private string _searchTerm = string.Empty;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the OnDataRefresh event if using sidebar
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+        await LoadData();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _toleranceSets = await TolerancesService.GetToleranceSets();
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tolerance sets: {ex.Message}");
+            // Handle error as needed - could show a notification
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadToleranceSets()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _toleranceSets = await TolerancesService.GetToleranceSets();
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tolerance sets: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (_toleranceSets == null)
+        {
+            _filteredToleranceSets = null;
+            return;
+        }
+
+        var filtered = _toleranceSets.AsEnumerable();
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            var searchLower = _searchTerm.ToLower();
+            filtered = filtered.Where(t =>
+                (t.Name?.ToLower().Contains(searchLower) ?? false) ||
+                (StripHtmlTags(t.Description)?.ToLower().Contains(searchLower) ?? false)
+            );
+        }
+
+        _filteredToleranceSets = filtered.OrderBy(t => t.OrderVal).ThenBy(t => t.Name).ToList();
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        _searchTerm = string.Empty;
+        ApplyFilter();
+    }
+
+    private string TruncateText(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text))
+            return "-";
+
+        return text.Length <= maxLength ? text : $"{text[..maxLength]}...";
+    }
+
+    private string? StripHtmlTags(string? html)
+    {
+        if (string.IsNullOrEmpty(html))
+            return null;
+
+        // Remove HTML tags using regex
+        var htmlTagPattern = @"<[^>]*>";
+        var plainText = Regex.Replace(html, htmlTagPattern, "");
+        
+        // Replace common HTML entities
+        plainText = plainText.Replace("&nbsp;", " ")
+                            .Replace("&amp;", "&")
+                            .Replace("&lt;", "<")
+                            .Replace("&gt;", ">")
+                            .Replace("&quot;", "\"")
+                            .Replace("&#39;", "'");
+        
+        // Clean up extra whitespace and line breaks
+        plainText = Regex.Replace(plainText, @"\s+", " ").Trim();
+        
+        return string.IsNullOrWhiteSpace(plainText) ? null : plainText;
+    }
+
+    private async Task EditToleranceSet(ToleranceSetsModel toleranceSet)
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.SharedContext = toleranceSet;
+            _rightSidebarService.Open(Enumerables.ControlTypes.sb_Goals_Administration_ToleranceSets);
+        }
+    }
+
+    private async Task DeleteToleranceSet(ToleranceSetsModel toleranceSet)
+    {
+        try
+        {
+            var result = await TolerancesService.DeleteToleranceSet(toleranceSet.UUID);
+            if (result?.isValid == true)
+            {
+                await LoadToleranceSets(); // Refresh the list
+                // Show success notification
+            }
+            else
+            {
+                // Show error notification
+                Console.WriteLine($"Delete failed: {result?.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting tolerance set: {ex.Message}");
+        }
+    }
+
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Only respond to refresh events for tolerance sets
+        if (controlType == Enumerables.ControlTypes.sb_Goals_Administration_ToleranceSets)
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadToleranceSets();
+            });
+        }
+    }
+
+    public async Task RefreshData()
+    {
+        await LoadData();
+    }
+}

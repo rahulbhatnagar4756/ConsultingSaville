@@ -1,0 +1,24 @@
+
+.Level9Box {
+
+    .header-outer {
+        background-color: var(--sc-primary-colour1);
+        color: var(--rz-white);
+        padding: 15px;
+
+        .header-label {
+            color: var(--rz-white);
+        }
+
+        .card-level {
+            background-color: var(--sc-secondary-color2);
+            text-align: center;
+            color: var(--rz-white);
+
+            .inner-count {
+                color: var(--rz-white);
+                font-size: 30px;
+            }
+        }
+    }
+}

@@ -1,0 +1,34 @@
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.Pillars
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.Tolerances
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.Status
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.EnterpriseStructures
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.ContractPeriods
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.RatingPeriods
+@using OneCoreAssessUI.Components.Pages.Goals.Administration.ScoringPeriods
+@using OneCoreAssessUI.Models
+ 
+ 
+<RadzenStack class="pt-5">
+
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationGoalsTolerances){  <Tolerances/>    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationGoalsPillars)   {  <Pillars/>    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationGoalsStatus)    {  <Status />    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationGoalsEnterpriseStructureTypes)    {  <EnterpriseStructureTypes />    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationGoalsEnterpriseStructureWeights)    {  <EnterpriseStructureWeights />    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.AdministrationGoalsContractPeriods)   {  <ContractPeriods/>    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.GoalRatingPeriods)
+    { <RatingPeriods /> }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.GoalScoringPeriods)
+    {
+        <ScoringPeriods />
+    }
+    @if (_menuNav.MenuItemSubType == Enumerables.MenuItemSubTypes.EmployeeGoals)
+    {
+        <OneCoreAssessUI.Components.Pages.Goals.Administration.EmployeeGoals.EmployeeGoals />
+    }
+</RadzenStack>
+
+
+@code {
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+}

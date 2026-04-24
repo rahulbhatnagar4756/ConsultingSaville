@@ -1,0 +1,6 @@
+@Microservice.TalentManagement_HostAddress = http://localhost:5258
+
+GET {{Microservice.TalentManagement_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

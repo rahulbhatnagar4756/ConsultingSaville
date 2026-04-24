@@ -1,0 +1,21 @@
+﻿@using OneCoreAssessUI.Enumerables
+
+<RadzenMenu>
+    <RadzenMenuItem Text="My Team" Icon="diversity_3" Click="(async() => await ChangeMenuItem(MenuItemTypes.MyTeam))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Assessments" Icon="assignment" Click="(async() => await ChangeMenuItem(MenuItemTypes.Assessments))"></RadzenMenuItem>
+    <RadzenMenuItem Text="IPD" Icon="fingerprint" Click="(async() => await ChangeMenuItem(MenuItemTypes.MyIDP))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Goals" Icon="sports_score" Click="(async () => await ChangeMenuItem(MenuItemTypes.Roles))"></RadzenMenuItem>
+
+</RadzenMenu>
+
+@code {
+
+    [Parameter] public Enumerables.MenuItemTypes Item { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemTypes> ItemChanged { get; set; }
+
+
+
+    private async Task ChangeMenuItem(MenuItemTypes Option) =>
+        await ItemChanged.InvokeAsync(Option);
+
+}

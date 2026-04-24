@@ -1,0 +1,175 @@
+﻿@using Library.API.Admin.Models
+@using Library.API.Base.Models
+@using Library.API.Base.Models.BusinessHierarchy
+@using Library.API.Base.Mappers
+@using Library.API.Base.Services.BusinessHierarchy
+@using Library.API.Base.Services.BusinessHierarchy.Jobs
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using Library.API.Admin.Services
+
+@inject DialogService DialogService
+
+<RadzenStack class="header-custom">
+    <RadzenStack class="header-outer">
+        <RadzenStack>
+            <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="Position Discipline" />
+        </RadzenStack>
+    </RadzenStack>
+ </RadzenStack>
+
+@* create a log for messages from _logMessage *@
+@if (_logMessage != null)
+{
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+        @* Replace the RadzenAlert with a custom message box that does not have a close (X) button and always shows when _logMessage is set *@
+        @if (_logMessage != null && _logMessage.isValid.HasValue)
+        {
+            <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+                <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+                <span>@_logMessage.Message</span>
+            </div>
+        }
+    }
+}
+
+@if (EmployeeJobDiscipline != null)
+{
+    <RadzenStack class="p-4 ">
+
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Name</RadzenText>
+            <RadzenTextBox Placeholder="Positions Discipline Name ..."
+                           @bind-Value=EmployeeJobDiscipline.Name
+                           Style="width: 100%" aria-label="Job Discipline Name" />
+        </RadzenColumn>
+       
+       
+          <RadzenColumn Size="12" class="mt-5">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                <RadzenButton style="flex: 1;"
+                              Icon="save"
+                              BusyText="Saving ..."
+                              IsBusy=@busy
+                              Click=@OnSave_Click
+                              Text="Save" />
+
+                @if (!string.IsNullOrEmpty(EmployeeJobDiscipline?.UUID))
+                {
+                    <RadzenButton Icon="delete"
+                                  Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                  IsBusy=@busy
+                                  Click=OnDelete_Confirm />
+                }
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenStack>
+}
+
+@code {
+
+    [Inject] public IIconsService _IconsService { get; set; }
+    [Inject] public IJobDisciplinesService _JobDisciplinesService { get; set; }
+
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    [Parameter] public EmployeeBaseModel? EmployeeJobDiscipline { get; set; } 
+    [Parameter] public EventCallback<EmployeeBaseModel> OnSaveComplete { get; set; }
+
+    private ResultsModel? _logMessage = null;
+
+    private EmployeeBaseModel? EmployeeJobDisciplineCurrent = null;
+    private bool busy = false;
+    private List<NameOnlyModel>? _Icons;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (EmployeeJobDiscipline == null) 
+        {
+            EmployeeJobDiscipline = new EmployeeBaseModel() 
+            { 
+                IconColor = "#362f21",
+                Icon = "person_play", // Default to person_play icon as requested
+                OrderVal = 1
+            };
+        }
+        
+        await OnLoad_Icons();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //get data if its sent to the right sidebar area
+        EmployeeJobDisciplineCurrent = _rightSidebarService.GetSharedContext<EmployeeBaseModel>();
+        if (EmployeeJobDiscipline != null && EmployeeJobDisciplineCurrent == null) 
+        {
+            EmployeeJobDiscipline = new() 
+            { 
+                Icon = "person_play",
+                IconColor = "#362f21",
+                OrderVal = 1
+            };
+        }
+
+        if (EmployeeJobDisciplineCurrent != null && EmployeeJobDiscipline != EmployeeJobDisciplineCurrent)
+        {
+            _logMessage = null;
+            EmployeeJobDiscipline = EmployeeJobDisciplineCurrent;
+            
+            // Ensure person_play icon is set if not already set
+            if (string.IsNullOrEmpty(EmployeeJobDiscipline.Icon))
+            {
+                EmployeeJobDiscipline.Icon = "person_play";
+            }
+        }
+
+        await base.OnParametersSetAsync();
+    } 
+
+    private async Task OnLoad_Icons()
+    {
+        _Icons = await _IconsService.GetIcons();
+    }
+
+    private async Task OnSave_Click()
+    {
+        busy = true;
+
+        if (EmployeeJobDiscipline == null) {
+            busy = false;
+            return;
+        }
+
+        // Ensure person_play icon is always used for job disciplines
+        var SaveModel = EmployeeJobDiscipline.ToEmployeeJobDisciplineBaseModel();
+
+        _logMessage = await _JobDisciplinesService.Save(SaveModel);
+        if (_logMessage != null && _logMessage.isValid.Value && EmployeeJobDiscipline.UUID == null)
+        {
+            EmployeeJobDiscipline.UUID = _logMessage.UUID; 
+        }
+        
+        await OnSaveComplete.InvokeAsync(EmployeeJobDiscipline);
+        _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_JobDisciplines); 
+        await InvokeAsync(StateHasChanged);
+        busy = false;
+    }
+
+    private async Task OnDelete_Confirm()
+    {
+        var result = await DialogService.Confirm("Are you sure?", "Delete Job Discipline", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (result.Value)
+        {
+            await OnDelete_Click();
+        }
+    }
+
+    private async Task OnDelete_Click()
+    {
+        _logMessage = await _JobDisciplinesService.Delete(EmployeeJobDiscipline.UUID);
+        _rightSidebarService.TriggerDataRefresh(Enumerables.ControlTypes.sb_Administration_BusinessHierarchy_JobDisciplines);
+    }
+}

@@ -1,0 +1,89 @@
+﻿
+@import "CandidateRegister.scss";
+@import "CandidateAssessments.scss";
+@import "CandidateAssessmentInstructions.scss";
+@import "CandidateProfile.scss";
+
+.candidate-loading-container {
+    position: relative;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.candidate-loading-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/images/registration-background.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+}
+
+.candidate-loading-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(15, 31, 56, 0.8) 0%, rgba(97, 111, 133, 0.6) 100%);
+    z-index: 1;
+}
+
+.candidate-loading-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+}
+
+.candidate-loading-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    padding: 3rem 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.candidate-loading-title {
+    color: var(--sc-primary-colour1, #0F1F38);
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.candidate-loading-subtitle {
+    color: var(--sc-secondary-color4, #616F85);
+    margin-bottom: 2rem;
+}
+
+.candidate-error-container {
+    position: relative;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.candidate-error-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    padding: 3rem 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+}

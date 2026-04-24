@@ -1,0 +1,175 @@
+﻿@using Library.Frog.Services
+@using Library.Security.Services
+@using OneCoreAssess.Services
+@using Radzen.Blazor
+
+@attribute [StreamRendering]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@page "/forms/SuccessionPlan/{FrogSetUUID?}/{UsersUUID?}"
+
+@layout CleanLayout
+
+   @* 
+    @if(userLoggedOnService != null)
+{
+    <span>Company UUID: </span>
+    @userLoggedOnService.CompanyUUID <br/>
+    <span>User Logged In UUID: </span>
+    @userLoggedOnService.UsersUUIDLoggedOn
+    <br />
+    <br />
+    <br />
+    <br />
+} *@
+
+@if(_logVisibility){
+    <RadzenRow Gap="5px;" RowGap="1rem" class= "rz-m-0  ">
+        <RadzenColumn Size="12">
+            <RadzenCard Variant="Variant.Flat" class=@_logCSS >
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">@_logmessage</RadzenText>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+}
+@if (_Elements == null || _Elements.Count == 0)
+{
+    <RadzenCard class="center-text">
+        <RadzenText Text=@_message TextStyle="Radzen.Blazor.TextStyle.DisplayH4" TagName="Radzen.Blazor.TagName.H2"></RadzenText>
+    </RadzenCard>
+}
+else
+{
+    @foreach (var element in _Elements.Where(x => x.FrogElementsUUIDLink is null).ToList())
+    {
+
+        @if(element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Panel)
+        {
+            <OneCoreAssess.Components.Pages.FROG.Controls.PanelControl Element=@element 
+            Elements=@_Elements
+            CompanyUUID=@_SecurityInformation.CompanyUUID
+            UsersUUIDLoggedIn=@_SecurityInformation.UsersUUID
+            Reloadpage="ReloadPage" />
+        }
+
+        @if(element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Dropdown)
+        {
+            <OneCoreAssess.Components.Pages.FROG.Controls.DropdownControl Element=@element />
+        }
+
+        @if (element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Label)
+        {
+            <OneCoreAssess.Components.Pages.FROG.Controls.LabelControl Element=@element />
+        }
+
+        @if (element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Textbox)
+        {
+            <OneCoreAssess.Components.Pages.FROG.Controls.TextboxControl Element=@element />
+        }
+
+        @if(element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Button)
+        {
+            <OneCoreAssess.Components.Pages.FROG.Controls.ButtonControl Element=@element 
+            CompanyUUID=@_SecurityInformation.CompanyUUID 
+            UsersUUIDLoggedIn=@_SecurityInformation.UsersUUID
+            Reloadpage="ReloadPage" />
+        } 
+
+    }
+}
+
+@code {
+
+    [Inject] ISecurityService Security { get; set; }
+    [Inject] IFrogService FrogService { get; set; }
+    [Inject] UserLoggedOnService userLoggedOnService { get; set; }
+
+    [Parameter] public string FrogSetUUID { get; set; }
+    [Parameter] public string UsersUUID { get; set; }
+
+    private List<Library.Frog.Models.FrogElementModel> _Elements = new List<Library.Frog.Models.FrogElementModel>();
+    private Library.Security.Models.LoggedInUserInformation _SecurityInformation;
+
+    private string _message = "Access to employee profile restricted";
+
+    private bool _logVisibility = false;
+    private string _logmessage = "";
+    private string _logCSS = "rz-background-color-danger-lighter";
+
+    private string _colorSuccess = "rz-background-color-success-lighter";
+    private string _colorDanger = "rz-background-color-danger-lighter";
+
+    protected override Task OnInitializedAsync()
+    {
+        return base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (UsersUUID != null)
+            {
+                _SecurityInformation = await Security.GetUserInformation();
+                if (_SecurityInformation != null && string.IsNullOrWhiteSpace(userLoggedOnService.CompanyUUID))
+                {
+                    userLoggedOnService.CompanyUUID = _SecurityInformation.CompanyUUID;
+                    userLoggedOnService.UsersUUIDLoggedOn = _SecurityInformation.UsersUUID;
+
+                }
+                if (!string.IsNullOrWhiteSpace(userLoggedOnService.CompanyUUID)) await GetElements();
+            }
+            StateHasChanged();
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    /// <summary>
+    /// log the message to the screen on button presses
+    /// </summary>
+    /// <param name="result"></param>
+    private void LogMessage(Library.Frog.Models.ResultModel result)
+    {
+        if (result == null) return;
+        _logVisibility = true;
+        _logmessage = result.Message;
+        if (result.isSuccess.Value) _logCSS = _colorSuccess;
+        else _logCSS = _colorDanger;
+    }
+
+    /// <summary>
+    /// get the elements to be displayed
+    /// </summary>
+    /// <returns></returns>
+    private async Task GetElements()
+    {
+        if (FrogSetUUID == null) return;
+        _Elements = null;
+        _Elements = new List<Library.Frog.Models.FrogElementModel>();
+
+        Library.Frog.Models.FormSetsAccessModel access = new()
+            {
+                CompanyUUID = _SecurityInformation.CompanyUUID,
+                UsersUUIDLoggedIn = _SecurityInformation.UsersUUID,
+                FrogSetsUUID = FrogSetUUID,
+                UsersUUID = UsersUUID
+            };
+
+        _Elements = await FrogService.GetElements(access);
+    }
+
+    /// <summary>
+    /// this will reload the elements and display a message 
+    /// mainly used for events
+    /// </summary>
+    /// <param name="result"></param>
+    /// <returns></returns>
+    private async Task ReloadPage(Library.Frog.Models.ResultModel result)
+    {
+        LogMessage(result);
+        await GetElements();
+        //change state
+    }
+}
+
+

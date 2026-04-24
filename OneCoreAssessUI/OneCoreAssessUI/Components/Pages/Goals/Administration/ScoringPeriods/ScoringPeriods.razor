@@ -1,0 +1,364 @@
+﻿@using Library.API.Goals.Models
+@using Library.API.Goals.Models.ScoringPeriod
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@inject IScoringPeriodsService ScoringPeriodsService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PageTitle>Scoring Periods</PageTitle>
+
+<!-- Header -->
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px" Class="mb-4">
+    <RadzenIcon Icon="event_repeat" Style="font-size: 32px; color:#000000;" />
+    <RadzenText Text="Scoring Periods" Style="font-weight: 700; font-size: 28px; color:#111827;" />
+</RadzenStack>
+
+<!-- Top bar: Search & Add New (Always Visible) -->
+<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+    <RadzenTextBox @bind-Value="searchText"
+                   Placeholder="Search..."
+                   Style="width: 300px;"
+                   Change="FilterData" />
+    <RadzenButton Icon="add_circle"
+                  Text="Add New Scoring Period"
+                  ButtonStyle="ButtonStyle.Primary"
+                  Click="@OnAddNew" />
+</RadzenStack>
+
+@if (isLoading)
+{
+    <!-- Loader -->
+    <div style="display: flex; justify-content: center; align-items: center; height: 60vh; flex-direction: column;">
+        <RadzenIcon Icon="autorenew" Style="font-size: 60px; color:#000000; animation: spin 1s linear infinite;" />
+        <RadzenText Text="Loading Scoring Periods..."
+                    Style="margin-top: 12px; font-size: 18px; color:#374151; font-weight: 600;" />
+    </div>
+}
+else if (filteredScoringPeriods != null && filteredScoringPeriods.Any())
+{
+    <!-- Data Grid for Scoring Periods -->
+    <RadzenDataGrid TItem="ScoringPeriodDto"
+                    Data="@filteredScoringPeriods"
+                    AllowPaging="true"
+                    PageSize="10"
+                    AllowSorting="true"
+                    AllowFiltering="true"
+                    FilterMode="FilterMode.Advanced"
+                    Responsive="true"
+                    AllowColumnResize="true"
+                    Style="overflow-x: auto; display: block; white-space: nowrap;"
+                    Class="shadow-sm rounded-lg">
+        <Columns>
+            <RadzenDataGridColumn TItem="ScoringPeriodDto" Property="Name" Title="Name" Filterable="true" />
+            <RadzenDataGridColumn TItem="ScoringPeriodDto" Property="Description" Title="Description" Filterable="true" />
+            <RadzenDataGridColumn TItem="ScoringPeriodDto" Title="Start Date">
+                <Template Context="data">
+                    @($"{data.StartDay:D2} {GetMonthName(data.StartMonth)}")
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ScoringPeriodDto" Title="End Date">
+                <Template Context="data">
+                    @($"{data.EndDay:D2} {GetMonthName(data.EndMonth)}")
+                </Template>
+            </RadzenDataGridColumn>
+
+
+            <!-- Actions -->
+            <RadzenDataGridColumn TItem="ScoringPeriodDto" Context="data" Title="Actions" Width="190px" Filterable="false" Sortable="false">
+                <Template Context="data">
+                    <div class="flex items-center gap-3">
+                        <RadzenButton Icon="edit"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Info"
+                                      Click="@(args => OnEdit(data))"
+                                      @onclick:stopPropagation="true"
+                                      Style="border-radius:0.5rem;" />
+
+                        <RadzenButton Icon="delete"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Click="@(args => OnDelete(data))"
+                                      @onclick:stopPropagation="true"
+                                      Style="border-radius:0.5rem;" />
+
+                        <RadzenButton Text="@(data.isActive ? "Deactivate" : "Activate")"
+                                      ButtonStyle="@(data.isActive ? ButtonStyle.Secondary : ButtonStyle.Success)"
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => ToggleActiveStatus(data))"
+                                      Style="border-radius:0.5rem; min-width:70px;" />
+                    </div>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+else
+{
+    <!-- No Data Found -->
+    <RadzenText Text="No scoring periods found. Click 'Add New Scoring Period' to create your first scoring period."
+                Style="display:block; text-align: center; margin-top: 2rem; color: #6b7280; font-style: italic; font-size: 16px;" />
+}
+
+<style>
+    @@keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+@code {
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    // List of all scoring periods (fetched from API)
+    private List<ScoringPeriodDto>? scoringPeriods = new();
+    // Filtered list for search functionality
+    private List<ScoringPeriodDto>? filteredScoringPeriods = new();
+    // Search text input from user
+    private string searchText = string.Empty;
+    // Currently selected UUID (used when editing)
+    private string? _selectedUUID;
+    // Flag to show/hide loader
+    private bool isLoading = true;
+
+    [Parameter] public Enumerables.MenuItemSubTypes ItemSub { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemSubTypes> ItemSubChanged { get; set; }
+
+    #region Methods
+
+    /// <summary>
+    /// Gets the month name from month number (1-12)
+    /// </summary>
+    private string GetMonthName(int monthNumber)
+    {
+        if (monthNumber < 1 || monthNumber > 12)
+            return monthNumber.ToString(); // Return number if invalid
+
+        string[] monthNames = {
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        };
+
+        return monthNames[monthNumber - 1];
+    }
+
+    /// <summary>
+    /// Lifecycle method triggered when the component is initialized.
+    /// Subscribes to the RightSidebarService refresh event and loads initial data.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (_rightSidebarService != null)
+        {
+            // Subscribe to the sidebar's refresh event so we can reload data when needed
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+        await LoadData(); // Fetch data from API
+        await base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Loads scoring periods from the service.
+    /// Filters out deleted periods (assuming isDeleted property exists).
+    /// </summary>
+    private async Task LoadData()
+    {
+        isLoading = true; // Show loader
+        try
+        {
+            scoringPeriods = await ScoringPeriodsService.GetScoringPeriods();
+
+            // Filter out deleted scoring periods if the property exists
+            filteredScoringPeriods = scoringPeriods?.Where(p => !p.isDeleted).ToList() ?? new();
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false; // Hide loader
+        }
+    }
+
+    /// <summary>
+    /// Handles refresh events triggered by the RightSidebarService.
+    /// Reloads data and updates the UI when certain control types are refreshed.
+    /// </summary>
+    /// <param name="controlType">Type of control that triggered refresh.</param>
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        if (controlType == ControlTypes.sb_Goals_ScoringPeriods)
+        {
+            await InvokeAsync(async () => await LoadData());
+            StateHasChanged(); // Force UI updates
+        }
+    }
+
+    /// <summary>
+    /// Filters scoring periods based on search text and excludes deleted ones.
+    /// Includes search by month names in addition to name and description.
+    /// </summary>
+    private void FilterData()
+    {
+        if (scoringPeriods == null) return;
+
+        filteredScoringPeriods = scoringPeriods
+            .Where(p => !p.isDeleted &&
+                        (string.IsNullOrWhiteSpace(searchText) ||
+                        p.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                        (p.Description != null && p.Description.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                        GetMonthName(p.StartMonth).Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                        GetMonthName(p.EndMonth).Contains(searchText, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Opens the RightSidebar in "Add New Scoring Period" mode.
+    /// </summary>
+    private void OnAddNew()
+    {
+        // Open the Add New Scoring Period sidebar by passing a special context
+        _rightSidebarService.SharedContext = "ADD_NEW";
+        _rightSidebarService.Open(ControlTypes.sb_Goals_ScoringPeriods); // New control type for add functionality
+    }
+
+    /// <summary>
+    /// Opens the RightSidebar in edit mode for the selected scoring period.
+    /// </summary>
+    /// <param name="period">The scoring period to edit.</param>
+    private void OnEdit(ScoringPeriodDto period)
+    {
+        _selectedUUID = period.UUID;
+        _rightSidebarService.SharedContext = period;
+        _rightSidebarService.Open(ControlTypes.sb_Goals_ScoringPeriods); // Existing control type for edit functionality
+    }
+
+    /// <summary>
+    /// Deletes a scoring period after confirmation from the user.
+    /// Reloads data and updates the UI on successful delete.
+    /// </summary>
+    /// <param name="period">The scoring period to delete.</param>
+    private async Task OnDelete(ScoringPeriodDto period)
+    {
+        var confirmed = await DialogService.Confirm("Delete scoring period?", "Confirm",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await ScoringPeriodsService.DeleteScoringPeriod(period.UUID ?? "");
+            if (result?.isValid == true)
+            {
+                await ShowError("Scoring period deleted successfully!", "Success");
+                await LoadData();
+                StateHasChanged();
+            }
+            else
+            {
+                await ShowError(result?.Message ?? "Failed to delete scoring period.", "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error deleting scoring period: {ex.Message}", "Error");
+        }
+    }
+
+    /// <summary>
+    /// Displays a notification/alert dialog.
+    /// </summary>
+    /// <param name="message">Message to display.</param>
+    /// <param name="title">Title of the dialog (default: Notification).</param>
+    private async Task ShowError(string message, string title = "Notification")
+    {
+        await DialogService.Alert(message, title, new AlertOptions()
+        {
+            OkButtonText = "OK"
+        });
+    }
+
+    /// <summary>
+    /// Toggles the active status of a given scoring period (activate/deactivate).
+    /// </summary>
+    private async Task ToggleActiveStatus(ScoringPeriodDto period)
+    {
+        var action = period.isActive ? "deactivate" : "activate";
+        var confirm = await DialogService.Confirm(
+            $"Are you sure you want to {action} the date period '{period.Name}'?",
+            $"Confirm {action}");
+
+        if (confirm == true)
+        {
+            try
+            {
+                // Create updated object by copying all fields
+                var updatedPeriod = new ScoringPeriodDto
+                {
+                    UUID = period.UUID,
+                    Name = period.Name,
+                    Description = period.Description,
+                    DateCreated = period.DateCreated,
+                    StartDay = period.StartDay,
+                    StartMonth = period.StartMonth,
+                    EndDay = period.EndDay,
+                    EndMonth = period.EndMonth,
+                    isDeleted = period.isDeleted,
+                    // Toggle active status
+                    isActive = !period.isActive,
+                    DateDeactivated = null
+                };
+
+                // Call service with updated values
+                var result = await ScoringPeriodsService.CreateScoringPeriod(updatedPeriod);
+
+                if (result?.isValid == true)
+                {
+                    // Optionally update UI immediately (without full reload)
+                    period.isActive = updatedPeriod.isActive;
+                    period.DateDeactivated = updatedPeriod.DateDeactivated;
+
+                    await LoadData();
+
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Success",
+                        Detail = $"Date period {(updatedPeriod.isActive ? "activated" : "deactivated")} successfully!",
+                        Duration = 3000
+                    });
+                }
+                else
+                {
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Update Failed",
+                        Detail = result?.Message ?? "Failed to update status.",
+                        Duration = 4000
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = $"Error updating status: {ex.Message}",
+                    Duration = 5000
+                });
+            }
+        }
+    }
+
+    #endregion
+}

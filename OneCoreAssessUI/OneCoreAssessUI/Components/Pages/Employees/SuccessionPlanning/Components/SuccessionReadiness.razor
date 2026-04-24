@@ -1,0 +1,373 @@
+﻿@using Library.API.Base.Models.Employees
+@using Library.API.TalentManagement.Models
+@using Library.API.TalentManagement.Services
+@using Library.Frog.Models
+@using Library.Frog.Services
+@using Library.API.Base.Validators
+@using Library.API.TalentManagement.Mapper
+@using Library.Tools.Conversions.Excel
+@using OneCoreAssessUI.Services
+
+
+@if(_statistics != null)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" Wrap="FlexWrap.Wrap" class="mb-4">
+        <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white)" class="pt-4">
+            <RadzenStack AlignItems="AlignItems.Center">
+                <RadzenText TextStyle="TextStyle.H4" style="color: var(--rz-white)">
+                    @if (_loading)
+                    {
+                        <div class="spinner"></div>
+                    }
+                    else
+                    {
+                        @_statistics.TotalEmployeeStats
+                    }
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                Total Employees
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenButton Click="OnFilterTalentPool_Click" style="background-color: var(--sc-secondary-color4)" >
+            <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white); box-shadow: none;text-transform: none;">
+                <RadzenStack AlignItems="AlignItems.Center" >
+                    <RadzenText TextStyle="TextStyle.H4" style="color: var(--rz-white)">
+                        @if (_loading)
+                        {
+                            <div class="spinner"></div>
+                        }
+                        else
+                        {
+                            @_statistics.TalentPoolStats
+                        }
+                    </RadzenText>
+                </RadzenStack>
+                <RadzenStack AlignItems="AlignItems.Center">
+                    Talent Pool
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenButton>
+
+        <RadzenButton Click="OnFilterSuccessionReadiness_Click" style="background-color: var(--sc-secondary-color4)">
+            <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white); box-shadow: none;text-transform: none;">
+                <RadzenStack AlignItems="AlignItems.Center">
+                    <RadzenText TextStyle="TextStyle.H4" style="color: var(--rz-white)">
+                        @if (_loading)
+                        {
+                            <div class="spinner"></div>
+                        }
+                        else
+                        {
+                            @_statistics.SuccessionReadiness
+                        }
+                    </RadzenText>
+                </RadzenStack>
+                <RadzenStack AlignItems="AlignItems.Center">
+                    Succession Readiness
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenButton>
+
+        <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white)" class="pt-4">
+            <RadzenStack AlignItems="AlignItems.Center">
+                <RadzenText TextStyle="TextStyle.H4" style="color: var(--rz-white)">
+                    @if (_loading)
+                    {
+                        <div class="spinner"></div>
+                    }
+                    else
+                    {
+                        @string.Concat(_statistics.AvgAgeYears, ".", @_statistics.AvgAgeMonths)
+                    }
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" style="width:115px; text-align: center; ">
+                Average Age
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white)" class="pt-4">
+            <RadzenStack AlignItems="AlignItems.Center">
+                <RadzenText TextStyle="TextStyle.H4" style="color: var(--rz-white)">
+                    @if (_loading)
+                    {
+                        <div class="spinner"></div>
+                    }
+                    else
+                    {
+                        @string.Concat(_statistics.TalentPoolMaleCount, "/", @_statistics.TalentPoolFemaleCount)
+                    }
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                Male vs Female Ratio
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white)" class="pt-4">
+            <RadzenStack AlignItems="AlignItems.Center">
+                <RadzenText TextStyle="TextStyle.H4" style="color: var(--rz-white)">
+                    @if (_loading)
+                    {
+                        <div class="spinner"></div>
+                    }
+                    else
+                    {
+                        @string.Concat(_statistics.AvgExperienceYears, ".", @_statistics.AvgExperienceMonths)
+                    }
+                </RadzenText>
+            </RadzenStack>
+            <RadzenStack AlignItems="AlignItems.Center">
+                Average Experience
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenButton Click="ExportSuccessionPlanning_Click">
+            <RadzenCard style="background-color: var(--sc-secondary-color4); color: var(--rz-white); font-size: 40px; box-shadow: none;">
+                <RadzenStack AlignItems="AlignItems.Center">
+                    @if (_isLoadExport)
+                    {
+                        <div class="spinner"></div>
+                    }
+                    else
+                    {
+                        <RadzenIcon Icon="download" style="color: var(--rz-white); font-size: 40px" />
+                    }
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenButton>
+
+
+
+
+    </RadzenStack>
+}
+
+
+
+@if (_successionPlannings != null)
+{
+    var paginatedSuccessionPlannings = _successionPlannings
+    .Skip((_pageNo - 1) * _PageItemsCount)
+    .Take(_PageItemsCount);
+
+    foreach (var item in paginatedSuccessionPlannings)
+    {
+        <SuccessionReadinessRow successionPlanning="@item" 
+                                frogLookupReadinessForNextRole="@_frogLookupReadinessForNextRole" 
+                                GenericUUIDChanged="ClickEvent_GenericUUID"
+                                OnTalentManagement_Click="OnTalentManagement_Click2" />
+    }
+
+    <RadzenCard>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+            <RadzenButton ButtonStyle="ButtonStyle.Dark" Click="@(() => CalculatePageCounts(_pageNo - 1))" Disabled="@(_pageNo == 1)" style="margin-right: 1rem">
+                <RadzenIcon Icon="chevron_left" />
+            </RadzenButton>
+            @foreach (var pageNo in _pageCounts)
+            {
+                <RadzenButton Click="@(() => CalculatePageCounts(pageNo))" Disabled="@(_pageNo == pageNo)" style="margin-right: 1rem; background-color: var(--sc-secondary-color4)">
+                    @pageNo
+                </RadzenButton>
+            }
+            <RadzenButton ButtonStyle="ButtonStyle.Dark" Click="@(() => CalculatePageCounts(_pageNo + 1))" Disabled="@(_pageNo == _pageCountsMax)" style="margin-right: 1rem">
+                <RadzenIcon Icon="chevron_right" />
+            </RadzenButton>
+        </RadzenStack>
+    </RadzenCard>
+
+}
+else
+{
+    <RadzenCard>
+        <RadzenStack AlignItems="AlignItems.Center">
+            <RadzenText TextStyle="TextStyle.H2" style="color: var(--rz-white)">
+
+                @if (_loading){
+                    <div class="spinner"></div>
+                }
+                else
+                {
+                    <RadzenText Text="No Results Found"></RadzenText>
+                }
+
+            </RadzenText>
+        </RadzenStack>
+    </RadzenCard>
+
+}
+
+@code {
+    [Inject] public IBox9Service Box9Service { get; set; }
+    [Inject] public IFrogService _frogService { get; set; }
+    [Inject] public IFileDownloaderService _fileDownloaderService { get; set; }
+
+    [Parameter] public EmployeeSearchModel SearchFilter { get; set; } = new();
+    [Parameter] public EventCallback<EmployeeSearchModel> SearchFilterChanged { get; set; }
+
+    [Parameter] public EventCallback<string> GenericUUIDChanged { get; set; }
+    [Parameter] public EventCallback<string> OnTalentManagement_Click { get; set; }
+
+    private EmployeeSearchModel _searchEmployeeCurrent = new();
+
+    private bool _isLoadExport = false;
+
+    private List<FrogLookupModel>? _frogLookupReadinessForNextRole = new();
+    private List<SuccessionPlanningModel>? _successionPlannings;
+    private bool _loading = false;
+
+    private TalentManagementStatisticModel? _statistics;
+    private bool _isLoading = true;
+
+    private int _frogLookupTypesidReadinessForNextRole = 3;
+    private int _pageNo = 1;
+    private int _PageItemsCount = 5;
+    private List<int> _pageCounts = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8 };
+    private int _pageCountsDisplay = 8;
+    private int _pageCountsMin = 1;
+    private int _pageCountsMax = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        await LoadFrogLookupsReadinessForNextRole();
+        await LoadSuccessionPlanning();
+        await loadStatistica();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        if (!_searchEmployeeCurrent.CompareEmployeeSearchModels(SearchFilter))
+        {
+            _pageNo = 1;
+            _searchEmployeeCurrent = (EmployeeSearchModel)SearchFilter.Clone();
+            _searchEmployeeCurrent.UsersUUID = null;
+            _searchEmployeeCurrent.UsersUUID = new();
+            await loadStatistica();
+            await LoadSuccessionPlanning();
+        }
+
+        await base.OnParametersSetAsync();
+        _loading = false;
+    }
+
+    private async Task LoadSuccessionPlanning()
+    {
+        _loading = true;
+        SearchModel Search = _searchEmployeeCurrent.MapperEmployeeModel();
+        //Library.API.TalentManagement.Models.SearchModel search = new();
+        Search.isOnlyAvailableJobs = false;
+        _successionPlannings = await Box9Service.GetSuccessionPlannings(Search);
+        _loading = false;
+    }
+
+    private async Task LoadFrogLookupsReadinessForNextRole()
+    {
+        if (_frogService == null) return;
+        _frogLookupReadinessForNextRole = await _frogService.GetLookups(_frogLookupTypesidReadinessForNextRole);
+    }
+
+
+    private async Task loadStatistica()
+    {
+        _loading = true;
+        //_statistics = await Box9Service.GetBox9Statistics(new EmployeeSearchModel());
+        _statistics = await Box9Service.GetBox9Statistics(SearchFilter);
+        _loading = false;
+    }
+
+    //calculate the number of pages that are available, and _pageCountsMax
+    //page count is the number selected by pressing button, if 2 is pressed then pagecounts starts with 2, ... for _pageCountsDisplay
+    //if _pageCountsMax is reached then still show _pageCountsDisplay till that max
+    //work out how many 1,2,3,.. to display at the bottom up to _pageCountsMax
+    private void CalculatePageCounts(int pageCount)
+    {
+        if (_successionPlannings == null) return;
+
+        // Calculate the total number of pages
+        int totalItems = _successionPlannings.Count;
+        _pageCountsMax = (int)Math.Ceiling((double)totalItems / _PageItemsCount);
+
+        // Ensure the selected page count is within the valid range
+        if (pageCount < 1) pageCount = 1;
+        if (pageCount > _pageCountsMax) pageCount = _pageCountsMax;
+
+        // Generate the list of page numbers to display
+        _pageCounts.Clear();
+        int startPage = Math.Max(pageCount - _pageCountsDisplay / 2, 1);
+        int endPage = Math.Min(startPage + _pageCountsDisplay - 1, _pageCountsMax);
+
+        for (int i = startPage; i <= endPage; i++)
+        {
+            _pageCounts.Add(i);
+        }
+
+        _pageNo = pageCount;
+
+    }
+
+    private async Task ClickEvent_GenericUUID(string UUID) => 
+        await GenericUUIDChanged.InvokeAsync(UUID);
+
+    private async Task ExportSuccessionPlanning_Click()
+    {
+        _isLoadExport = true;
+        SearchModel Search = _searchEmployeeCurrent.MapperEmployeeModel();
+        //Library.API.TalentManagement.Models.SearchModel search = new();
+        Search.isOnlyAvailableJobs = false;
+        var data = await Box9Service.GetSuccessionPlanningsToDataTable(Search);
+        if (data == null) return;
+        var B = data.ToExcel();
+
+        //upload the Bytes to the browser
+        await _fileDownloaderService.UploadData(B, $"Succession Planning {DateTime.Now:yyyyMMdd HHmmss}.xlsx");
+        _isLoadExport = false;
+    }
+
+    private async Task OnTalentManagement_Click2(string UUID) =>
+        await OnTalentManagement_Click.InvokeAsync(UUID);
+
+    /// <summary>
+    /// filter clicks for the 9 box filter
+    /// </summary>
+    /// <param name="isFilterOnlyTalentpool"></param>
+    /// <param name="isFilterOnlyOutStanding"></param>
+    /// <param name="isFilterOnly9BoxPlotted"></param>
+    /// <param name="isFilterOnlySuccessionReadiness"></param>
+    /// <returns></returns>
+    private async Task FilterClicks(bool isFilterOnlyTalentpool = false, bool isFilterOnlyOutStanding = false, bool isFilterOnly9BoxPlotted = false, bool isFilterOnlySuccessionReadiness = false)
+    {
+        _isLoading = true;
+        SearchModel Search = _searchEmployeeCurrent.MapperEmployeeModel();
+
+        Search.isFilterOnlyTalentpool = isFilterOnlyTalentpool;
+        Search.isFilterOnlyOutStanding = isFilterOnlyOutStanding;
+        Search.isFilterOnly9BoxPlotted = isFilterOnly9BoxPlotted;
+        Search.isFilterOnlySuccessionReadiness = isFilterOnlySuccessionReadiness;
+        
+        //_statistics = await Box9Service.GetBox9Statistics(Search);
+        _successionPlannings = await Box9Service.GetSuccessionPlannings(Search);
+
+        _isLoading = false;
+    }
+
+    private async Task OnFilterTalentPool_Click() =>
+        await FilterClicks(isFilterOnlyTalentpool: true);
+
+    private async Task OnFilterOutStanding_Click() =>
+        await FilterClicks(isFilterOnlyOutStanding: true);
+
+    private async Task OnFilter9BoxPlotted_Click() =>
+        await FilterClicks(isFilterOnly9BoxPlotted: true);
+
+    private async Task OnFilterSuccessionReadiness_Click() =>
+        await FilterClicks(isFilterOnlySuccessionReadiness: true);
+
+    private async Task OnFilterAll_Click() =>
+       await FilterClicks();
+
+}

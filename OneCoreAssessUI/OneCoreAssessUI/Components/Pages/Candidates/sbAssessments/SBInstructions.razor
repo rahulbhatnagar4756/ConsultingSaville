@@ -1,0 +1,151 @@
+﻿@using Library.API.Assess.Models.Projects
+@using OneCoreAssessUI.Services
+@inject IJSRuntime JSRuntime
+
+
+<div class="instructions-wrapper">
+    @if (_testInformation != null)
+    {
+        <!-- Header with Test Name -->
+        @*     <div class="instructions-header">
+        <RadzenText Text="@_testInformation.TestName" 
+                    TextStyle="TextStyle.H4" 
+                    class="instructions-title" />
+    </div> *@
+
+        <!-- Body with HTML Instructions -->
+        <div class="instructions-body">
+            @if (!string.IsNullOrEmpty(_testInformation.Instructure))
+            {
+                @((MarkupString)_testInformation.Instructure)
+            }
+            else
+            {
+                <RadzenText Text="No instructions available for this test."
+                            TextStyle="TextStyle.Body1"
+                            Style="color: var(--sc-primary-colour2, #727572);" />
+            }
+        </div>
+
+        <!-- Footer with conditional Start Button -->
+        <div class="instructions-footer">
+            @if (ShouldShowStartButton())
+            {
+                @if (_isMobileDevice && !_testInformation.isAllowMobileUI)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Warning"
+                                 Variant="Variant.Outlined"
+                                 class="mobile-warning">
+                        <RadzenIcon Icon="smartphone" class="mobile-warning-icon" />
+                        <RadzenText Text="This assessment can only be completed on a desktop computer. Please switch to a desktop or laptop to continue."
+                                    TextStyle="TextStyle.Body2" />
+                    </RadzenAlert>
+                }
+                else
+                {
+                    <RadzenButton Text="Start"
+                                  Icon="play_arrow"
+                                  ButtonStyle="ButtonStyle.Primary"
+                                  Size="ButtonSize.Large"
+                                  Click="StartAssessment"
+                                  class="start-button" />
+                }
+            }
+            else if (_testInformation.Status == "3")
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Info"
+                             Variant="Variant.Outlined">
+                    <RadzenText Text="This assessment has been completed and is no longer available."
+                                TextStyle="TextStyle.Body2" />
+                </RadzenAlert>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="no-test-container">
+            <RadzenIcon Icon="quiz" Style="font-size: 3rem; margin-bottom: 1rem; color: var(--sc-primary-colour2);" />
+            <RadzenText Text="No test selected"
+                        TextStyle="TextStyle.H5"
+                        Style="margin-bottom: 0.5rem;" />
+            <RadzenText Text="Please select a test to view instructions."
+                        TextStyle="TextStyle.Body1"
+                        Style="color: var(--sc-primary-colour2, #727572);" />
+        </div>
+    }
+
+</div>
+
+@code {
+    [CascadingParameter] public RightSidebarService? _rightSidebarService { get; set; }
+    [Parameter] public CandidateTestModel? TestInformation { get; set; }
+
+    private bool _isMobileDevice = false;
+    private CandidateTestModel? _testInformation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckIfMobileDevice();
+        LoadTestInformation();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        LoadTestInformation();
+    }
+
+    private void LoadTestInformation()
+    {
+        // First try to use the parameter
+        if (TestInformation != null)
+        {
+            _testInformation = TestInformation;
+            return;
+        }
+
+        // Then try to get from shared context
+        if (_rightSidebarService != null)
+        {
+            _testInformation = _rightSidebarService.GetSharedContext<CandidateTestModel>();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task CheckIfMobileDevice()
+    {
+        try
+        {
+            _isMobileDevice = await JSRuntime.InvokeAsync<bool>("isMobileDevice");
+        }
+        catch
+        {
+            // Fallback: assume desktop if detection fails
+            _isMobileDevice = false;
+        }
+    }
+
+    private bool ShouldShowStartButton()
+    {
+        if (_testInformation == null) return false;
+        
+        // Check if status is 1 or 2 (show button), not 3 (don't show button)
+        return _testInformation.StatusUUID == "C6513951-C8C4-477E-95D6-1E441A69E2F8" || _testInformation.StatusUUID == "FE020053-D1D1-4922-9F4C-C1FF091A8C0E";
+    }
+
+    private async Task StartAssessment()
+    {
+        if (_testInformation?.URLAssessmentLink != null)
+        {
+            // Open assessment link in new window/tab
+            await JSRuntime.InvokeVoidAsync("open", _testInformation.URLAssessmentLink, "_blank");
+        }
+    }
+}
+
+<script>
+    window.isMobileDevice = function() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /MacIntel/.test(navigator.platform));
+    };
+</script>

@@ -1,0 +1,118 @@
+﻿@page "/Employee/SuccessionPlan"
+@using Library.API.Base.Models.Employees
+@using Library.API.TalentManagement.Services
+@using Library.Frog.Models
+@using Library.Frog.Services
+@using Library.Security.Services
+@using OneCoreAssessUI.Components.Pages.Employees.TalentManagement
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using OneCoreAssessUI.Components.Pages.Employees.SuccessionPlanning.Components
+
+<div style=@((_GenericUUID == null && _UsersUUIDTalentManagement == null)?"":"display:none!important")> 
+    <EmployeeSearch SearchClick="@ClickSearch" />
+    <SuccessionReadiness SearchFilter="SearchFilter" 
+                         GenericUUIDChanged="ClickEvent_GenericUUID"
+                         OnTalentManagement_Click="OnTalentManagement_Click" />
+</div>
+
+@if (_GenericUUID != null || _UsersUUIDTalentManagement != null)
+{
+    <RadzenStack class="mb-4">
+        <RadzenCard>
+            <RadzenButton Icon="arrow_back" Text="Succession Readiness" Click="ClickEvent_BackToPlanning"></RadzenButton>
+            @*     <RadzenButton Icon="refresh" Click="ClickEvent_Refresh"></RadzenButton> *@
+        </RadzenCard>
+    </RadzenStack>
+}
+@if (_GenericUUID != null)
+{
+    <SuccessionReadinessPosition @ref="_successionReadinessPosition"
+                                 GenericUUID=@_GenericUUID
+                                 SearchFilter="SearchFilter" />
+}
+@if (_UsersUUIDTalentManagement != null)
+{
+    <TalentManagementEmployee UsersUUID=@_UsersUUIDTalentManagement />
+}
+
+ 
+@code {
+    [Inject] public IBox9Service Box9Service { get; set; }
+
+    [CascadingParameter] LayoutCascadeMenuModel MenuNav { get; set; } = default;
+
+
+    [Parameter] public EmployeeSearchModel SearchFilter { get; set; } = new();
+    [Parameter] public EventCallback<EmployeeSearchModel> SearchFilterChanged { get; set; }
+
+    private SuccessionReadinessPosition _successionReadinessPosition;
+
+    private EmployeeSearchModel _searchEmployeeCurrent = new();
+    private string? _GenericUUID { get; set; }
+    private string? _UsersUUIDTalentManagement { get; set; } = null;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if(MenuNav .isMasterDashboard)
+        {
+            _GenericUUID = null;
+            MenuNav.SetMasterDashboardOff();
+        }
+        await base.OnParametersSetAsync();
+    }
+
+
+    private async Task ClickSearch(SearchModel args)
+    {
+        _searchEmployeeCurrent.Search = args.Search;
+        _searchEmployeeCurrent.isIncludeTeam = args.isTeam;
+        _searchEmployeeCurrent.UsersUUID = null;
+        _searchEmployeeCurrent.UsersUUID = new(); 
+
+        await SearchFilterChanged.InvokeAsync(_searchEmployeeCurrent);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ClickEvent_GenericUUID(string UUID)
+    {
+        _GenericUUID = UUID;
+        _UsersUUIDTalentManagement = null;  
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnTalentManagement_Click(string UUID)
+    {
+        _UsersUUIDTalentManagement = UUID;
+        _GenericUUID = null;  
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ClickEvent_BackToPlanning()  
+    {
+        _GenericUUID = null;
+        _UsersUUIDTalentManagement = null;
+    }
+
+
+    public async Task OnUsersInformation_Refresh()
+    {
+        //call the event to refresh the page from <SuccessionReadinessPosition GenericUUID=@_GenericUUID /> public method  public async Task OnUsersInformation_Refresh()
+        await _successionReadinessPosition.OnUsersInformation_Refresh();
+
+    }
+    // private void ClickEvent_Refresh()
+    // {
+    //     var UUID = _GenericUUID; 
+    //     _GenericUUID = null;
+    //     _GenericUUID = UUID;
+    // }
+   
+}

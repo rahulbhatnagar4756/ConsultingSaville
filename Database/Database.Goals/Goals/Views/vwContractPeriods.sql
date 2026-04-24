@@ -1,0 +1,17 @@
+﻿CREATE VIEW [Goals].[vwContractPeriods]
+AS
+SELECT  cp.[Id]
+, cp.[UUID]
+, cp.[Companyid]
+, c.[UUID] [CompanyUUID]
+, c.[Name] [Company]
+, cp.[Name]
+, cp.[Description]
+, cp.[DateStart]
+, cp.[DateEnd]
+, cp.[Year]
+, cp.[DateTerminationActive]
+, cp.[isActive]
+, cp.[isDeleted]
+FROM [Goals].[ContractPeriods] cp
+INNER JOIN [Base].[Companies] c ON c.[recordID] = cp.[Companyid]

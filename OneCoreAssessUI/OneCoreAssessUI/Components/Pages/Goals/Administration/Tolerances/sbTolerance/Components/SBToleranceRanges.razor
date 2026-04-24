@@ -1,0 +1,426 @@
+﻿@using Library.API.Goals.Models
+@using Library.API.Goals.Models.Tolerances
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Services
+
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem">
+    @* Status Messages *@
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+        <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+            <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+            <span>@_logMessage.Message</span>
+        </div>
+    }
+
+    @* Loading Indicator *@
+    @if (_isLoading)
+    {
+        <RadzenCard class="rz-text-align-center rz-p-4">
+            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+                <RadzenText Text="Loading tolerance ranges..." />
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        @* Tolerance Ranges Grid with Inline Editing *@
+        <RadzenText Text="Tolerance Ranges" Style="font-weight: 600; font-size: 16px; margin-bottom: 1rem;" />
+
+        @if (_toleranceRanges == null || !_toleranceRanges.Any())
+        {
+            <RadzenText Text="No tolerance ranges found for this tolerance set." Style="font-style: italic; color: #666; text-align: center; padding: 2rem;" />
+        }
+        else
+        {
+            <RadzenDataGrid @ref="_dataGrid"
+                            Data="@_toleranceRanges"
+                            TItem="ToleranceRangesModel"
+                            AllowPaging="false"
+                            AllowSorting="true"
+                            AllowFiltering="false"
+                            EmptyText="No tolerance ranges found."
+                            Style="min-height: 200px;">
+                <Columns>
+                    <RadzenDataGridColumn TItem="ToleranceRangesModel"
+                                          Property="RangeStart"
+                                          Title="Range Start"
+                                          Width="150px"
+                                          Sortable="true">
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenNumeric @bind-Value="range.RangeStart"
+                                               Style="width: 100%;"
+                                               Step="1.00"
+                                               Format="F2"
+                                               Disabled="_isSaving" />
+                            }
+                            else
+                            {
+                                <RadzenText Text="@(range.RangeStart?.ToString("F2") ?? "-")" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="ToleranceRangesModel"
+                                          Property="RangeEnd"
+                                          Title="Range End"
+                                          Width="120px"
+                                          Sortable="false">
+                        <Template Context="range">
+                            <RadzenText Text="@(range.RangeEnd?.ToString("F2") ?? "∞")" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                                        
+                    <RadzenDataGridColumn TItem="ToleranceRangesModel"
+                                          Property="Score"
+                                          Title="Score"
+                                          Width="130px"
+                                          Sortable="true">
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenNumeric @bind-Value="range.Score"
+                                               Style="width: 100%;"
+                                               Step="1.00"
+                                               Format="F2"
+                                               Disabled="_isSaving" />
+                            }
+                            else
+                            {
+                                <RadzenText Text="@range.Score.ToString("F2")" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                    <RadzenDataGridColumn TItem="ToleranceRangesModel"
+                                          Title="Actions"
+                                          Width="150px"
+                                          Sortable="false"
+                                          TextAlign="TextAlign.Center">
+                        <Template Context="range">
+                            @if (_editingRangeUUID == range.UUID)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.Center">
+                                    <RadzenButton Icon="save"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@(() => SaveInlineEdit(range))"
+                                                  Tooltip="Save Changes"
+                                                  IsBusy="_isSaving"
+                                                  ButtonStyle="ButtonStyle.Success" />
+                                    <RadzenButton Icon="close"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@(() => CancelInlineEdit(range))"
+                                                  Tooltip="Cancel Edit"
+                                                  Disabled="_isSaving"
+                                                  ButtonStyle="ButtonStyle.Light" />
+                                </RadzenStack>
+                            }
+                            else
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" JustifyContent="JustifyContent.Center">
+                                    <RadzenButton Icon="edit"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@(() => StartInlineEdit(range))"
+                                                  Tooltip="Edit Range"
+                                                  Disabled="_isSaving || _editingRangeUUID != null" />
+                                    <RadzenButton Icon="delete"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Danger"
+                                                  Click="@(() => DeleteRange(range))"
+                                                  Tooltip="Delete Range"
+                                                  Disabled="_isSaving || _editingRangeUUID != null" />
+                                </RadzenStack>
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        }
+
+        @* Add New Range Section *@
+        <RadzenText Text="Add New Range" Style="font-weight: 600; font-size: 16px; margin-bottom: 1rem;" />
+
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="4">
+                <RadzenText Text="Range Start" />
+                <RadzenNumeric @bind-Value="_newRange.RangeStart"
+                               Style="width: 100%;"
+                               Step="1.00"
+                               Format="F2"
+                               Placeholder="0.00"
+                               Disabled="_isSaving || _editingRangeUUID != null" />
+            </RadzenColumn>     
+
+            <RadzenColumn Size="4">
+                <RadzenText Text="Score" />
+                <RadzenNumeric @bind-Value="_newRange.Score"
+                               Style="width: 100%;"
+                               Step="1.00"
+                               Format="F2"
+                               Placeholder="0.00"
+                               Disabled="_isSaving || _editingRangeUUID != null" />
+            </RadzenColumn>
+
+            <RadzenColumn Size="4" Style="display: flex; align-items: end;">
+                <RadzenButton Icon="add"
+                              Click="@AddRange"
+                              Style="width: 100%;"
+                              IsBusy="_isSaving"
+                              Text="Add Range"
+                              BusyText="Adding..."
+                              Disabled="_editingRangeUUID != null" />
+            </RadzenColumn>
+        </RadzenRow>
+    }
+</RadzenStack>
+
+@code {
+    [Inject] private ITolerancesServices TolerancesService { get; set; }
+
+    [Parameter] public string? ToleranceSetUUID { get; set; }
+    [Parameter] public EventCallback OnRangeChanged { get; set; }
+
+    private RadzenDataGrid<ToleranceRangesModel>? _dataGrid;
+    private List<ToleranceRangesModel> _toleranceRanges = new();
+    private ToleranceRangesModel _newRange = new();
+    private string? _editingRangeUUID = null;
+    private ToleranceRangesModel? _originalRange = null; // Store original values for cancel
+
+    private ResultsModel? _logMessage = null;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(ToleranceSetUUID))
+        {
+            await LoadToleranceRanges();
+        }
+        else
+        {
+            _toleranceRanges = new();
+            _isLoading = false;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadToleranceRanges()
+    {
+        try
+        {
+            _isLoading = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            var data = await TolerancesService.GetToleranceRanges(ToleranceSetUUID!);
+            _toleranceRanges = data?.OrderBy(x => x.RangeStart).ToList() ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tolerance ranges: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = "Error loading tolerance ranges. Please try again." };
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddRange()
+    {
+        if (_newRange.RangeStart == null)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Please enter a range start value." };
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            _logMessage = null;
+            StateHasChanged();
+            if (_newRange.ToleranceSetsUUID is null) _newRange.ToleranceSetsUUID = ToleranceSetUUID;
+            var result = await TolerancesService.SaveToleranceRange(_newRange);
+
+            if (result?.isValid == true)
+            {
+                _logMessage = new ResultsModel { isValid = true, Message = "Tolerance range added successfully." };
+                
+                // Clear the form
+                _newRange = new ToleranceRangesModel();
+                
+                // Reload the data
+                await LoadToleranceRanges();
+                
+                // Notify parent component
+                await OnRangeChanged.InvokeAsync();
+            }
+            else
+            {
+                _logMessage = result ?? new ResultsModel { isValid = false, Message = "Failed to add tolerance range." };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding tolerance range: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error adding tolerance range: {ex.Message}" };
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void StartInlineEdit(ToleranceRangesModel range)
+    {
+        // Store original values for potential cancel
+        _originalRange = new ToleranceRangesModel
+        {
+            UUID = range.UUID,
+            RangeStart = range.RangeStart,
+            Score = range.Score,
+            ToleranceSetsUUID = range.ToleranceSetsUUID,
+            RangeEnd = range.RangeEnd
+        };
+
+        _editingRangeUUID = range.UUID;
+        _logMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task SaveInlineEdit(ToleranceRangesModel range)
+    {
+        try
+        {
+            _isSaving = true;
+            _logMessage = null;
+            StateHasChanged();
+
+            if(range.ToleranceSetsUUID is null) range.ToleranceSetsUUID = ToleranceSetUUID;
+            var result = await TolerancesService.SaveToleranceRange(range);
+
+            if (result?.isValid == true)
+            {
+                _logMessage = new ResultsModel { isValid = true, Message = "Tolerance range updated successfully." };
+                
+                // Clear edit mode
+                _editingRangeUUID = null;
+                _originalRange = null;
+                
+                // Reload the data to get updated range ends
+                await LoadToleranceRanges();
+                
+                // Notify parent component
+                await OnRangeChanged.InvokeAsync();
+            }
+            else
+            {
+                _logMessage = result ?? new ResultsModel { isValid = false, Message = "Failed to update tolerance range." };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating tolerance range: {ex.Message}");
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error updating tolerance range: {ex.Message}" };
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelInlineEdit(ToleranceRangesModel range)
+    {
+        if (_originalRange != null)
+        {
+            // Restore original values
+            range.RangeStart = _originalRange.RangeStart;
+            range.Score = _originalRange.Score;
+        }
+
+        _editingRangeUUID = null;
+        _originalRange = null;
+        _logMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task DeleteRange(ToleranceRangesModel range)
+    {
+        if (range?.UUID == null) return;
+
+        string message = $"Are you sure you want to delete the tolerance range starting at {range.RangeStart?.ToString("F2")}?";
+        string title = "Delete Tolerance Range";
+
+        var result = await DialogService.Confirm(message, title, new ConfirmOptions()
+        {
+            OkButtonText = "Yes, Delete",
+            CancelButtonText = "Cancel"
+        });
+
+        if (result.HasValue && result.Value)
+        {
+            try
+            {
+                _isSaving = true;
+                _logMessage = null;
+                StateHasChanged();
+
+                var deleteResult = await TolerancesService.DeleteToleranceRange(range.UUID);
+
+                if (deleteResult?.isValid == true)
+                {
+                    _logMessage = new ResultsModel { isValid = true, Message = "Tolerance range deleted successfully." };
+                    
+                    // Reload the data
+                    await LoadToleranceRanges();
+                    
+                    // Notify parent component
+                    await OnRangeChanged.InvokeAsync();
+                }
+                else
+                {
+                    _logMessage = deleteResult ?? new ResultsModel { isValid = false, Message = "Failed to delete tolerance range." };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting tolerance range: {ex.Message}");
+                _logMessage = new ResultsModel { isValid = false, Message = $"Error deleting tolerance range: {ex.Message}" };
+            }
+            finally
+            {
+                _isSaving = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Public method to refresh ranges data from parent component
+    /// </summary>
+    public async Task RefreshRangesData()
+    {
+        if (!string.IsNullOrEmpty(ToleranceSetUUID))
+        {
+            await LoadToleranceRanges();
+        }
+    }
+}

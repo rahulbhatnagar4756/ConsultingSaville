@@ -1,0 +1,225 @@
+﻿@using Library.API.Base.Models.Employees
+@using Library.API.Base.Services
+
+<RadzenStack>
+
+    <RadzenStack class="headings">
+        <RadzenCard>
+            @if(!_isSubmit){
+                <RadzenStack AlignItems="AlignItems.Start" class="header-subs">Employee Search</RadzenStack>
+                <div class="header-underline mb-4"></div>
+
+                <RadzenStack class=" mb-4">
+                    <div class="input-group" >
+
+                        <input type="text" class="form-control" placeholder="Search Templates"
+                        aria-label="Search Templates"
+                        aria-describedby="button-addon2"
+                        @bind-value="@_search" 
+                        @onkeypress="OnKeyPress_search">
+                        <RadzenButton Icon="search" Click="Click_Search" class="btn btn-outline-secondary"></RadzenButton>
+                    </div>
+                </RadzenStack>
+
+                <RadzenStack class="mb-4">
+                    @if (_employees == null)
+                    {
+                        <RadzenStack AlignItems="AlignItems.Center">
+                            <div class="spinner"></div>
+                        </RadzenStack>
+                    }
+                    else
+                    {
+
+                        <RadzenDataGrid Data="@_employeesFiltered" Style="height: 500px;"
+                        AllowSorting="true"
+                        AllowFiltering="true"
+                        AllowPaging="true"
+                        PageSize="9"
+                        PagerHorizontalAlign="HorizontalAlign.Center">
+                            <Columns>
+                                <RadzenDataGridColumn Title="" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="40px">
+                                    <Template Context="data">
+                                        <RadzenCheckBox @bind-Value=data.isSelected></RadzenCheckBox>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Property="@nameof(EmployeesModel.FirstName)" Title="First Name" TextAlign="TextAlign.Start" />
+                                <RadzenDataGridColumn Property="@nameof(EmployeesModel.LastName)" Title="Last Name" TextAlign="TextAlign.Start" />
+                                <RadzenDataGridColumn Property="@nameof(EmployeesModel.IDNumber)" Title="ID Number" TextAlign="TextAlign.Start" />
+                                <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeNumber)" Title="Employee Number" TextAlign="TextAlign.Start" />
+                            </Columns>
+                        </RadzenDataGrid>
+                    }
+                </RadzenStack>
+
+                <RadzenStack AlignItems="AlignItems.End" Style="width: 100%" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" >
+                    @if (isClosed)
+                    {
+                        <RadzenButton Click="Click_Close">Close</RadzenButton>
+                    }
+                    <RadzenButton Click="Click_Next">Next <RadzenIcon Icon="chevron_right"></RadzenIcon></RadzenButton>
+                </RadzenStack>
+
+            }
+            else
+            {
+                <RadzenStack AlignItems="AlignItems.Start" class="header-subs">Employee Search</RadzenStack>
+                <div class="header-underline mb-4"></div>
+
+                <RadzenStack class="mb-4">
+                    @if (_employeeSubmits == null)
+                    {
+                        <RadzenStack AlignItems="AlignItems.Center">
+                            <div class="spinner"></div>
+                        </RadzenStack>
+                    }
+                    else
+                    {
+
+                        <RadzenDataGrid Data="@_employeeSubmits.OrderBy(x => x.FirstName).ThenBy(x => x.LastName)"
+                        Style="height: 500px;"
+                        AllowSorting="true"
+                        AllowFiltering="true"
+                        AllowPaging="false"
+                        PageSize="10"
+                        PagerHorizontalAlign="HorizontalAlign.Center">
+                            <Columns>
+                                @* <RadzenDataGridColumn Title="" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="40px">
+                                    <Template Context="data">
+                                        <RadzenCheckBox @bind-Value=data.isSelected></RadzenCheckBox>
+                                    </Template>
+                                </RadzenDataGridColumn> *@
+                                <RadzenDataGridColumn Property="@nameof(EmployeesModel.FirstName)" Title="First Name" TextAlign="TextAlign.Start" />
+                                <RadzenDataGridColumn Property="@nameof(EmployeesModel.LastName)" Title="Last Name" TextAlign="TextAlign.Start" />
+                                <RadzenDataGridColumn Property="@nameof(EmployeesModel.IDNumber)" Title="ID Number" TextAlign="TextAlign.Start" />
+                                <RadzenDataGridColumn Property="@nameof(EmployeesModel.EmployeeNumber)" Title="Employee Number" TextAlign="TextAlign.Start" />
+                            </Columns>
+                        </RadzenDataGrid>
+                    }
+                </RadzenStack>
+
+                <RadzenStack AlignItems="AlignItems.End" Style="width: 100%" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+                    <RadzenButton Click="Click_Back"><RadzenIcon Icon="chevron_left"></RadzenIcon> back</RadzenButton>
+                    @if (isClosed)
+                    {
+                        <RadzenButton Click="Click_Close">Close</RadzenButton>
+                    }
+                    @if (_employeeSubmits == null || _employeeSubmits.Count > 0)
+                    {
+                        <RadzenButton Click="Click_Submit">Submit</RadzenButton>
+                    }
+                </RadzenStack>
+            }
+
+        </RadzenCard>
+    </RadzenStack>
+</RadzenStack>
+
+
+
+@code {
+    [Inject] public IEmployeeService employeeService { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<List<EmployeesModel>> OnSubmit { get; set; }
+
+    [Parameter] public bool isClosed { get; set; } = true;
+
+    private string? _search;
+    private List<EmployeesModel>? _employees;
+    private List<EmployeesModel>? _employeesFiltered;
+    private List<EmployeesModel>? _employeeSubmits;
+
+    private bool _isSubmit = false;
+
+    //on async load get all employees
+    protected override async Task OnInitializedAsync()
+    {
+        _employees = await employeeService.GetEmployees(new EmployeeSearchModel());
+        if (_employees == null) return; 
+        _employeesFiltered = _employees.OrderBy(x => x.FirstName).ThenBy(x => x.LastName).ToList();
+    }
+
+
+    #region "Events"
+
+    //if keypress is enter then call event Click_search
+    private void OnKeyPress_search(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            Click_Search();
+        }
+    }
+
+
+    //search
+    private void Click_Search()
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            _employeesFiltered = _employees;
+        }
+        else
+        {
+            _employeesFiltered = _employees?.Where(e =>
+                (e.FirstName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (e.LastName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (e.IDNumber?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (e.EmployeeNumber?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (e.Email?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (e.Mobile?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false)
+            ).ToList();
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// on next find all selected employees and set the isSubmit to true
+    /// </summary>
+    /// <returns></returns>
+    private async Task Click_Next()
+    {
+        _employeeSubmits = _employees.Where(x => x.isSelected).ToList(); 
+        _isSubmit = true;
+    }
+
+    ///click back set the issubmiy to false
+    /// </summary>
+    /// <returns></returns> <summary>
+    /// 
+    private async Task Click_Back() {
+
+        //sort the _employees by selected then by firstname last name in the list
+        _employees = _employees.OrderByDescending(x => x.isSelected).ThenBy(x => x.FirstName).ThenBy(x => x.LastName).ToList();
+        _isSubmit = false;
+    }
+
+    ///on close trigger event
+    /// </summary>
+    /// <returns></returns> <summary>
+    /// 
+    private async Task Click_Close() =>
+        await OnClose.InvokeAsync();
+
+    ///on submit trigger event and reset the selected employees and set the isSubmit to false
+    /// </summary>
+    /// <returns></returns> <summary>
+    /// 
+    private async Task Click_Submit()
+    {
+        await OnSubmit.InvokeAsync(_employeeSubmits);
+        _isSubmit = false;
+        _search = "";
+        Click_Search();
+        //set all isselected to false
+
+        foreach(var employee in _employeeSubmits)
+        {
+            employee.isSelected = false;
+        }
+
+    }
+
+#endregion
+
+}

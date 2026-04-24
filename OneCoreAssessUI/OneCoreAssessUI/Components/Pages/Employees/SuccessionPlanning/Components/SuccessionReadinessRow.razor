@@ -1,0 +1,237 @@
+﻿@using Library.API.TalentManagement.Models
+@using Library.Frog.Models
+@using Library.Frog.Services
+@using Library.Security.Services
+@using OneCoreAssessUI.Services
+
+@if (_successionPlanningCurrent != null && data != null)
+{
+    <RadzenCard class="rz-mt-4 rz-mb-4 successionreadiness" style="background-color: var(--rz-card-background-color); color: var(--rz-white); font-size: 12px;">
+        <RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Horizontal" class="rz-mb-4">
+                <RadzenStack class="jobs-name" @onclick="@(async() => await ClickEvent_GenericUUID(_successionPlanningCurrent.EmployeeJobsGenericNamesUUID))" Style="cursor: pointer;">
+                    @_successionPlanningCurrent.JobName
+                </RadzenStack>
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End">
+                    <RadzenStack AlignItems="AlignItems.Center" class="jobs-level">
+                        Level: @_successionPlanningCurrent.Level
+                    </RadzenStack>
+                    <RadzenStack AlignItems="AlignItems.Center" class="jobs-total">
+                        Total: @(_successionPlanningCurrent.Users != null ? _successionPlanningCurrent.Users.Count() : 0)
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenStack>
+
+        <RadzenDropZoneContainer TItem="MyTask"
+        Data="data"
+        ItemSelector="@ItemSelector"
+        ItemRender="@OnItemRender"
+        CanDrop="@CanDrop"
+        Drop="@OnDrop">
+            <ChildContent>
+
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap" class="">
+                    @if (frogLookupReadinessForNextRole != null)
+                    {
+                        @foreach (var item in frogLookupReadinessForNextRole.OrderBy(x => x.OrderVal))
+                        {
+                            <RadzenDropZone Value="@item.UUID" 
+                                style=@($"flex: 1; gap: 1rem; background-color: {item.Color}") 
+                                class="rz-display-flex rz-flex-column rz-border-warning-light rz-border-radius-2 rz-p-4">
+                                <RadzenText Text="@item.Name" TextStyle="TextStyle.Subtitle2" />
+                            </RadzenDropZone>
+                        }
+                    }
+                </RadzenStack>
+            </ChildContent>
+            <Template>
+                <strong>@context.Name</strong>
+            </Template>
+        </RadzenDropZoneContainer>
+    </RadzenCard>
+}
+
+
+
+@code {
+
+    [Inject] public IFrogService _frogService { get; set; }
+    [Inject] public ContextMenuService ContextMenuService { get; set; }
+    [Inject] public IJSRuntime JSRuntime { get; set; }
+
+    [CascadingParameter] public LoggedInInformationModel loggedInInformation { get; set; }
+
+
+    [Parameter] public List<FrogLookupModel>? frogLookupReadinessForNextRole { get; set; }
+    [Parameter] public SuccessionPlanningModel? successionPlanning { get; set; }
+    public SuccessionPlanningModel? _successionPlanningCurrent;
+
+    [Parameter] public EventCallback<string> GenericUUIDChanged { get; set; }
+    [Parameter] public EventCallback<string> OnTalentManagement_Click { get; set; }
+
+    private int _frogLookupTypesidReadinessForNextRole = 3;
+    IList<MyTask>? data = null; 
+
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (successionPlanning != _successionPlanningCurrent)
+        {
+            _successionPlanningCurrent = successionPlanning;
+            LoadOnLoggedInInformation();
+        }
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("disableDefaultContextMenu", ".jobs-employees");
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    Func<MyTask, RadzenDropZone<MyTask>, bool> ItemSelector = (item, zone) =>
+        item.Status == zone.Value.ToString();
+
+    Func<RadzenDropZoneItemEventArgs<MyTask>, bool> CanDrop = request =>
+    {
+        return true;
+    };
+
+    void OnItemRender(RadzenDropZoneItemRenderEventArgs<MyTask> args)
+    {
+        // Customize item appearance
+        args.Attributes["class"] = "rz-card rz-variant-filled jobs-employees rz-color-on-primary-light";
+        args.Attributes["title"] = args.Item.title;
+        args.Attributes["oncontextmenu"] = EventCallback.Factory.Create<MouseEventArgs>(this, e => ShowContextMenu(e, args.Item)); 
+    }
+
+    void OnDrop(RadzenDropZoneItemEventArgs<MyTask> args)
+    {
+        if (args == null) return;
+        if (args.FromZone != args.ToZone)
+        {
+            // update item zone
+            args.Item.Status = args.ToZone.Value.ToString();
+            //find in _successionPlanningCurrent.users the UsersUUID = to the args.ID then call the method to save the new results
+            var user = _successionPlanningCurrent.Users.FirstOrDefault(x => x.UsersUUID == args.Item.Id);
+            if (user == null) return;
+
+            //check that status is not the same as the new status
+            if (user.ItemUUIDReadiness != args.ToZone.Value.ToString())
+            {
+                user.ItemUUIDReadiness = args.ToZone.Value.ToString();
+                string Name = frogLookupReadinessForNextRole.FirstOrDefault(x => x.UUID == args.ToZone.Value.ToString())?.Name;
+                FrogElementSaveLogModel elementResult = new()
+                    {
+                        CompanyUUID = loggedInInformation.Company.CompanyUUID,
+                        UsersUUIDLoggedIn = loggedInInformation.User.UsersUUID,
+                        FrogsUUID = user.FrogsUUID,
+                        FrogElementsUUID = user.FrogElementsUUID,
+                        ItemName = Name,
+                        ItemUUID = user.ItemUUIDReadiness
+                    };
+                _frogService.Save(elementResult);
+            }
+        }
+
+        if (args.ToItem != null && args.ToItem != args.Item)
+        {
+            // reorder items in same zone or place the item at specific index in new zone
+            data.Remove(args.Item);
+            data.Insert(data.IndexOf(args.ToItem), args.Item);
+        }
+    }
+
+    private void LoadOnLoggedInInformation()
+    {
+        if (_successionPlanningCurrent == null || _successionPlanningCurrent.Users == null) return;
+        data = _successionPlanningCurrent.Users.Select(x => new MyTask
+            {
+                Id = x?.UsersUUID ?? "",
+                GenericUUID = _successionPlanningCurrent?.EmployeeJobsGenericNamesUUID ?? "",
+                Name = x.FirstName.ToString() + " " + x.LastName.ToString() + " (" + x.EmployeeBusinessUnits.ToString() + ")",
+                Status = x?.ItemUUIDReadiness??"",
+                title = x.FirstName.ToString() + " " + x.LastName.ToString() + "; " + (x?.Gender??"") + "; " + (x?.Race??"") + "; " + (x?.EmployeeDepartments??"") + "; " + (x?.EmployeeLevel??"")  + "; " + (x?.EmployeeBusinessUnits??"") 
+            }).ToList();
+    }
+
+
+
+    private async Task ClickEvent_GenericUUID(string? UUID) =>
+        await GenericUUIDChanged.InvokeAsync(UUID);
+
+    private async Task ClickEvent_TalentManagement(string? UUID) =>
+        await OnTalentManagement_Click.InvokeAsync(UUID);
+
+    #region "Menu"
+
+    void ShowContextMenu(MouseEventArgs args, MyTask task)
+    {
+        Console.WriteLine($"Opening context menu for task: {task.Id}");
+
+        ContextMenuService.Open(args, new List<ContextMenuItem>
+            {
+                new ContextMenuItem() 
+                { 
+                    Text = "Talent Management", 
+                    Value = task.Id  // Store just the ID instead of the whole object
+                },
+                 new ContextMenuItem()
+                {
+                    Text = "Succession Readiness",
+                    Value = task.GenericUUID  // Store just the ID instead of the whole object
+                }
+            }, 
+            OnMenuItemClick);
+    }
+
+    void OnMenuItemClick(MenuItemEventArgs args)
+    {
+        if (args.Value != null && args.Value is string taskId)
+        {
+            switch (args.Text)
+            {
+                case "Talent Management":
+                    // Your existing logic
+                    ClickEvent_TalentManagement(args.Value.ToString()).Wait();
+
+                    StateHasChanged();
+                    break;
+                case "Succession Readiness":
+                    ClickEvent_GenericUUID(args.Value.ToString()).Wait();
+                    break;
+            }
+        }
+        
+        // Close the context menu after handling the click
+        ContextMenuService.Close();
+    }
+ 
+#endregion
+
+   private class MyTask
+    {
+        public string Id { get; set; }
+        public string GenericUUID { get; set; }
+        public string Name { get; set; }
+        public string Status { get; set; } 
+        public string title { get; set; }
+    }  
+}
+
+<script>
+    window.disableDefaultContextMenu = function (selector) {
+        document.addEventListener('contextmenu', function (e) {
+            if (e.target.closest(selector)) {
+                e.preventDefault();
+            }
+        });
+    };
+</script>

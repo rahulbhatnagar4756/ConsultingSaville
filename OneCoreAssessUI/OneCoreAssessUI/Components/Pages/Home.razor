@@ -1,0 +1,53 @@
+﻿
+@using Pages.Employees 
+@page "/Home"
+
+@* @rendermode @(new InteractiveServerRenderMode()) *@
+@layout MainAdministration
+
+ 
+
+<CascadingValue Value="@RightSideBar">
+
+ 
+</CascadingValue>
+
+@code{
+    [Inject] NavigationManager _navigationManager { get; set; }
+    OneCoreAssessUI.Services.RightSidebarService RightSideBar { get; set; } = new();
+
+    Library.API.Base.Models.Employees.EmployeeSearchModel? employeeSearchModel = new();
+
+
+    protected override Task OnInitializedAsync()
+    {
+        Log.Information("Home page initialized");
+        return base.OnInitializedAsync();
+    }
+
+    private async Task NavigateToUser()
+    {
+        _navigationManager.NavigateTo("forms/SuccessionPlan/971E69C7-A976-4B60-9B1B-FDE0FCF6A451/B99CD3DE-1B13-4024-B737-18E4A5A0BE4E");
+    }
+
+    private void Search_Click((string? search, bool isTeam) data)
+    {
+        employeeSearchModel.Search = data.search;
+        employeeSearchModel.isIncludeTeam = data.isTeam;
+    }
+
+    private async Task Click_Filter(Library.API.Base.Models.Employees.EmployeeSearchModel search)
+    {
+        employeeSearchModel.Position = search.Position;
+        employeeSearchModel.Departments = search.Departments;
+        employeeSearchModel.BusinessUnits = search.BusinessUnits;
+        employeeSearchModel.BusinessUnitTypes = search.BusinessUnitTypes;
+        employeeSearchModel.Level = search.Level;
+        employeeSearchModel.CriticalRoles = search.CriticalRoles;
+        employeeSearchModel.Disciplines = search.Disciplines;
+        employeeSearchModel.YearsOfExperience = search.YearsOfExperience;
+        employeeSearchModel.Age = search.Age;
+        
+    }
+
+}

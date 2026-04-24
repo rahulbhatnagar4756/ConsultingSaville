@@ -1,0 +1,499 @@
+﻿@using Library.API.Goals.Models.Comments
+@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Services
+
+<style>
+    :root {
+    --sc-primary-colour1: @PrimaryColor1;
+    --sc-primary-colour2: @PrimaryColor2;
+    --sc-secondary-color1: @SecondaryColor1;
+    --sc-secondary-color2: @SecondaryColor2;
+    --sc-secondary-color3: @SecondaryColor3;
+    --sc-secondary-color4: @SecondaryColor4;
+    --sc-card-background-colour: #dedfde;
+    --sc-card-background-colour-daker: #b1b3b2;
+    --rz-primary: @SecondaryColor4;
+        --header-color1: #00BF6370;
+        --header-color2: #7ED95770;
+        --header-color3: #FFDE5970;
+        --header-color4: #FF575770;
+        --header-color5: #7AB3E170;
+        --header-color6: #7AB3E180;
+    }
+</style>
+
+
+<RadzenStack Gap="0" class="right-sidebar-container rightsidebar-theme1">
+    @if (_isLoading)
+    {
+        <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="loading-state">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+            <RadzenText Text="Loading details..." class="loading-text" />
+        </RadzenStack>
+    }
+    else if (_selectedItem == null)
+    {
+        <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="loading-state">
+            <RadzenIcon Icon="info" class="no-item-icon" />
+            <RadzenText Text="No item selected" class="no-item-text" />
+        </RadzenStack>
+    }
+    else
+    {
+        <div class="comments-header">
+            <RadzenText Text="Global Comments" class="comments-header-text" />
+        </div>
+
+        <div @ref="_commentsScrollContainer" class="comments-content-scroll">
+
+            <RadzenStack Gap="20px">
+
+                <RadzenStack class="add-comment-section">
+                    <RadzenStack Gap="12px">
+                        <RadzenText Text="Add Comment" class="add-comment-label" />
+
+                        <RadzenTextArea @bind-Value="_newComment"
+                                        Placeholder="Write your comment here..."
+                                        class="comment-textarea"
+                                        Rows="3" />
+
+                        <RadzenStack Gap="8px">
+                            <InputFile OnChange="@OnFileSelected"
+                                       accept=".pdf"
+                                       id="fileUploadComments"
+                                       style="display: none;" Disabled="@string.IsNullOrWhiteSpace(_newComment)" />
+
+                            <label for="fileUploadComments" class="file-upload-label">
+                                <RadzenButton Text="@(_selectedFile == null ? "Attach PDF (Optional)" : $"Selected: {_selectedFile.Name}")"
+                                              class="attach-button"
+                                              Icon="@(_selectedFile == null ? "attach_file" : "description")"
+                                              Variant="Variant.Outlined" />
+                            </label>
+
+                            @if (_selectedFile != null)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal"
+                                             JustifyContent="JustifyContent.SpaceBetween"
+                                             AlignItems="AlignItems.Center"
+                                             class="selected-file-display">
+                                    <RadzenStack Orientation="Orientation.Horizontal" Gap="8px" AlignItems="AlignItems.Center">
+                                        <RadzenIcon Icon="picture_as_pdf" class="pdf-icon" />
+                                        <RadzenStack Gap="2px">
+                                            <RadzenText Text="@_selectedFile.Name"
+                                                        class="file-name-text" />
+                                            <RadzenText Text="@GetFileSize(_selectedFile.Size)"
+                                                        class="file-size-text" />
+                                        </RadzenStack>
+                                    </RadzenStack>
+                                    <RadzenButton Icon="close"
+                                                  ButtonStyle="ButtonStyle.Danger"
+                                                  Variant="Variant.Text"
+                                                  Size="ButtonSize.Small"
+                                                  Click="@RemoveFile" />
+                                </RadzenStack>
+                            }
+
+                            @if (!string.IsNullOrEmpty(_fileError))
+                            {
+                                <RadzenText Text="@_fileError" class="file-error-text" />
+                            }
+                        </RadzenStack>
+
+                        <RadzenButton Text="Post Comment"
+                                      Click="@PostComment"
+                                      class="post-comment-button"
+                                      Icon="send"
+                                      Disabled="@string.IsNullOrWhiteSpace(_newComment)" />
+                    </RadzenStack>
+                </RadzenStack>
+
+
+                <RadzenStack class="comments-list-section">
+
+                    <RadzenText Text="Comments" class="comments-list-header" />
+
+                    @if (_comments != null && _comments.Any())
+                    {
+                        <RadzenStack Gap="15px">
+
+                            @foreach (var comment in _comments)
+                            {
+                                <RadzenStack class="comment-card">
+                                    <RadzenStack Gap="8px">
+                                        <RadzenStack Orientation="Orientation.Horizontal"
+                                                     JustifyContent="JustifyContent.SpaceBetween"
+                                                     AlignItems="AlignItems.Start">
+
+                                            <RadzenStack Orientation="Orientation.Horizontal"
+                                                         Gap="8px"
+                                                         AlignItems="AlignItems.Center">
+                                                <RadzenIcon Icon="account_circle" class="author-icon" />
+                                                <RadzenStack Gap="2px">
+                                                    <RadzenText Text="@comment.Author" class="author-name" />
+                                                    <RadzenText Text="@comment.Date.ToString("MMM dd, yyyy HH:mm")" class="comment-date" />
+                                                </RadzenStack>
+                                            </RadzenStack>
+
+                                        </RadzenStack>
+
+                                        <RadzenText Text="@comment.Content" class="comment-content" />
+
+                                        @if (comment.AttachmentsUUID != null)
+                                        {
+                                            <RadzenStack Orientation="Orientation.Horizontal"
+                                                         JustifyContent="JustifyContent.SpaceBetween"
+                                                         AlignItems="AlignItems.Start" class="attachment-display">
+
+                                                <RadzenStack Orientation="Orientation.Horizontal"
+                                                             Gap="8px"
+                                                             AlignItems="AlignItems.Center">
+                                                    <RadzenIcon Icon="picture_as_pdf" class="attachment-icon" />
+                                                    <RadzenStack Gap="2px">
+                                                        <RadzenText Text="@comment.FileName" class="attachment-filename" />
+                                                        <RadzenText Text="@comment.FileSize" class="attachment-filesize" />
+                                                    </RadzenStack>
+                                                </RadzenStack>
+                                                <RadzenButton Icon="download" class="download-button"
+                                                              ButtonStyle="ButtonStyle.Primary"
+                                                              Variant="Variant.Text"
+                                                              Size="ButtonSize.Small"
+                                                              Click="@(() => DownloadAttachmentFile(comment.AttachmentsUUID))" />
+                                            </RadzenStack>
+                                        }
+                                    </RadzenStack>
+
+                                </RadzenStack>
+
+                            }
+
+                        </RadzenStack>
+                    }
+                    else
+                    {
+                        <RadzenStack AlignItems="AlignItems.Center" Gap="8px" class="no-comments-message">
+                            <RadzenIcon Icon="chat_bubble_outline" class="no-comments-icon" />
+                            <RadzenText Text="No comments yet" class="no-comments-text" />
+                            <RadzenText Text="Be the first to add a comment"
+                                        class="no-comments-subtext" />
+                        </RadzenStack>
+                    }
+
+                </RadzenStack>
+            </RadzenStack>
+        </div>
+
+    }
+</RadzenStack>
+
+
+@code {
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+    [Inject] public NotificationService NotificationService { get; set; }
+    [Inject] public DialogService DialogService { get; set; }
+    [Inject] public IJSRuntime JSRuntime { get; set; }
+    private string? _selectedPeriodId;
+    [Inject] public ICommentsAPIService CommentsAPIService { get; set; }
+
+    private KpiDisplayItem? _selectedItem;
+    private bool _isLoading = true;
+    private bool _isModalOpen = false;
+    private int _selectedTabIndex = 0;
+
+    // Data Tab Fields
+    private double? _currentResult;
+
+    // Comments Tab Fields
+    private string _newComment = string.Empty;
+    private List<Comment> _comments = new();
+    private bool _isManagerOrAdmin = false;
+    // Scroll functionality
+    private ElementReference _commentsScrollContainer;
+
+    private string PrimaryColor1 = "#0F1F38";
+    private string PrimaryColor2 = "#727572";
+    private string SecondaryColor1 = "#FBDD7C";
+    private string SecondaryColor2 = "#CC6826";
+    private string SecondaryColor3 = "#7AB3E1";
+    private string SecondaryColor4 = "#616F85";
+
+    // File Upload Fields
+    private IBrowserFile? _selectedFile;
+    private string _fileError = string.Empty;
+    private bool _isPosting = false;
+    private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
+
+
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _fileError = string.Empty;
+        var file = e.File;
+
+        if (file == null)
+        {
+            _fileError = "File is required.";
+            _selectedFile = null;
+            return;
+        }
+
+        var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt" };
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+
+        if (!allowedExtensions.Contains(ext))
+        {
+            _fileError = "Invalid file type. Allowed: PDF, DOC, DOCX, XLS, XLSX, TXT.";
+            _selectedFile = null;
+            return;
+        }
+
+        if (file.Size > MaxFileSize)
+        {
+            _fileError = $"File size must not exceed {MaxFileSize / (1024 * 1024)} MB.";
+            _selectedFile = null;
+            return;
+        }
+
+        _selectedFile = file;
+        StateHasChanged();
+    }
+
+
+    private void RemoveFile()
+    {
+        _selectedFile = null;
+        _fileError = string.Empty;
+        StateHasChanged();
+    }
+
+    private string GetFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var context = _rightSidebarService.GetSharedContext<KpiSidebarContext>();
+
+        if (context != null && !_isModalOpen)
+        {
+            _selectedItem = context.SelectedItem;
+            if (!string.IsNullOrEmpty(_selectedItem?.UUID))
+            {
+                await LoadCommentsForKPAOrKPI(_selectedItem.UUID);
+            }
+
+            if (_selectedItem == null)
+            {
+                _isLoading = false;
+                _isModalOpen = true;
+                return;
+            }
+            _isLoading = false;
+            _isModalOpen = true;
+        }
+        else if (context == null)
+        {
+            _isModalOpen = false;
+            _selectedItem = null;
+            _selectedTabIndex = 0;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadCommentsForKPAOrKPI(string UUID)
+    {
+        try
+        {
+            var response = await CommentsAPIService.GetGlobalComments(UUID);
+
+            if (response == null)
+            {
+                _comments = new List<Comment>();
+                return;
+            }
+
+            // Store manager/admin flag
+            _isManagerOrAdmin = response.IsManagerOrAdmin;
+
+            // Map comments
+            _comments = response.Comments?
+                .OrderByDescending(c => c.CreateDate)
+                .Select(c => new Comment
+                    {
+                        UUID = c.UUID ?? string.Empty,
+                        Author = $"{c.FirstName} {c.LastName}".Trim(),
+                        Content = c.Comment ?? string.Empty,
+                        Date = c.CreateDate,
+                        CanEdit = _isManagerOrAdmin, // Manager/admin can delete
+                        AttachmentsUUID = c.AttachmentsUUID,
+                        FileName = c.FileName,
+                        FileCreatedDate = FormatDateTime(c.FileCreatedDate),
+                        FileSize = FormatFileSize(c.FileSize),
+                        FilePath = c.FilePath
+                    })
+                .ToList() ?? new List<Comment>();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error loading comments: " + ex.Message);
+        }
+    }
+
+    public static string FormatDateTime(DateTime? datetime)
+    {
+        if (datetime != null)
+            return datetime.Value.ToString("MMM dd, yyyy HH:mm");
+        else
+            return "";
+    }
+
+    public static string? FormatFileSize(long? bytes)
+    {
+        if (bytes == null)
+            return null; // or return "0 B" if you prefer
+
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes.Value; // safely get the value
+        int order = 0;
+
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+
+
+    private async Task PostComment()
+    {
+        if (string.IsNullOrWhiteSpace(_newComment)) return;
+
+        _isPosting = true;
+
+        try
+        {
+            var saveModel = new CommentSaveRequest
+                {
+                    UUID = null,
+                    TableTargetUUID = _selectedItem.UUID,
+                    Comment = _newComment,
+                    IsGlobalComment = true
+                };
+
+            IFormFile? formFile = null;
+
+            // IMPORTANT: process the file BEFORE any StateHasChanged() or long awaits
+            if (_selectedFile != null)
+            {
+                var memoryStream = new MemoryStream();
+                using var stream = _selectedFile.OpenReadStream(MaxFileSize);
+                await stream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+
+                formFile = new FormFile(memoryStream, 0, memoryStream.Length, "Attachment", _selectedFile.Name)
+                    {
+                        Headers = new HeaderDictionary(),
+                        ContentType = _selectedFile.ContentType
+                    };
+            }
+
+            // NOW it's safe to call StateHasChanged()
+            StateHasChanged();
+
+            var response = await CommentsAPIService.Save(saveModel, formFile);
+
+            if (formFile is FormFile file && file.OpenReadStream() is MemoryStream ms)
+            {
+                ms.Dispose();
+            }
+
+            if (response?.isValid == true)
+            {
+                NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Success,
+                        Summary = "Comment Posted",
+                        Detail = _selectedFile != null ? "Comment and attachment posted successfully" : "Your comment has been added",
+                        Duration = 3000
+                    });
+
+                _newComment = string.Empty;
+                _selectedFile = null;
+                _fileError = string.Empty;
+
+                await LoadCommentsForKPAOrKPI(_selectedItem.UUID);
+            }
+            else
+            {
+                NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Failed",
+                        Detail = response?.Message ?? "Failed to post comment",
+                        Duration = 3000
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Error",
+                    Detail = ex.Message,
+                    Duration = 3000
+                });
+        }
+        finally
+        {
+            _isPosting = false;
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task DownloadAttachmentFile(string attachmentUUID)
+    {
+        var result = await CommentsAPIService.DownloadAttachmentFile(attachmentUUID);
+
+        if (result == null)
+        {
+            NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Download Failed",
+                    Detail = "Could not download file.",
+                    Duration = 3000
+                });
+            return;
+        }
+
+        // Convert byte array to base64
+        var base64 = Convert.ToBase64String(result.FileContents);
+
+        // Call JS to trigger download
+        await JSRuntime.InvokeVoidAsync("downloadFileFromBytes",
+            result.FileDownloadName,
+            base64,
+            result.ContentType);
+    }
+
+
+}

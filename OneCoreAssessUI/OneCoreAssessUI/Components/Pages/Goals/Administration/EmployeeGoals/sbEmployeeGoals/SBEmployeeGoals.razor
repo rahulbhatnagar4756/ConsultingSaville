@@ -1,0 +1,1040 @@
+﻿@using Library.API.Goals.Models.Comments
+@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Services
+
+<style>
+	:root {
+		--sc-primary-colour1: @PrimaryColor1;
+		--sc-primary-colour2: @PrimaryColor2;
+		--sc-secondary-color1: @SecondaryColor1;
+		--sc-secondary-color2: @SecondaryColor2;
+		--sc-secondary-color3: @SecondaryColor3;
+		--sc-secondary-color4: @SecondaryColor4;
+		--sc-card-background-colour: #dedfde;
+		--sc-card-background-colour-daker: #b1b3b2;
+		--rz-primary: @SecondaryColor4;
+		--header-color1: #00BF6370;
+		--header-color2: #7ED95770;
+		--header-color3: #FFDE5970;
+		--header-color4: #FF575770;
+		--header-color5: #7AB3E170;
+		--header-color6: #7AB3E180;
+	}
+</style>
+
+<RadzenStack Gap="0" class="rightsidebar-theme1 rsb-main-container">
+	@if (_isLoading)
+	{
+		<RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="rsb-loading-container">
+			<RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+			<RadzenText Text="Loading details..." class="rsb-loading-text" />
+		</RadzenStack>
+	}
+	else if (_selectedItem == null)
+	{
+		<RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="rsb-no-item-container">
+			<RadzenIcon Icon="info" class="rsb-no-item-icon" />
+			<RadzenText Text="No item selected" class="rsb-no-item-text" />
+		</RadzenStack>
+	}
+	else
+	{
+		<RadzenTabs @bind-SelectedIndex="_selectedTabIndex" class="rsb-tabs-container">
+			<Tabs>
+				<RadzenTabsItem Text="Data">
+					<div class="rsb-data-content-scroll" @ref="_dataScrollContainer">
+						<RadzenStack Gap="20px">
+
+							<RadzenStack class="inner-wrapper">
+								<RadzenStack Gap="6px">
+									<RadzenText Text="Goal Name"
+												class="header-text" />
+									@if (!string.IsNullOrWhiteSpace(_selectedItem?.Name))
+									{
+										<RadzenText Text="@_selectedItem.Name"
+													class="content-text" />
+									}
+									else
+									{
+										<RadzenText Text="No Goal Name to show"
+													class="content-missing" />
+									}
+								</RadzenStack>
+							</RadzenStack>
+
+							@if (!string.IsNullOrWhiteSpace(_selectedItem?.Description))
+							{
+								<RadzenStack>
+									<RadzenStack Gap="6px">
+										<RadzenText Text="Description"
+													class="rsb-description-header" />
+										@if (!string.IsNullOrWhiteSpace(_selectedItem?.Description))
+										{
+											<RadzenText Text="@_selectedItem.Description"
+														class="rsb-description-content" />
+										}
+										else
+										{
+											<RadzenText Text="No Description to show"
+														class="rsb-description-missing" />
+										}
+									</RadzenStack>
+								</RadzenStack>
+							}
+							<RadzenStack>
+								<RadzenStack Orientation="Orientation.Horizontal" Gap="20px" Wrap="FlexWrap.Wrap">
+									<RadzenStack Gap="5px" class="rsb-kpi-item-stack">
+										<RadzenText Text="Target"
+													class="rsb-kpi-header" />
+										@if (_selectedItem?.Target != null)
+										{
+											<RadzenText Text="@_selectedItem.Target?.ToString()"
+														class="rsb-kpi-value" />
+										}
+										else
+										{
+											<RadzenText Text="No Target to show"
+														class="rsb-kpi-missing" />
+										}
+									</RadzenStack>
+
+									<RadzenStack Gap="5px" class="rsb-kpi-item-stack">
+										<RadzenText Text="Progress (Current Set Result)"
+													class="rsb-kpi-header" />
+
+										@if (_selectedItem?.CurrentResultProgress != null)
+										{
+											<RadzenText Text="@_selectedItem.CurrentResultProgress.ToString()"
+														class="rsb-kpi-value" />
+										}
+										else
+										{
+											<RadzenText Text="No Progress Result to show"
+														class="rsb-kpi-missing" />
+										}
+									</RadzenStack>
+
+								</RadzenStack>
+							</RadzenStack>
+
+							<RadzenStack>
+								<RadzenStack Gap="10px">
+									<RadzenText Text="Tolerance Section"
+												class="rsb-tolerance-header" />
+									@if (!string.IsNullOrWhiteSpace(_selectedItem?.toleranceSets))
+									{
+										<RadzenText Text="@GetToleranceSetName(_selectedItem.toleranceSets)"
+													class="rsb-tolerance-name" />
+
+										@if (_selectedItem == null || !string.IsNullOrWhiteSpace(_selectedItem.toleranceSetsDescription))
+										{
+											@((MarkupString)_selectedItem?.toleranceSetsDescription)
+										}
+
+
+									}
+									else
+									{
+										<RadzenText Text="No Tolerance data to show"
+													class="rsb-tolerance-missing" />
+									}
+								</RadzenStack>
+							</RadzenStack>
+
+							<RadzenStack>
+								<RadzenStack Gap="12px">
+									<RadzenText Text="Update Progress"
+												class="rsb-update-progress-header" />
+
+									<RadzenStack Orientation="Orientation.Horizontal" Gap="10px" AlignItems="AlignItems.Center">
+										<RadzenNumeric @bind-Value="_currentResult"
+														 class="rsb-progress-numeric"
+														 Placeholder="Enter result" />
+
+										<RadzenDropDown Data="@_activePeriods"
+														TextProperty="Name"
+														ValueProperty="Id"
+														Placeholder="Select Period"
+														@bind-Value="_selectedPeriodId"
+														class="rsb-progress-dropdown" />
+
+										<RadzenButton Text="Save"
+													   Icon="save"
+													   Click="@SaveResult"
+													   class="rsb-progress-save-button" />
+									</RadzenStack>
+								</RadzenStack>
+							</RadzenStack>
+
+						</RadzenStack>
+					</div>
+				</RadzenTabsItem>
+
+
+
+				<RadzenTabsItem Text="Scores">
+					<RadzenTabs>
+						<Tabs>
+
+							<RadzenTabsItem Text="Results / Progress">
+								<RadzenStack>
+									@if (_progressHistory != null && _progressHistory.Any())
+									{
+										<RadzenStack Gap="10px" class="rsb-progress-history-stack">
+											<RadzenChart>
+												<RadzenLineSeries Data="@_progressHistory"
+																   CategoryProperty="Date"
+																   ValueProperty="Value"
+																   Title="Progress" />
+												<RadzenCategoryAxis Padding="10" />
+												<RadzenValueAxis />
+											</RadzenChart>
+
+											<RadzenDataGrid Data="@_progressHistory"
+															TItem="ProgressEntry"
+															ShowPagingSummary="true"
+															AllowPaging="true"
+															PageSize="5">
+												<Columns>
+													<RadzenDataGridColumn TItem="ProgressEntry" Property="Date" Title="Date" />
+													<RadzenDataGridColumn TItem="ProgressEntry" Property="Value" Title="Result" />
+													<RadzenDataGridColumn TItem="ProgressEntry" Property="Note" Title="Note" />
+												</Columns>
+											</RadzenDataGrid>
+										</RadzenStack>
+									}
+									else
+									{
+										<RadzenStack AlignItems="AlignItems.Center" Gap="5px" class="rsb-no-results-stack">
+											<RadzenIcon Icon="info" class="rsb-no-results-icon" />
+											<RadzenText Text="No Results Available"
+														class="rsb-no-results-text" />
+										</RadzenStack>
+									}
+								</RadzenStack>
+							</RadzenTabsItem>
+
+
+							<RadzenTabsItem Text="Scores">
+								<RadzenStack>
+									<RadzenStack Gap="20px" class="rsb-score-details-stack">
+										@if (_selectedItem?.ScoreEmployee != null || _selectedItem?.ScoreManager != null)
+										{
+											<RadzenStack Gap="10px">
+
+												<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+													<RadzenText Text="Employee Score"
+																class="rsb-score-label" />
+													<RadzenText Text="@($"{_selectedItem.ScoreEmployee ?? 0}%")"
+																class="rsb-score-value-employee" />
+												</RadzenStack>
+
+												<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+													<RadzenText Text="Manager Score"
+																class="rsb-score-label" />
+													<RadzenText Text="@($"{_selectedItem.ScoreManager ?? 0}%")"
+																class="rsb-score-value-manager" />
+												</RadzenStack>
+
+												<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+													<RadzenText Text="Average"
+																class="rsb-score-label" />
+													<RadzenText Text="@($"{GetAverageScore():0.0}%")"
+																class="rsb-score-value-average" />
+												</RadzenStack>
+
+											</RadzenStack>
+										}
+										else
+										{
+											<RadzenStack AlignItems="AlignItems.Center" Gap="5px" class="rsb-no-scores-stack">
+												<RadzenIcon Icon="info" class="rsb-no-scores-icon" />
+												<RadzenText Text="No Scores Available"
+															class="rsb-no-scores-text" />
+											</RadzenStack>
+										}
+									</RadzenStack>
+								</RadzenStack>
+							</RadzenTabsItem>
+
+						</Tabs>
+					</RadzenTabs>
+				</RadzenTabsItem>
+
+
+				<RadzenTabsItem Text="Comments">
+					<div @ref="_commentsScrollContainer" class="rsb-comments-content-scroll">
+						<RadzenStack Gap="20px">
+							<RadzenStack class="rsb-add-comment-section">
+								<RadzenStack Gap="12px">
+									<RadzenText Text="Add Comment" class="rsb-comment-header" />
+
+									<RadzenTextArea @bind-Value="_newComment"
+													Placeholder="Write your comment here..."
+													class="rsb-comment-textarea"
+													Rows="3" />
+
+									<RadzenStack Gap="8px">
+										<InputFile OnChange="@OnFileSelected"
+													 accept=".pdf"
+													 id="fileUploadComments"
+													 style="display: none;" Disabled="@(string.IsNullOrWhiteSpace(_newComment) || _isPosting)" />
+
+										<label for="fileUploadComments" class="rsb-file-label">
+											<RadzenButton Text="@(_selectedFile == null ? "Attach PDF (Optional)" : $"Selected: {_selectedFile.Name}")"
+														   class="rsb-file-button"
+														   Icon="@(_selectedFile == null ? "attach_file" : "description")"
+														   Variant="Variant.Outlined" />
+										</label>
+
+										@if (_selectedFile != null)
+										{
+											<RadzenStack Orientation="Orientation.Horizontal"
+														 JustifyContent="JustifyContent.SpaceBetween"
+														 AlignItems="AlignItems.Center"
+														 class="rsb-selected-file-stack">
+												<RadzenStack Orientation="Orientation.Horizontal" Gap="8px" AlignItems="AlignItems.Center">
+													<RadzenIcon Icon="picture_as_pdf" class="rsb-file-pdf-icon" />
+													<RadzenStack Gap="2px">
+														<RadzenText Text="@_selectedFile.Name"
+																	class="rsb-file-name" />
+														<RadzenText Text="@GetFileSize(_selectedFile.Size)"
+																	class="rsb-file-size" />
+													</RadzenStack>
+												</RadzenStack>
+												<RadzenButton Icon="close"
+															   ButtonStyle="ButtonStyle.Danger"
+															   Variant="Variant.Text"
+															   Size="ButtonSize.Small"
+															   Click="@RemoveFile" />
+											</RadzenStack>
+										}
+
+										@if (!string.IsNullOrEmpty(_fileError))
+										{
+											<RadzenText Text="@_fileError"
+														class="rsb-file-error" />
+										}
+									</RadzenStack>
+
+
+
+
+
+									<RadzenButton Text="@(_isPosting ? "Posting..." : "Post Comment")"
+												   Click="@PostComment"
+												   class="rsb-post-comment-button"
+												   Icon="send"
+												   Disabled="@(string.IsNullOrWhiteSpace(_newComment) || _isPosting)" />
+								</RadzenStack>
+							</RadzenStack>
+
+							<RadzenStack>
+								<RadzenStack Gap="12px">
+									<RadzenText Text="Comments" class="rsb-comment-header" />
+
+									@if (_comments != null && _comments.Any())
+									{
+										<RadzenStack Gap="15px">
+											@foreach (var comment in _comments.OrderByDescending(c => c.Date))
+											{
+												<RadzenStack class="rsb-comment-card">
+													<RadzenStack Gap="8px">
+
+
+														<RadzenStack Orientation="Orientation.Horizontal"
+																	 JustifyContent="JustifyContent.SpaceBetween"
+																	 AlignItems="AlignItems.Start">
+
+															<RadzenStack Orientation="Orientation.Horizontal"
+																		 Gap="8px"
+																		 AlignItems="AlignItems.Center">
+																<RadzenIcon Icon="account_circle"
+																			class="rsb-comment-author-icon" />
+																<RadzenStack Gap="2px">
+																	<RadzenText Text="@comment.Author"
+																				class="rsb-comment-author-name" />
+																	<RadzenText Text="@comment.Date.ToString("MMM dd, yyyy HH:mm")"
+																				class="rsb-comment-date" />
+																</RadzenStack>
+															</RadzenStack>
+
+														</RadzenStack>
+
+														<RadzenText Text="@comment.Content"
+																	class="rsb-comment-content" />
+
+														@if (comment.AttachmentsUUID != null)
+														{
+															<RadzenStack Orientation="Orientation.Horizontal"
+																		 JustifyContent="JustifyContent.SpaceBetween"
+																		 AlignItems="AlignItems.Start" class="rsb-comment-attachment-card">
+
+																<RadzenStack Orientation="Orientation.Horizontal"
+																			 Gap="8px"
+																			 AlignItems="AlignItems.Center">
+																	<RadzenIcon Icon="picture_as_pdf"
+																				class="rsb-comment-attachment-icon" />
+																	<RadzenStack Gap="2px">
+																		<RadzenText Text="@comment.FileName"
+																					class="rsb-comment-attachment-name" />
+																		<RadzenText Text="@comment.FileSize" class="rsb-comment-attachment-size" />
+																	</RadzenStack>
+																</RadzenStack>
+																<RadzenButton Icon="download" class="rsb-download-button"
+																			   ButtonStyle="ButtonStyle.Primary"
+																			   Variant="Variant.Text"
+																			   Size="ButtonSize.Small"
+																			   Click="@(() => DownloadAttachmentFile(comment.AttachmentsUUID))" />
+															</RadzenStack>
+														}
+													</RadzenStack>
+
+												</RadzenStack>
+
+
+											}
+										</RadzenStack>
+									}
+									else
+									{
+										<RadzenStack AlignItems="AlignItems.Center" Gap="8px" class="rsb-no-comments-stack">
+											<RadzenIcon Icon="chat_bubble_outline" class="rsb-no-comments-icon" />
+											<RadzenText Text="No comments yet" class="rsb-no-comments-text-main" />
+											<RadzenText Text="Be the first to add a comment" class="rsb-no-comments-text-secondary" />
+										</RadzenStack>
+									}
+								</RadzenStack>
+							</RadzenStack>
+						</RadzenStack>
+
+						@if (_showScrollToTop)
+						{
+							<div class="rsb-scroll-to-top-container">
+								<RadzenButton Icon="arrow_upward"
+											   ButtonStyle="ButtonStyle.Primary"
+											   class="rsb-scroll-to-top-button"
+											   Click="ScrollToTop" />
+							</div>
+						}
+					</div>
+
+
+				</RadzenTabsItem>
+
+			</Tabs>
+		</RadzenTabs>
+	}
+</RadzenStack>
+
+
+@code {
+	[CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+	[Inject] public NotificationService NotificationService { get; set; }
+	[Inject] public DialogService DialogService { get; set; }
+	[Inject] public IEmployeesService EmployeesService { get; set; }
+	[Inject] public IJSRuntime JSRuntime { get; set; }
+	private string? _selectedPeriodId;
+	private List<RatingPeriod> _activePeriods = new();
+	[Inject] public ICommentsAPIService CommentsAPIService { get; set; }
+
+	private KpiDisplayItem? _selectedItem;
+	private ContractResults? _contractResults;
+	private bool _isLoading = true;
+	private bool _isModalOpen = false;
+	private int _selectedTabIndex = 0;
+
+	// Data Tab Fields
+	private double? _currentResult;
+	private List<ProgressEntry> _progressHistory = new();
+
+	// Comments Tab Fields
+	private string _newComment = string.Empty;
+	private List<Comment> _comments = new();
+
+	// File Upload Fields
+	private IBrowserFile? _selectedFile;
+	private string _fileError = string.Empty;
+	private bool _isPosting = false;
+	private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
+
+	// Scroll functionality
+	private ElementReference _dataScrollContainer;
+	private ElementReference _commentsScrollContainer;
+	private bool _showScrollToTop = false;
+
+	private string PrimaryColor1 = "#0F1F38";
+    private string PrimaryColor2 = "#727572";
+    private string SecondaryColor1 = "#FBDD7C";
+    private string SecondaryColor2 = "#CC6826";
+    private string SecondaryColor3 = "#7AB3E1";
+    private string SecondaryColor4 = "#616F85";
+
+	protected override async Task OnParametersSetAsync()
+	{
+		var context = _rightSidebarService.GetSharedContext<KpiSidebarContext>();
+
+		if (context != null && !_isModalOpen)
+		{
+			_selectedItem = context.SelectedItem;
+			if (!string.IsNullOrEmpty(_selectedItem?.UUID))
+			{
+				await LoadCommentsForKPAOrKPI(_selectedItem.UUID);
+			}
+
+			_contractResults = context.ContractResults;
+
+			if (_selectedItem == null || _contractResults == null)
+			{
+				_isLoading = false;
+				_isModalOpen = true;
+				_showScrollToTop = false;
+				return;
+			}
+
+			// Safely find matching KPI from contract results
+			var toleranceData = string.IsNullOrEmpty(_selectedItem.UUID)
+				? null
+				: _contractResults?.EnterpriseStructures?
+					.Where(e => e?.Pillars != null)
+					.SelectMany(e => e.Pillars ?? new List<Pillar>())
+					.Where(p => p?.KPA != null)
+					.SelectMany(p => p.KPA ?? new List<KPA>())
+					.Where(kpa => kpa?.KPI != null)
+					.SelectMany(kpa => kpa.KPI ?? new List<KPI>())
+					.FirstOrDefault(kpi => kpi?.UUID == _selectedItem.UUID);
+
+			// Map tolerance-related info if found
+			if (toleranceData != null)
+			{
+				_selectedItem.toleranceSetsUUID = toleranceData.ToleranceSetsUUID;
+				_selectedItem.toleranceSets = toleranceData.ToleranceSets;
+				_selectedItem.toleranceSetsDescription = toleranceData.ToleranceSetsDescription;
+				_selectedItem.RatingPeriods = toleranceData.RatingPeriods;
+				_selectedItem.RatingPeriodsDisplay = toleranceData.RatingPeriodsDisplay;
+				_selectedItem.RatingPeriodsUUID = toleranceData.RatingPeriodsUUID;
+				_selectedItem.RatingPeriodDates = toleranceData.RatingPeriodDates;
+				_selectedItem.Status = toleranceData.Status;
+				_selectedItem.CurrentResultProgress = toleranceData.currentResultProgress;
+				// Map ProgressGraphData
+				_selectedItem.ProgressGraphData = toleranceData.ProgressGraphData != null
+					? toleranceData.ProgressGraphData
+							.OrderByDescending(p => p.DateAdded)
+							.ToList()
+					: new List<ProgressGraphDto>();
+			}
+			else
+			{
+				// Clear tolerance info if KPI data missing
+				_selectedItem.toleranceSetsUUID = null;
+				_selectedItem.toleranceSets = null;
+				_selectedItem.toleranceSetsDescription = null;
+				_selectedItem.RatingPeriods = null;
+				_selectedItem.RatingPeriodsDisplay = null;
+				_selectedItem.RatingPeriodDates = null;
+			}
+
+			// Dynamically build Rating Periods Dropdown based on data
+			if (!string.IsNullOrEmpty(_selectedItem.RatingPeriodsDisplay) ||
+				!string.IsNullOrEmpty(_selectedItem.RatingPeriodDates))
+			{
+				_activePeriods = new List<RatingPeriod>
+			{
+				new RatingPeriod
+				{
+					Id = _selectedItem.RatingPeriodsUUID ??"",
+					Name = $"{_selectedItem.RatingPeriodsDisplay} ({_selectedItem.RatingPeriodDates})",
+					IsActive = true
+				}
+			};
+			}
+			else
+			{
+				// fallback static sample if missing
+				_activePeriods = new List<RatingPeriod>
+			{
+				new RatingPeriod { Id = "DefaultQ1", Name = "No Rating Periods Available", IsActive = false }
+			};
+			}
+
+			// Filter only active periods
+			_activePeriods = _activePeriods.Where(p => p.IsActive).ToList();
+
+			// Load progress history/comments placeholder
+			LoadSampleData();
+
+			_isLoading = false;
+			_isModalOpen = true;
+			_showScrollToTop = false;
+		}
+		else if (context == null)
+		{
+			_isModalOpen = false;
+			_selectedItem = null;
+			_contractResults = null;
+			_selectedTabIndex = 0;
+			_showScrollToTop = false;
+		}
+
+		await base.OnParametersSetAsync();
+	}
+
+	private void LoadSampleData()
+	{
+		_progressHistory = new List<ProgressEntry>();
+
+		if (_selectedItem?.ProgressGraphData != null)
+		{
+			_progressHistory = _selectedItem.ProgressGraphData
+				.OrderBy(p => p.DateAdded) // chronological order
+				.Select(p => new ProgressEntry
+					{
+						Date = p.DateAdded ?? DateTime.MinValue,
+						Value = Convert.ToDouble(p.Result ?? 0),
+						Note = $"Recorded on {p.DateAdded?.ToString("dd MMM yyyy HH:mm")}"
+					})
+				.ToList();
+		}
+
+	}
+
+	private async Task LoadCommentsForKPAOrKPI(string UUID) //kpa or kpa uuid
+	{
+		try
+		{
+			var commentsData = await CommentsAPIService.GetComments(UUID);
+
+			if (commentsData == null || !commentsData.Any())
+			{
+				_comments = new List<Comment>();
+				return;
+			}
+
+			_comments = commentsData
+				.OrderByDescending(c => c.CreateDate)
+				.Select(c => new Comment
+					{
+						UUID = c.UUID ?? "",
+						Author = $"{c.FirstName} {c.LastName}".Trim(),
+						Content = c.Comment ?? "",
+						Date = c.CreateDate,
+					//CanEdit = (c.UsersUUID == _selectedItem?.UserUUID) // OPTIONAL: Check owner
+						AttachmentsUUID = c.AttachmentsUUID,
+						FileName = c.FileName,
+						FileCreatedDate = FormatDateTime(c.FileCreatedDate),
+						FileSize = FormatFileSize(c.FileSize),
+						FilePath = c.FilePath,
+						CanEdit = true
+					})
+				.ToList();
+
+			StateHasChanged();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine("Error loading comments: " + ex.Message);
+		}
+	}
+
+	private long ConvertToLong(string uuid)
+	{
+		// your APIs expect TableTargetId: LONG
+		// If KPI UUID cannot convert, you must map it to ID in DB
+
+		// TEMP: return hash number
+		return Math.Abs(uuid.GetHashCode());
+	}
+
+
+	private async Task SaveResult()
+	{
+		try
+		{
+			if (_currentResult == null)
+			{
+				NotificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Warning,
+						Summary = "Required",
+						Detail = "Please enter a result value",
+						Duration = 3000
+					});
+				return;
+			}
+
+			if (_selectedItem == null)
+			{
+				NotificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Error,
+						Summary = "Error",
+						Detail = "KPI not selected",
+						Duration = 3000
+					});
+				return;
+			}
+
+			if (string.IsNullOrEmpty(_selectedPeriodId))
+			{
+				NotificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Warning,
+						Summary = "Required",
+						Detail = "Select Rating Period",
+						Duration = 3000
+					});
+				return;
+			}
+
+			// Create Save Model
+			var saveModel = new Library.API.Goals.Models.Result.ResultSaveModel
+				{
+					KPI_UUID = _selectedItem.UUID,      // KPI ID
+					RatingPeriod_UUID = _selectedPeriodId,   // Rating Period ID
+					ResultValue = Convert.ToDecimal(_currentResult.Value),
+					isActive = true
+				};
+
+			// Call your service API
+			var response = await EmployeesService.Save(saveModel);
+
+			if (response != null)
+			{
+				NotificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Success,
+						Summary = "Saved",
+						Detail = "Progress updated successfully",
+						Duration = 3000
+					});
+
+				// Optional: Add to UI history
+				_progressHistory.Add(new ProgressEntry
+					{
+						Date = DateTime.Now,
+						Value = _currentResult.Value,
+						Note = "Updated manually"
+					});
+			}
+			else
+			{
+				NotificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Error,
+						Summary = "Failed",
+						Detail = "Unable to save progress",
+						Duration = 3000
+					});
+			}
+
+			_currentResult = null;
+			StateHasChanged();
+		}
+		catch (Exception ex)
+		{
+			NotificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Error,
+					Summary = "Error",
+					Detail = ex.Message,
+					Duration = 5000
+				});
+		}
+	}
+
+
+	private async Task OnFileSelected(InputFileChangeEventArgs e)
+	{
+		_fileError = string.Empty;
+		var file = e.File;
+
+		if (file == null)
+		{
+			_fileError = "File is required.";
+			_selectedFile = null;
+			return;
+		}
+
+		var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt" };
+		var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+
+		if (!allowedExtensions.Contains(ext))
+		{
+			_fileError = "Invalid file type. Allowed: PDF, DOC, DOCX, XLS, XLSX, TXT.";
+			_selectedFile = null;
+			return;
+		}
+
+		if (file.Size > MaxFileSize)
+		{
+			_fileError = $"File size must not exceed {MaxFileSize / (1024 * 1024)} MB.";
+			_selectedFile = null;
+			return;
+		}
+
+		_selectedFile = file;
+		StateHasChanged();
+	}
+
+	private void RemoveFile()
+	{
+		_selectedFile = null;
+		_fileError = string.Empty;
+		StateHasChanged();
+	}
+
+	private string GetFileSize(long bytes)
+	{
+		string[] sizes = { "B", "KB", "MB", "GB" };
+		double len = bytes;
+		int order = 0;
+		while (len >= 1024 && order < sizes.Length - 1)
+		{
+			order++;
+			len = len / 1024;
+		}
+		return $"{len:0.##} {sizes[order]}";
+	}
+
+	private async Task PostComment()
+	{
+		if (string.IsNullOrWhiteSpace(_newComment)) return;
+
+		_isPosting = true;
+
+		try
+		{
+			var saveModel = new CommentSaveRequest
+				{
+					UUID = null,
+					TableTargetUUID = _selectedItem.UUID,
+					Comment = _newComment,
+					IsGlobalComment = false
+				};
+
+			IFormFile? formFile = null;
+
+			// IMPORTANT: process the file BEFORE any StateHasChanged() or long awaits
+			if (_selectedFile != null)
+			{
+				var memoryStream = new MemoryStream();
+				using var stream = _selectedFile.OpenReadStream(MaxFileSize);
+				await stream.CopyToAsync(memoryStream);
+				memoryStream.Position = 0;
+
+				formFile = new FormFile(memoryStream, 0, memoryStream.Length, "Attachment", _selectedFile.Name)
+					{
+						Headers = new HeaderDictionary(),
+						ContentType = _selectedFile.ContentType
+					};
+			}
+
+			// NOW it's safe to call StateHasChanged()
+			StateHasChanged();
+
+			var response = await CommentsAPIService.Save(saveModel, formFile);
+
+			if (formFile is FormFile file && file.OpenReadStream() is MemoryStream ms)
+			{
+				ms.Dispose();
+			}
+
+			if (response?.isValid == true)
+			{
+				NotificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Success,
+						Summary = "Comment Posted",
+						Detail = _selectedFile != null ? "Comment and attachment posted successfully" : "Your comment has been added",
+						Duration = 3000
+					});
+
+				_newComment = string.Empty;
+				_selectedFile = null;
+				_fileError = string.Empty;
+
+				await LoadCommentsForKPAOrKPI(_selectedItem.UUID);
+			}
+			else
+			{
+				NotificationService.Notify(new NotificationMessage
+					{
+						Severity = NotificationSeverity.Error,
+						Summary = "Failed",
+						Detail = response?.Message ?? "Failed to post comment",
+						Duration = 3000
+					});
+			}
+		}
+		catch (Exception ex)
+		{
+			NotificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Error,
+					Summary = "Error",
+					Detail = ex.Message,
+					Duration = 3000
+				});
+		}
+		finally
+		{
+			_isPosting = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task DeleteComment(string uuid)
+	{
+		var confirmed = await DialogService.Confirm("Delete comment?", "Delete",
+			new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
+
+		if (confirmed != true) return;
+
+		var request = new CommentDeleteRequest
+			{
+				UUID = uuid
+			};
+
+		var response = await CommentsAPIService.Delete(request);
+
+		if (response?.isValid == true)
+		{
+			NotificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Info,
+					Summary = "Deleted",
+					Detail = "Comment removed",
+					Duration = 3000
+				});
+
+			await LoadCommentsForKPAOrKPI(_selectedItem.UUID);
+		}
+	}
+
+
+	private string GetToleranceSetName(string toleranceSets)
+	{
+		// Example: "TolSetB: 0-89%,90-94%,95-99%,100%"
+		if (string.IsNullOrWhiteSpace(toleranceSets))
+			return "Unnamed Tolerance Set";
+
+		var parts = toleranceSets.Split(':');
+		return parts.Length > 0 ? parts[0].Trim() : "Unnamed Tolerance Set";
+	}
+
+	private List<string> GetToleranceRanges(string toleranceSets)
+	{
+		var ranges = new List<string>();
+		if (string.IsNullOrWhiteSpace(toleranceSets))
+			return ranges;
+
+		var parts = toleranceSets.Split(':');
+		if (parts.Length > 1)
+		{
+			var thresholds = parts[1].Split(',', StringSplitOptions.RemoveEmptyEntries);
+			foreach (var t in thresholds)
+				ranges.Add(t.Trim());
+		}
+
+		return ranges;
+	}
+
+	private double GetAverageScore()
+	{
+		if (_selectedItem == null) return 0;
+		double emp = (double)(_selectedItem.ScoreEmployee ?? 0);
+		double mgr = (double)(_selectedItem.ScoreManager ?? 0);
+		return (emp + mgr) / 2.0;
+	}
+
+	private string GetPerformanceStatusText()
+	{
+		var avg = GetAverageScore();
+		if (avg >= 80) return "High Performance";
+		if (avg >= 50) return "Medium Performance";
+		if (avg > 0) return "Low Performance";
+		return "Not Rated";
+	}
+
+	private string GetPerformanceStatusStyle()
+	{
+		var avg = GetAverageScore();
+		if (avg >= 80) return "background: #28a745; font-size: 12px;";
+		if (avg >= 50) return "background: #ffc107; font-size: 12px;";
+		if (avg > 0) return "background: #dc3545; font-size: 12px;";
+		return "background: #6c757d; font-size: 12px;";
+	}
+
+	private void HandleScroll(Microsoft.AspNetCore.Components.Web.WheelEventArgs e)
+	{
+		// Show button when scrolled down more than 200px
+		// Note: In Blazor, you might need to use JSInterop for accurate scroll position
+		_showScrollToTop = true;
+		StateHasChanged();
+	}
+
+	private async Task ScrollToTop()
+	{
+		// Use JSInterop to scroll to top
+		// await JSRuntime.InvokeVoidAsync("scrollToTop", _selectedTabIndex == 0 ? _dataScrollContainer : _commentsScrollContainer);
+		_showScrollToTop = false;
+		StateHasChanged();
+	}
+
+
+	private async Task DownloadAttachmentFile(string attachmentUUID)
+	{
+		var result = await CommentsAPIService.DownloadAttachmentFile(attachmentUUID);
+
+		if (result == null)
+		{
+			NotificationService.Notify(new NotificationMessage
+				{
+					Severity = NotificationSeverity.Error,
+					Summary = "Download Failed",
+					Detail = "Could not download file.",
+					Duration = 3000
+				});
+			return;
+		}
+
+		// Convert byte array to base64
+		var base64 = Convert.ToBase64String(result.FileContents);
+
+		// Call JS to trigger download
+		await JSRuntime.InvokeVoidAsync("downloadFileFromBytes",
+			result.FileDownloadName,
+			base64,
+			result.ContentType);
+	}
+
+	public static string FormatDateTime(DateTime? datetime)
+	{
+		if (datetime != null)
+			return datetime.Value.ToString("MMM dd, yyyy HH:mm");
+		else
+			return "";
+	}
+
+	public static string? FormatFileSize(long? bytes)
+	{
+		if (bytes == null)
+			return null; // or return "0 B" if you prefer
+
+		string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+		double len = bytes.Value; // safely get the value
+		int order = 0;
+
+		while (len >= 1024 && order < sizes.Length - 1)
+		{
+			order++;
+			len /= 1024;
+		}
+
+		return $"{len:0.##} {sizes[order]}";
+	}
+
+
+}

@@ -1,0 +1,24 @@
+﻿@using OneCoreAssessUI.Enumerables
+
+<RadzenMenu>
+    <RadzenMenuItem Text="Dashboard" Icon="dashboard" Click="(async() => await ChangeMenuItem(MenuItemTypes.AdministrationDashboard))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Security" Icon="security" Click="(async() => await ChangeMenuItem(MenuItemTypes.Employees))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Information" Icon="info" Click="(async() => await ChangeMenuItem(MenuItemTypes.Roles))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Invoicing" Icon="conversion_path" Click="(async() => await ChangeMenuItem(MenuItemTypes.BusinessType))"></RadzenMenuItem>
+
+    <RadzenMenuItem Text="Setup" Icon="handyman" Click="(async() => await ChangeMenuItem(MenuItemTypes.Roles))">
+         <RadzenMenuItem Text="Preselected Assessments" Icon="tactic" Click="(async() => await ChangeMenuItem(MenuItemTypes.BusinessType))"></RadzenMenuItem>
+         <RadzenMenuItem Text="Conversions" Icon="conversion_path" Click="(async() => await ChangeMenuItem(MenuItemTypes.BusinessType))"></RadzenMenuItem>
+    </RadzenMenuItem>
+   
+</RadzenMenu>
+
+@code {
+
+    [Parameter] public Enumerables.MenuItemTypes Item { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemTypes> ItemChanged { get; set; }
+
+    private async Task ChangeMenuItem(MenuItemTypes Option) =>
+        await ItemChanged.InvokeAsync(Option);
+
+}

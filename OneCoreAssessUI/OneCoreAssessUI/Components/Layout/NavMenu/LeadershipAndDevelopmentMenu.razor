@@ -1,0 +1,18 @@
+﻿<RadzenMenu>
+    <RadzenMenuItem Text="Dashboard" Icon="dashboard" Click="@(async() => await ChangeMenuItem(Enumerables.MenuItemTypes.LeaderShipAndDevelopmentDashboard))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Talent Management" Icon="psychology" Click="@(async() => await ChangeMenuItem(Enumerables.MenuItemTypes.TalentManagement))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Succession Readiness" Icon="readiness_score" Click="@(async() => await ChangeMenuItem(Enumerables.MenuItemTypes.SuccessionReadiness))"></RadzenMenuItem>
+    <RadzenMenuItem Text="Development Project" Icon="developer_board" Click="@(async() => await ChangeMenuItem(Enumerables.MenuItemTypes.DevelopmentProject))"></RadzenMenuItem>
+    <RadzenMenuItem Text="IDP" Icon="fingerprint" Click="@(async() => await ChangeMenuItem(Enumerables.MenuItemTypes.LeaderShipAndDevelopmentIDP))"></RadzenMenuItem>
+</RadzenMenu>
+
+@code {
+
+    [Parameter] public Enumerables.MenuItemTypes Item { get; set; }
+    [Parameter] public EventCallback<Enumerables.MenuItemTypes> ItemChanged { get; set; }
+
+    private async Task ChangeMenuItem(Enumerables.MenuItemTypes Option) =>
+        await ItemChanged.InvokeAsync(Option);
+
+
+}

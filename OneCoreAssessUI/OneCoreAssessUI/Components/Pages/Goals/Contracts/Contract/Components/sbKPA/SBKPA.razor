@@ -1,0 +1,280 @@
+﻿@using Library.API.Goals.Models
+@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Models.RatingPeriod
+@using Library.API.Goals.Models.Status
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@using Radzen
+@using Library.API.Goals.Mappers
+@inject DialogService DialogService
+
+<!-- Header -->
+ 
+
+<RadzenStack class="header-custom">
+    <RadzenStack class="header-outer">
+        <RadzenStack>
+            <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="KPA Details" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenStack>
+
+<!-- Error/Success Message -->
+@if (_logMessage != null && _logMessage.isValid.HasValue)
+{
+    <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+        <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+        <span>@_logMessage.Message</span>
+    </div>
+}
+
+@if (_kpa != null)
+{
+    <RadzenStack class="p-4">
+        <!-- KPA Name -->
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Name *</RadzenText>
+            <RadzenTextBox Placeholder="Enter KPA Name..."
+                           @bind-Value="_kpa.Name"
+                           Style="width: 100%"
+                           aria-label="KPA Name" />
+        </RadzenColumn>
+
+        <!-- KPA Description -->
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Description</RadzenText>
+            <RadzenTextArea oninput="event.target.style.height = Math.max(event.target.clientHeight, event.target.scrollHeight) + 'px';"
+                            @bind-Value="_kpa.Description"
+                            Style="width: 100%"
+                            aria-label="Description" />
+        </RadzenColumn>
+
+        <!-- Status Dropdown -->
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Status *</RadzenText>
+            <RadzenDropDown @bind-Value="_kpa.StatusUUID"
+                            Data="_statusList"
+                            Style="width: 100%;"
+                            TextProperty="Name"
+                            ValueProperty="UUID"
+                            Placeholder="Select status..."
+                            Name="StatusDropDown" />
+        </RadzenColumn>
+
+
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Rating Period</RadzenText>
+            <RadzenDropDown @bind-Value="_kpa.RatingPeriodsUUID"
+                            Data="_ratingPeriodList"
+                            Style="width: 100%;"
+                            TextProperty="Name"
+                            ValueProperty="UUID"
+                            Placeholder="Select Status..."
+                            Name="RatingPeriodDropDown" />
+        </RadzenColumn>
+
+        <!-- Weight -->
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Weight (%)</RadzenText>
+            <RadzenNumeric @bind-Value="_kpa.Weights"
+                           Style="width: 100%;"
+                           Step="1"
+                           Format="F2"
+                           Min="0"
+                           Max="100"
+                           Placeholder="Enter weight..."
+                           aria-label="Weight" />
+        </RadzenColumn>
+
+        <!-- Active Status -->
+        <RadzenColumn Size="12">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenCheckBox @bind-Value="_kpa.isActive" Name="isActiveCheckbox" />
+                <RadzenLabel Text="Active" Component="isActiveCheckbox" Style="margin-left: 8px;" />
+            </RadzenStack>
+        </RadzenColumn>
+
+        <!-- Action Buttons -->
+        <RadzenColumn Size="12" class="mt-5">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                <RadzenButton style="flex: 1;"
+                              Icon="save"
+                              BusyText="Saving..."
+                              IsBusy="_isSaving"
+                              Click="@OnSave_Click"
+                              Text="Save" />
+
+                @if (!string.IsNullOrEmpty(_kpa?.UUID))
+                {
+                    <RadzenButton Icon="delete"
+                                  Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                  IsBusy="_isSaving"
+                                  Click="OnDelete_Confirm" />
+                }
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenStack>
+}
+
+@code {
+    [Inject] public IKPAService KPAService { get; set; }
+    [Inject] public IStatusService StatusService { get; set; }
+    [Inject] public IRatingPeriodsServices RatingPeriodsService { get; set; }
+
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private ResultsModel? _logMessage = null;
+    private ContractKPASaveModel _kpa = new();
+    private ContractKPASaveModel? _kpaCurrent = null;
+    private bool _isSaving = false;
+    private List<StatusModel>? _statusList = new();
+    private List<RatingPeriodModel>? _ratingPeriodList = new();
+    private string? _contractPillarsUUID;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatusList();
+        await LoadRatingPeriodsList();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Check if we're editing an existing KPA or creating a new one
+        _kpaCurrent = _rightSidebarService.GetSharedContext<ContractKPASaveModel>();
+
+        if (_kpaCurrent != null && (_kpa.UUID == null || _kpaCurrent.UUID != _kpa.UUID ))
+        {
+            // New KPA
+            _kpa = _kpaCurrent;
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadStatusList()
+    {
+        try
+        {
+            _statusList = await StatusService.GetStatus();
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error loading status list: {ex.Message}" };
+        }
+    }
+
+    private async Task LoadRatingPeriodsList()
+    {
+        try
+        {
+            _ratingPeriodList = await RatingPeriodsService.GetRatingPeriods();
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error loading rating Period list: {ex.Message}" };
+        }
+    }
+
+    private async Task OnSave_Click()
+    {
+        if (_kpa == null || string.IsNullOrWhiteSpace(_kpa.Name))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Please enter a name for the KPA." };
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_kpa.StatusUUID))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Please select a status for the KPA." };
+            return;
+        }
+
+        if (_kpa.Weights < 0 || _kpa.Weights > 100)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Weight must be between 0 and 100." };
+            return;
+        }
+
+        // Ensure we have the pillar UUID
+        if (string.IsNullOrEmpty(_kpa.ContractPillarsUUID))
+        {
+            _kpa.ContractPillarsUUID = _contractPillarsUUID ?? string.Empty;
+        }
+
+        try
+        {
+            _isSaving = true;
+            _logMessage = await KPAService.Save(_kpa);
+
+            if (_logMessage != null && _logMessage.isValid == true && _kpaCurrent != null)
+            {
+                _kpa.UUID = _logMessage.UUID; // Update the UUID in case of a new KPA
+                _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_Contracts_KPA);
+            }
+            
+            StateHasChanged();
+
+            // Trigger data refresh for the main contract view
+            _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_Contracts_KPA);
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error saving KPA: {ex.Message}" };
+            Console.WriteLine($"Error saving KPA: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnDelete_Confirm()
+    {
+        var result = await DialogService.Confirm("Are you sure you want to delete this KPA?", "Delete KPA", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (result.HasValue && result.Value)
+        {
+            await OnDelete_Click();
+        }
+    }
+
+    private async Task OnDelete_Click()
+    {
+        if (string.IsNullOrEmpty(_kpa?.UUID))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Cannot delete: KPA UUID is missing." };
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+            StateHasChanged();
+
+            _logMessage = await KPAService.Delete(_kpa.UUID);
+
+            if (_logMessage?.isValid == true)
+            {
+                // Trigger data refresh for the main contract view
+                _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_Contracts_KPA);
+                // Close the sidebar
+                _rightSidebarService.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error deleting KPA: {ex.Message}" };
+            Console.WriteLine($"Error deleting KPA: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}
+
+ 

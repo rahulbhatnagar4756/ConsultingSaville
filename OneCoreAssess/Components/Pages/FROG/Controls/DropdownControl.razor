@@ -1,0 +1,78 @@
+﻿@using Library.Frog.Services
+
+@if (Element != null)
+{
+    <RadzenStack Gap="5px" class=@string.Format("form {0}", Element.CSSClass)>
+
+        <RadzenLabel  class="form-label" >
+            @((MarkupString)_Label)
+        </RadzenLabel>
+        <RadzenDropDown @bind-Value=_dropdownValue Data=@_Lookups 
+        TextProperty="@nameof(Library.Frog.Models.FrogLookupModel.Name)" ValueProperty="@nameof(Library.Frog.Models.FrogLookupModel.UUID)"
+        Style=@Element.Style class=@string.Format("form-control {0}" , _active)
+        ReadOnly=@(Element.FrogSecurityPermissionsId == _readonly)  
+        change="Save" />
+    </RadzenStack>
+}
+
+@code {
+    [Inject] IFrogService FrogService { get; set; }
+    [Parameter] public Library.Frog.Models.FrogElementModel Element { get; set; }
+    [Parameter] public List<Library.Frog.Models.FrogElementModel> Elements { get; set; }
+
+    private List<Library.Frog.Models.FrogLookupModel> _Lookups = new();
+    private string _dropdownValue;
+    private string _active = "";
+    private int _readonly = 2;
+
+    private string _Label { get
+        {
+            string Required = "";
+            if (Element.IsRequired.HasValue && Element.IsRequired.Value) Required = @"<span Style=""color: red;"">*</span> ";
+
+            return Required + Element.Label;
+    } }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PopulateElement(Element);
+    }
+
+
+    private async Task PopulateElement(Library.Frog.Models.FrogElementModel element)
+    {
+        if (element.FrogLookupTypesId == null) return;
+        await LoadLookup(element.FrogLookupTypesId.Value);
+        if (element == null || string.IsNullOrWhiteSpace(element.ResultValue)) return;
+        _dropdownValue = element.ResultValue;
+    }
+
+    private async Task LoadLookup(int lookupTypesid) =>
+        _Lookups = await FrogService.GetLookups(lookupTypesid);
+
+
+    private async Task Save(object value)
+    {
+        Library.Frog.Models.FrogElementSaveModel element = new()
+            {
+                FrogElementsUUID = Element.FrogElementsUUID,
+                FrogsUUID = Element.FormsUUID,
+                ItemUUID = value.ToString()
+            };
+
+        var selectedOption = _Lookups.FirstOrDefault(option => option.UUID == value);
+        if (selectedOption != null && selectedOption.Name != null)
+        {
+            element.ItemName = selectedOption.Name; 
+        }
+
+
+        var result = await FrogService.Save(element);
+        if (result == null) return;
+        if (result.isSuccess != null && result.isSuccess.Value)        _active = "active";
+
+
+        
+    }
+}

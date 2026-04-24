@@ -1,0 +1,97 @@
+﻿ 
+// Candidate Profile Styles
+.profile-container {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.profile-loading,
+.profile-error,
+.profile-no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2rem 1rem;
+    gap: 0.5rem;
+}
+
+.profile-avatar-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--sc-secondary-color3, #7AB3E1), var(--sc-secondary-color4, #616F85));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 3px solid var(--sc-card-background-colour, #dedfde);
+
+    .avatar-image {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .avatar-initials {
+        color: white;
+        font-size: 2rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+}
+
+.profile-info-section {
+    width: 100%;
+
+    .profile-row {
+        margin: 0;
+    }
+}
+
+.profile-field {
+    margin-bottom: 1.5rem;
+    padding: 0.75rem;
+    background: var(--sc-card-background-colour, #dedfde);
+    border-radius: 8px;
+    border-left: 4px solid var(--sc-secondary-color3, #7AB3E1);
+
+    .profile-label {
+        color: var(--sc-primary-colour2, #727572);
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+
+    .profile-value {
+        color: var(--sc-primary-colour1, #0F1F38);
+        font-weight: 500;
+        word-break: break-word;
+    }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+    .profile-container {
+        padding: 0.5rem;
+    }
+    
+    .profile-avatar {
+        width: 70px;
+        height: 70px;
+
+        .avatar-initials {
+            font-size: 1.75rem;
+        }
+    }
+}

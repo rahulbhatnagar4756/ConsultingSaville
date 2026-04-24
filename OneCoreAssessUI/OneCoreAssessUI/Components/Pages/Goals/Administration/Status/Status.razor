@@ -1,0 +1,268 @@
+﻿@using Library.API.Goals.Models.Status
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@implements IDisposable
+
+<RadzenStack Orientation="Orientation.Horizontal">
+    <RadzenIcon Icon="clock_loader_40" Style="font-size: 34px;" />
+    <RadzenText Text="Goal Status" Style="font-weight: 700; font-size: 25px;" />
+</RadzenStack>
+
+<RadzenStack Orientation="Orientation.Horizontal" class="mb-3" Style="gap: 8px;">
+    <RadzenTextBox @bind-Value="_searchTerm"
+                   @oninput="@OnSearchInput"
+                   Placeholder="Search status..."
+                   Style="width: 100%;" />
+    @if (!string.IsNullOrWhiteSpace(_searchTerm))
+    {
+        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Click="@ClearSearch" />
+    }
+    <RadzenButton Icon="add" title="Add Status" Click="@(async () => await EditStatus(new StatusModel()))" />
+</RadzenStack>
+
+@* Loading Indicator *@
+@if (_isLoading)
+{
+    <RadzenCard class="rz-text-align-center rz-p-4">
+        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" Gap="1rem">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Medium" />
+            <RadzenText Text="Loading status records..." />
+        </RadzenStack>
+    </RadzenCard>
+}
+else if (_filteredStatus != null)
+{
+    @* Data Grid *@
+    <RadzenDataGrid @ref="@_dataGrid"
+                    Data="@_filteredStatus"
+                    TItem="StatusModel"
+                    AllowPaging="true"
+                    AllowSorting="true"
+                    AllowColumnResize="true"
+                    AllowFiltering="true"
+                    PageSize="50"
+                    PagerHorizontalAlign="HorizontalAlign.Left"
+                    ShowPagingSummary="true"
+                    PagingSummaryFormat="@("{0} - {1} of {2} status records")"
+                    EmptyText="No status records found."
+                    class="rz-mt-3">
+
+        <Columns>
+            <RadzenDataGridColumn TItem="StatusModel" Property="Name" Title="Name" Width="200px">
+                <Template Context="status">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenText Text="@status.Name" Style="font-weight: 500;" />
+                    </RadzenStack>
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="StatusModel" Property="Description" Title="Description" Width="400px">
+                <Template Context="status">
+                    <RadzenText Text="@(TruncateText(status.Description, 60))" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="StatusModel" Property="OrderVal" Title="Display Order" Width="80px" TextAlign="TextAlign.Center" />
+               
+
+
+            <RadzenDataGridColumn TItem="StatusModel" Title="Actions" Width="100px" Sortable="false" Filterable="false">
+                <Template Context="status">
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                        <RadzenButton Icon="edit"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => EditStatus(status))"
+                                      Tooltip="Edit Status" />
+                        <RadzenButton Icon="delete"
+                                      Variant="Variant.Text"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Click="@(() => DeleteStatus(status))"
+                                      Tooltip="Delete Status" />
+                    </RadzenStack>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+    @* Summary *@
+    <RadzenCard class="rz-mt-3">
+        <RadzenText Text="@($"Total: {_filteredStatus.Count} status records")" Style="font-weight: 500;" />
+    </RadzenCard>
+}
+else
+{
+    <RadzenCard class="rz-text-align-center rz-p-4">
+        <RadzenText Text="No status records available." />
+    </RadzenCard>
+}
+
+@code {
+    [Inject] private IStatusService StatusService { get; set; }
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<StatusModel>? _status = null;
+    private List<StatusModel>? _filteredStatus = null;
+    private RadzenDataGrid<StatusModel>? _dataGrid;
+    private string _searchTerm = string.Empty;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the OnDataRefresh event if using sidebar
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+        await LoadData();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _status = await StatusService.GetStatus();
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading status records: {ex.Message}");
+            // Handle error as needed - could show a notification
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadStatus()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            _status = await StatusService.GetStatus();
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading status records: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? string.Empty;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (_status == null)
+        {
+            _filteredStatus = null;
+            return;
+        }
+
+        var filtered = _status.AsEnumerable();
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            var searchLower = _searchTerm.ToLower();
+            filtered = filtered.Where(s =>
+                (s.Name?.ToLower().Contains(searchLower) ?? false) ||
+                (s.Description?.ToLower().Contains(searchLower) ?? false)
+            );
+        }
+
+        _filteredStatus = filtered.OrderBy(s => s.OrderVal).ThenBy(s => s.Name).ToList();
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        _searchTerm = string.Empty;
+        ApplyFilter();
+    }
+
+    private string TruncateText(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text))
+            return "-";
+
+        return text.Length <= maxLength ? text : $"{text[..maxLength]}...";
+    }
+
+    private async Task EditStatus(StatusModel status)
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.SharedContext = status;
+            _rightSidebarService.Open(Enumerables.ControlTypes.sb_Goals_Administration_Status);
+        }
+    }
+
+    private async Task DeleteStatus(StatusModel status)
+    {
+        try
+        {
+            var result = await StatusService.DeleteStatus(status.UUID);
+            if (result?.isValid == true)
+            {
+                await LoadStatus(); // Refresh the list
+                // Show success notification
+            }
+            else
+            {
+                // Show error notification
+                Console.WriteLine($"Delete failed: {result?.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting status: {ex.Message}");
+        }
+    }
+
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Only respond to refresh events for status records
+        if (controlType == Enumerables.ControlTypes.sb_Goals_Administration_Status)
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadStatus();
+            });
+        }
+    }
+
+    public async Task RefreshData()
+    {
+        await LoadData();
+    }
+
+    public void Dispose()
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+        }
+    }
+}

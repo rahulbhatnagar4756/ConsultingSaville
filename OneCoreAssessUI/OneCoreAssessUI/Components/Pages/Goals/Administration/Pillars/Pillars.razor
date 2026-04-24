@@ -1,0 +1,105 @@
+﻿@using Library.API.Goals.Models.Pillars
+@using Library.API.Goals.Services
+@using OneCoreAssessUI.Components.Pages.Tools
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@implements IDisposable
+
+<RadzenStack class="container">
+    <RadzenStack Orientation="Orientation.Horizontal">
+        <RadzenIcon Icon="account_balance" Style="font-size: 34px;" />
+        <RadzenText Text="Pillars" Style="font-weight: 700; font-size: 25px;" />
+    </RadzenStack>
+    @if (_pillars != null)
+    {
+        <MultiListExtra Data=@_pillars
+                        TItem="PillarsModel"
+                        Name="Pillars" 
+                        IconName="Icons"
+                        OnAddNew="OnAddNew_Click"
+                        OnItemSelect="RowSelect_Click"
+                        isStats=false
+                        ShowCategories=false>
+            <Columns>
+                <RadzenDataGridColumn TItem="PillarsModel" Property="OrderVal" title="Order" Width="60px" Filterable=false />
+            </Columns>
+        </MultiListExtra>
+    }
+</RadzenStack>
+
+@code {
+    [Inject] public IPillarsServices PillarsService { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private List<PillarsModel>? _pillars = null;
+    private PillarsModel? _pillarSelected = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to the OnDataRefresh event
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        }
+
+        await LoadPillars();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task LoadPillars()
+    {
+        try
+        {
+            // Load pillars from the service
+            _pillars = await PillarsService.GetPillars();
+            // Trigger state change to update UI
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading pillars: {ex.Message}");
+            // Handle error as needed
+        }
+    }
+
+    private async void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Only respond to refresh events for our specific control type
+        if (controlType == Enumerables.ControlTypes.sb_Goals_Administration_Pillars)
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadPillars();
+            });
+        }
+    }
+
+    private async Task RowSelect_Click(PillarsModel? pillar)
+    {
+        _pillarSelected = pillar;
+        _rightSidebarService.SharedContext = pillar;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Goals_Administration_Pillars);
+    }
+
+    private async Task OnAddNew_Click()
+    {
+        _pillarSelected = null;
+        _rightSidebarService.Open(Enumerables.ControlTypes.sb_Goals_Administration_Pillars, true);
+    }
+
+    /// <summary>
+    /// Public method that can be called externally to refresh data
+    /// </summary>
+    public async Task RefreshData()
+    {
+        await LoadPillars();
+    }
+
+    public void Dispose()
+    {
+        if (_rightSidebarService != null)
+        {
+            _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+        }
+    }
+}

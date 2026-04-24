@@ -1,0 +1,895 @@
+﻿@implements IDisposable
+
+@using Library.API.Goals.Mappers
+@using Library.API.Goals.Models
+@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Models.Templates
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Models
+@using OneCoreAssessUI.Services
+@using OneCoreAssessUI.Enumerables
+
+@inject DialogService DialogService
+
+@if (_contract != null)
+{
+    <!-- 1. Contract Information Card -->
+    <RadzenCard Class="mb-2" Style="background-color: #f8f9fa; border: 1px solid #dee2e6;">
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                <RadzenText TextStyle="TextStyle.H5" Style="font-weight: bold; margin-bottom: 0.5rem;">
+                    @_contract.ContractOwnerName
+                </RadzenText>
+                <RadzenButton Icon="refresh"
+                              Size="ButtonSize.Small"
+                              ButtonStyle="ButtonStyle.Light"
+                              Click="@LoadContract"
+                              title="Refresh Contract" />
+            </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Wrap="FlexWrap.Wrap">
+                <RadzenText TextStyle="TextStyle.Body2">
+                    <strong>Period:</strong> @_contract.ContractPeriods
+                </RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2">
+                    <strong>Start:</strong> @(_contract.DateStart?.ToString("yyyy-MM-dd") ?? "N/A")
+                </RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2">
+                    <strong>End:</strong> @(_contract.DateEnd?.ToString("yyyy-MM-dd") ?? "N/A")
+                </RadzenText>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenCard>
+
+    <!-- 2. Filter Buttons -->
+    <RadzenStack Class="mb-2" Style="padding: 0.75rem;">
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+            <RadzenText TextStyle="TextStyle.Body1" Style="font-weight: 600; margin-right: 0.5rem;">
+                Filter:
+            </RadzenText>
+            <RadzenButton Text="ALL" 
+                          Size="ButtonSize.Small"
+                          ButtonStyle="@(_currentFilter == FilterType.All ? ButtonStyle.Primary : ButtonStyle.Light)"
+                          Click="@(() => SetFilter(FilterType.All))" />
+            <RadzenButton Text="Pillar" 
+                          Size="ButtonSize.Small"
+                          ButtonStyle="@(_currentFilter == FilterType.Pillar ? ButtonStyle.Primary : ButtonStyle.Light)"
+                          Click="@(() => SetFilter(FilterType.Pillar))" />
+            <RadzenButton Text="KPA" 
+                          Size="ButtonSize.Small"
+                          ButtonStyle="@(_currentFilter == FilterType.KPA ? ButtonStyle.Primary : ButtonStyle.Light)"
+                          Click="@(() => SetFilter(FilterType.KPA))" />
+
+            @if(Pillars != null)
+            {
+                foreach(var pillar in Pillars)
+                {
+                    <RadzenButton Text="@pillar.Name" 
+                                  Size="ButtonSize.Small"
+                                  ButtonStyle="@(_currentPillarFilter == pillar.UUID ? ButtonStyle.Primary : ButtonStyle.Light)"
+                                  Click="@(() => SetFilterPillar(pillar.UUID))" />
+                }
+            }
+
+        </RadzenStack>
+    </RadzenStack>
+
+    <!-- 3. Enterprise Structure Tabs -->
+    @if (_contract.EnterpriseStructures?.Any() == true)
+    {
+        <RadzenTabs>
+            <Tabs>
+                @foreach (var enterpriseStructure in _contract.EnterpriseStructures)
+                {
+                    <RadzenTabsItem Text="@enterpriseStructure.Name">
+                        <Template>
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                @if (!string.IsNullOrEmpty(enterpriseStructure.Icons))
+                                {
+                                    <RadzenIcon Icon="@enterpriseStructure.Icons" 
+                                               Style="@GetIconStyle(enterpriseStructure.IconColor)" />
+                                }
+                                <RadzenText>@enterpriseStructure.Name</RadzenText>
+                            </RadzenStack>
+                        </Template>
+
+                        <ChildContent>
+                            <!-- 4. Pillars -->
+                            @if (enterpriseStructure.Pillars?.Any() == true)
+                            {
+                                <RadzenStack Orientation="Orientation.Vertical" Gap="1rem" Class="mt-3">
+                                    @foreach (var pillar in enterpriseStructure.Pillars)
+                                    {
+                                        <div name="foundme" Style="@ShouldShowPillarSection(pillar.UUID)">
+
+                                            <!-- Pillar Box -->
+                                            <RadzenCard Style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1rem;">
+                                                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                        @if (!string.IsNullOrEmpty(pillar.Icons))
+                                                        {
+                                                            <RadzenIcon Icon="@pillar.Icons" 
+                                                                       Style="@GetPillarIconStyle(pillar.IconColor)" />
+                                                        }
+                                                        <RadzenText TextStyle="TextStyle.Subtitle1" Style="font-weight: 600;">
+                                                            @pillar.Name
+                                                        </RadzenText>
+                                                    </RadzenStack>
+                                                    <!-- Editable Pillar Weight -->
+                                                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                        <RadzenText Text="Weight:" Style="font-size: 0.875rem;" />
+                                                        <RadzenNumeric @bind-Value="pillar.Weight" 
+                                                                       Style="width: 90px; font-size: 0.875rem;" 
+                                                                       Step="1m" 
+                                                                       Format="F2" 
+                                                                       Min="0"  
+                                                                       Change="@((decimal? newValue) => OnPillarWeightChanged(pillar, newValue))" />
+                                                        @if (_savingPillars.Contains(pillar.UUID))
+                                                        {
+                                                            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.ExtraSmall" />
+                                                        }
+                                                    </RadzenStack>
+                                                </RadzenStack>
+
+                                                <!-- 5. KPAs under each Pillar (Show based on filter) -->
+                                                @if (ShouldShowKPASection())
+                                                {
+                                                    <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mt-3">
+                                                        <!-- Add KPA Button -->
+                                                        <RadzenCard Style="border: 2px dashed #dee2e6; background-color: transparent; cursor: pointer;" 
+                                                                   @onclick="@(() => OpenAddKPA(pillar.ContractPillarsUUID))">
+                                                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                                                <RadzenText TextStyle="TextStyle.Body2" Style="color: #6c757d;">
+                                                                    Add KPA
+                                                                </RadzenText>
+                                                                <RadzenIcon Icon="add" Style="color: #6c757d;" />
+                                                            </RadzenStack>
+                                                        </RadzenCard>
+
+                                                        <!-- Existing KPAs -->
+                                                        @if (pillar.KPA?.Any() == true)
+                                                        {
+                                                            @foreach (var kpa in pillar.KPA)
+                                                            {
+                                                                <RadzenCard Style="border-left: 4px solid #007bff; margin-left: 1rem;">
+                                                                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                                                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                                            <RadzenText TextStyle="TextStyle.Body1">@kpa.Name</RadzenText>
+                                                                            <RadzenBadge BadgeStyle="@(kpa.isActive ? BadgeStyle.Success : BadgeStyle.Secondary)" 
+                                                                                        Text="@(kpa.isActive ? "Active" : "Inactive")" />
+                                                                        </RadzenStack>
+                                                                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                                            <!-- Editable KPA Weight -->
+                                                                            <RadzenText Text="Weight:" Style="font-size: 0.75rem;" />
+                                                                            <RadzenNumeric @bind-Value="kpa.Weight" 
+                                                                                           Style="width: 90px; font-size: 0.75rem;" 
+                                                                                           Step="1m" 
+                                                                                           Format="F2" 
+                                                                                           Min="0" 
+                                                                                           Change="@((decimal? newValue) => OnKPAWeightChanged(kpa, newValue))" />
+                                                                            @if (_savingKPAs.Contains(kpa.UUID))
+                                                                            {
+                                                                                <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.ExtraSmall" />
+                                                                            }
+                                                                            <RadzenButton Icon="edit" 
+                                                                                          Size="ButtonSize.Small" 
+                                                                                          ButtonStyle="ButtonStyle.Info" 
+                                                                                          Click="@(() => EditKPA(kpa))" />
+                                                                            <RadzenButton Icon="delete" 
+                                                                                          Size="ButtonSize.Small" 
+                                                                                          ButtonStyle="ButtonStyle.Danger" 
+                                                                                          Click="@(() => DeleteKPAConfirm(kpa.UUID))" />
+                                                                        </RadzenStack>
+                                                                    </RadzenStack>
+
+                                                                    <!-- 6. KPIs under each KPA (Show only for ALL filter) -->
+                                                                    @if (ShouldShowKPISection())
+                                                                    {
+                                                                        <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" Class="mt-2">
+                                                                            <!-- Add KPI Button -->
+                                                                            <RadzenCard Style="border: 2px dashed #28a745; background-color: transparent; cursor: pointer; margin-left: 1rem;" 
+                                                                                       @onclick="@(() => OpenAddKPI(kpa.UUID))">
+                                                                                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                                                                    <RadzenText TextStyle="TextStyle.Caption" Style="color: #28a745;">
+                                                                                        Add KPI
+                                                                                    </RadzenText>
+                                                                                    <RadzenIcon Icon="add" Style="color: #28a745;" />
+                                                                                </RadzenStack>
+                                                                            </RadzenCard>
+
+                                                                            <!-- Existing KPIs -->
+                                                                            @if (kpa.KPI?.Any() == true)
+                                                                            {
+                                                                                @foreach (var kpi in kpa.KPI)
+                                                                                {
+                                                                                    <RadzenCard Style="border-left: 3px solid #28a745; margin-left: 2rem; background-color: #f8fff9;">
+                                                                                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                                                                <RadzenText TextStyle="TextStyle.Body2">@kpi.Name</RadzenText>
+                                                                                                <RadzenBadge BadgeStyle="@(kpi.isActive? BadgeStyle.Success: BadgeStyle.Secondary)"
+                                                                                                             Text="@(kpi.isActive ? "Active" : "Inactive")" />
+                                                                                                @if (!kpi.isScoreProcessing)
+                                                                                                {
+                                                                                                    <RadzenBadge BadgeStyle="BadgeStyle.Secondary"
+                                                                                                                 Text="No Score Processing" />
+                                                                                                }
+                                                                                            </RadzenStack>
+                                                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                                                                <!-- Editable KPI Weight -->
+                                                                                                <RadzenText Text="Weight:" Style="font-size: 0.7rem;" />
+                                                                                                <RadzenNumeric @bind-Value="kpi.Weight" 
+                                                                                                               Style="width: 90px; font-size: 0.75rem;" 
+                                                                                                               Step="1m" 
+                                                                                                               Format="F2" 
+                                                                                                               Min="0"  
+                                                                                                               Change="@((decimal? newValue) => OnKPIWeightChanged(kpi, newValue))" />
+                                                                                                @if (_savingKPIs.Contains(kpi.UUID))
+                                                                                                {
+                                                                                                    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.ExtraSmall" />
+                                                                                                }
+                                                                                                <RadzenButton Icon="edit" 
+                                                                                                              Size="ButtonSize.Small" 
+                                                                                                              ButtonStyle="ButtonStyle.Info" 
+                                                                                                              Click="@(() => EditKPI(kpi))" />
+
+
+                                                                                                <RadzenButton Icon="delete" 
+                                                                                                              Size="ButtonSize.Small" 
+                                                                                                              ButtonStyle="ButtonStyle.Danger" 
+                                                                                                              Click="@(() => DeleteKPIConfirm(kpi.UUID))" />
+                                                                                            </RadzenStack>
+                                                                                        </RadzenStack>
+                                                                                    </RadzenCard>
+                                                                                }
+                                                                            }
+
+                                                                            <!-- 7. Linked KPIs (only show if not a template and ALL filter) -->
+                                                                            @if (!_contract.isTemplate && kpa.Linked?.Any() == true)
+                                                                            {
+                                                                                <!-- Add Linked KPI Button -->
+                                                                                <RadzenCard Style="border: 2px dashed #ffc107; background-color: transparent; cursor: pointer; margin-left: 1rem;" 
+                                                                                           @onclick="@(() => OpenAddLinked(kpa.UUID))">
+                                                                                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                                                                        <RadzenText TextStyle="TextStyle.Caption" Style="color: #ffc107;">
+                                                                                            Add Linked
+                                                                                        </RadzenText>
+                                                                                        <RadzenIcon Icon="add" Style="color: #ffc107;" />
+                                                                                    </RadzenStack>
+                                                                                </RadzenCard>
+
+                                                                                @foreach (var Linked in kpa.Linked)
+                                                                                {
+                                                                                    <RadzenCard Style="border-left: 3px solid #ffc107; margin-left: 2rem; background-color: #fffbf0;">
+                                                                                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                                                                            <RadzenStack Orientation="Orientation.Vertical">
+
+                                                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                                                                <RadzenText TextStyle="TextStyle.Body2">@Linked.Name</RadzenText>
+                                                                                                <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text=@Linked.KPALinkTypes />
+
+                                                                                            </RadzenStack>
+                                                                                                <RadzenText TextStyle="TextStyle.Body2" Style="line-height: 5px; font-size: 12px;"><b>Employee:</b> @Linked.Fullname</RadzenText>
+                                                                                            </RadzenStack> 
+                                                                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                                                                                                <!-- Editable KPI Linked Weight -->
+                                                                                                <RadzenText Text="Weight:" Style="font-size: 0.7rem;" />
+                                                                                                <RadzenNumeric @bind-Value="Linked.Weight" 
+                                                                                                               Style="width: 90px; font-size: 0.7rem;" 
+                                                                                                               Step="1m" 
+                                                                                                               Format="F2" 
+                                                                                                               Min="0" 
+                                                                                                               Max="100"
+                                                                                                               Change="@((decimal? newValue) => OnKPILinkedWeightChanged(Linked, newValue))" />
+                                                                                                @if (_savingKPILinked.Contains(Linked.UUID))
+                                                                                                {
+                                                                                                    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.ExtraSmall" />
+                                                                                                }
+                                                                                                <RadzenButton Icon="delete" 
+                                                                                                              Size="ButtonSize.Small" 
+                                                                                                              ButtonStyle="ButtonStyle.Danger" 
+                                                                                                              Click="@(() => DeleteLinkedConfirm(Linked.KPALinkUUID, Linked.KPALinkTypes))" />
+                                                                                            </RadzenStack>
+                                                                                        </RadzenStack>
+                                                                                    </RadzenCard>
+                                                                                }
+                                                                            }
+                                                                            else if (!_contract.isTemplate)
+                                                                            {
+                                                                                <!-- Add Linked KPI Button when no linked KPIs exist -->
+                                                                                <RadzenCard Style="border: 2px dashed #ffc107; background-color: transparent; cursor: pointer; margin-left: 1rem;" 
+                                                                                           @onclick="@(() => OpenAddLinked(kpa.UUID))">
+                                                                                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                                                                        <RadzenText TextStyle="TextStyle.Caption" Style="color: #ffc107;">
+                                                                                            Add Linked KPI
+                                                                                        </RadzenText>
+                                                                                        <RadzenIcon Icon="add" Style="color: #ffc107;" />
+                                                                                    </RadzenStack>
+                                                                                </RadzenCard>
+                                                                            }
+                                                                        </RadzenStack>
+                                                                    }
+                                                                </RadzenCard>
+                                                            }
+                                                        }
+                                                    </RadzenStack>
+                                                }
+                                            </RadzenCard>
+
+                                        </div>
+                                    }
+                                </RadzenStack>
+                            }
+                        </ChildContent>
+                    </RadzenTabsItem>
+                }
+            </Tabs>
+        </RadzenTabs>
+    }
+}
+else
+{
+    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter">
+        Loading contract information...
+    </RadzenAlert>
+}
+
+@code {
+    [Inject] public IContractsService _contractsService { get; set; }
+    [Inject] public IKPIService _kpiService { get; set; }
+    [Inject] public IKPAService _kpaService { get; set; }
+    [Inject] public IKPALinksService _kpaLinksService { get; set; }
+
+    [CascadingParameter] public LayoutCascadeMenuModel _menuNav { get; set; }
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private string? _ContractsUUID;
+    private string? _templatesUUID;
+    private ContractsModel? _contract = null;
+    private ResultsModel _logMessage;
+
+    private List<NamesModel>? Pillars = null;
+
+    // Filter functionality
+    private FilterType _currentFilter = FilterType.All;
+    private string _currentPillarFilter = null;
+
+    public enum FilterType
+    {
+        All,
+        Pillar,
+        KPA
+    }
+
+    // Track saving states for loading indicators
+    private HashSet<string> _savingPillars = new();
+    private HashSet<string> _savingKPAs = new();
+    private HashSet<string> _savingKPIs = new();
+    private HashSet<string> _savingKPILinked = new();
+
+    // Debounce timers for weight updates
+    private Dictionary<string, Timer> _pillarTimers = new();
+    private Dictionary<string, Timer> _kpaTimers = new();
+    private Dictionary<string, Timer> _kpiTimers = new();
+    private Dictionary<string, Timer> _kpiLinkedTimers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rightSidebarService.OnDataRefresh += HandleDataRefresh;
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Get data if it's sent to the right sidebar area
+        var contextString = _menuNav.GetSharedContext<string>();
+
+        var parts = contextString?.Split(';').Select(p => p.Split('=')).ToDictionary(a => a[0], a => a[1]);
+
+        string ContractsUUID = parts["ContractsUUID"];
+        _templatesUUID = parts["TemplatesUUID"];
+
+
+        if (_ContractsUUID != ContractsUUID )
+        {
+            _ContractsUUID = ContractsUUID;
+            //load the new contract up
+            await LoadContract();
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadContract()
+    {
+        _contract = await _contractsService.GetContract(_ContractsUUID);
+        getPillars();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void getPillars()
+    {
+        if (_contract != null)
+        {
+            if (_contract?.EnterpriseStructures != null)
+            {
+                Pillars = _contract.EnterpriseStructures
+                    .SelectMany(es => es.Pillars ?? new List<ContractPillarModel>())
+                    .Where(pillar => !string.IsNullOrEmpty(pillar.UUID) && !string.IsNullOrEmpty(pillar.Name))
+                    .OrderBy(x => x.Name)
+                    .GroupBy(pillar => pillar.UUID)
+                    .Select(group => new NamesModel
+                    {
+                        UUID = group.Key,
+                        Name = group.First().Name
+                    })
+                    .ToList();
+            }
+            else
+            {
+                Pillars = new List<NamesModel>();
+            }
+        }
+    }
+
+    // Filter methods
+    private void SetFilter(FilterType filterType)
+    {
+        _currentFilter = filterType;
+        _currentPillarFilter = "";
+        StateHasChanged();
+    }
+
+    private void SetFilterPillar(string? pillarUUID)
+    {
+        _currentPillarFilter = pillarUUID; // Set the pillar UUID, not null
+        _currentFilter = FilterType.All; // Reset general filter when selecting specific pillar
+        StateHasChanged();
+    }
+
+    private string ShouldShowPillarSection(string? pillarsUUID)
+    {
+        // If no specific pillar filter is set, show based on general filter
+        if (string.IsNullOrEmpty(_currentPillarFilter))
+        {
+            if( _currentFilter == FilterType.All || 
+                   _currentFilter == FilterType.Pillar || 
+                   _currentFilter == FilterType.KPA)
+            {
+                return "";
+                StateHasChanged();
+            }
+        }
+
+        // If a specific pillar is selected, only show that pillar
+        if(pillarsUUID != _currentPillarFilter)
+        {
+            return "display: none";
+             StateHasChanged();
+        }
+
+        return "";
+         StateHasChanged();
+    }
+
+    private bool ShouldShowKPASection()
+    {
+        return _currentFilter == FilterType.All || 
+               _currentFilter == FilterType.KPA;
+
+        // return _currentFilter == FilterType.All || 
+        //        _currentFilter == FilterType.KPA || 
+        //        _currentPillarFilter != null;
+    }
+
+    private bool ShouldShowKPISection()
+    {
+        return _currentFilter == FilterType.All;
+        // return _currentFilter == FilterType.All ||
+        //        _currentPillarFilter != null;
+    }
+
+    // Handle data refresh events from the sidebar
+    private void HandleDataRefresh(ControlTypes controlType)
+    {
+        // Check if the refresh event is relevant to this component
+        if (controlType == ControlTypes.sb_Goals_Contracts_KPA || 
+            controlType == ControlTypes.sb_Goals_Contracts_KPI ||
+            controlType == ControlTypes.sb_Goals_Contracts_Linked)
+        {
+            InvokeAsync(async () =>
+                {
+                    await LoadContract();
+                    StateHasChanged();
+                });
+        }
+    }
+
+    // Style helper methods
+    private string GetIconStyle(string? iconColor)
+    {
+        return $"color: {iconColor ?? "#000000"};";
+    }
+
+    private string GetPillarIconStyle(string? iconColor)
+    {
+        return $"color: {iconColor ?? "#000000"}; font-size: 1.2rem;";
+    }
+
+    // Weight change handlers with debouncing
+    private void OnPillarWeightChanged(ContractPillarModel pillar, decimal? newValue)
+    {
+        if (pillar?.UUID == null || newValue == null) return;
+
+        // Cancel existing timer
+        if (_pillarTimers.TryGetValue(pillar.UUID, out var existingTimer))
+        {
+            existingTimer.Dispose();
+        }
+
+        // Create new debounced timer
+        _pillarTimers[pillar.UUID] = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await SavePillarWeight(pillar, newValue.Value);
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromMilliseconds(1000), Timeout.InfiniteTimeSpan);
+    }
+
+    private void OnKPAWeightChanged(ContractKPAModel kpa, decimal? newValue)
+    {
+        if (kpa?.UUID == null || newValue == null) return;
+
+        // Cancel existing timer
+        if (_kpaTimers.TryGetValue(kpa.UUID, out var existingTimer))
+        {
+            existingTimer.Dispose();
+        }
+
+        // Create new debounced timer
+        _kpaTimers[kpa.UUID] = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await SaveKPAWeight(kpa, newValue.Value);
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromMilliseconds(1000), Timeout.InfiniteTimeSpan);
+    }
+
+    private void OnKPIWeightChanged(ContractKPIModel kpi, decimal? newValue)
+    {
+        if (kpi?.UUID == null || newValue == null) return;
+
+        // Cancel existing timer
+        if (_kpiTimers.TryGetValue(kpi.UUID, out var existingTimer))
+        {
+            existingTimer.Dispose();
+        }
+
+        // Create new debounced timer
+        _kpiTimers[kpi.UUID] = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await SaveKPIWeight(kpi, newValue.Value);
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromMilliseconds(1000), Timeout.InfiniteTimeSpan);
+    }
+
+    private void OnKPILinkedWeightChanged(ContractKPALinkedModel Linked, decimal? newValue)
+    {
+        if (Linked?.UUID == null || newValue == null) return;
+
+        // Cancel existing timer
+        if (_kpiLinkedTimers.TryGetValue(Linked.UUID, out var existingTimer))
+        {
+            existingTimer.Dispose();
+        }
+
+        // Create new debounced timer
+        _kpiLinkedTimers[Linked.UUID] = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await SaveLinkedWeight(Linked, newValue.Value);
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromMilliseconds(1000), Timeout.InfiniteTimeSpan);
+    }
+
+    // Weight save methods (placeholder implementations - you'll need to implement the actual service calls)
+    private async Task SavePillarWeight(ContractPillarModel pillar, decimal weight)
+    {
+        if (pillar?.UUID == null) return;
+
+        try
+        {
+            _savingPillars.Add(pillar.UUID);
+            StateHasChanged();
+
+            // TODO: Implement pillar weight save service call
+            // await _contractsService.UpdatePillarWeight(pillar.UUID, weight);
+
+            // Simulate API call delay
+            await Task.Delay(500);
+
+            Console.WriteLine($"Saving pillar weight: {pillar.Name} = {weight}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving pillar weight: {ex.Message}");
+        }
+        finally
+        {
+            _savingPillars.Remove(pillar.UUID);
+        }
+    }
+
+    private async Task SaveKPAWeight(ContractKPAModel kpa, decimal weight)
+    {
+        if (kpa?.UUID == null) return;
+
+        try
+        {
+            _savingKPAs.Add(kpa.UUID);
+            StateHasChanged();
+
+            // TODO: Implement KPA weight save service call
+            // await _contractsService.UpdateKPAWeight(kpa.UUID, weight);
+
+            // Simulate API call delay
+            await Task.Delay(500);
+
+            Console.WriteLine($"Saving KPA weight: {kpa.Name} = {weight}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving KPA weight: {ex.Message}");
+        }
+        finally
+        {
+            _savingKPAs.Remove(kpa.UUID);
+        }
+    }
+
+    private async Task SaveKPIWeight(ContractKPIModel kpi, decimal weight)
+    {
+        if (kpi?.UUID == null) return;
+
+        try
+        {
+            _savingKPIs.Add(kpi.UUID);
+            StateHasChanged();
+
+            // TODO: Implement KPI weight save service call
+            // await _contractsService.UpdateKPIWeight(kpi.UUID, weight);
+
+            // Simulate API call delay
+            await Task.Delay(500);
+
+            Console.WriteLine($"Saving KPI weight: {kpi.Name} = {weight}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving KPI weight: {ex.Message}");
+        }
+        finally
+        {
+            _savingKPIs.Remove(kpi.UUID);
+        }
+    }
+
+    private async Task SaveLinkedWeight(ContractKPALinkedModel kpiLinked, decimal weight)
+    {
+        if (kpiLinked?.UUID == null) return;
+
+        try
+        {
+            _savingKPILinked.Add(kpiLinked.UUID);
+            StateHasChanged();
+
+            // TODO: Implement KPI Linked weight save service call
+            // await _contractsService.UpdateKPILinkedWeight(kpiLinked.UUID, weight);
+
+            // Simulate API call delay
+            await Task.Delay(500);
+
+            Console.WriteLine($"Saving KPI Linked weight: {kpiLinked.Name} = {weight}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving KPI Linked weight: {ex.Message}");
+        }
+        finally
+        {
+            _savingKPILinked.Remove(kpiLinked.UUID);
+        }
+    }
+
+    // Sidebar Methods
+    private void OpenAddKPA(string? contractPillarsUUID)
+    {
+        ContractKPASaveModel contract = new() 
+            { 
+                ContractPillarsUUID = contractPillarsUUID,
+                CompanyUUID = _contract.CompanyUUID,
+                UsersUUID = _contract.UsersUUID,
+                Weights= 100
+            };
+        // Set context for the pillar UUID and open sidebar for KPA creation
+        _rightSidebarService.Open(ControlTypes.sb_Goals_Contracts_KPA, contract);
+        StateHasChanged();
+    }
+
+    private void EditKPA(ContractKPAModel kpa)
+    {
+        if (kpa?.UUID == null) return;
+        // Set context for the KPA UUID and open sidebar for KPA editing
+        _rightSidebarService.Open(ControlTypes.sb_Goals_Contracts_KPA, kpa.ToContractKPASaveModel());
+        StateHasChanged();
+    }
+
+    private void OpenAddKPI(string? kpaUUID)
+    {
+        ContractKPISaveModel KPI = new ContractKPISaveModel()
+            {
+                KPAUUID = kpaUUID,
+                UsersUUID = _contract.UsersUUID,
+                DateStart = _contract.DateStart,
+                DateEnd = _contract.DateEnd,
+                Weights= 100,
+                Target = 100
+            };
+        // Set context for the KPA UUID and open sidebar for KPI creation
+        _rightSidebarService.Open(ControlTypes.sb_Goals_Contracts_KPI, KPI);
+        StateHasChanged();
+    }
+
+    private void OpenAddLinked(string? kpaUUID)
+    {
+        ContractLinkedSaveModel Linked = new ContractLinkedSaveModel()
+            {
+                ContractPeriodsUUID = _contract.ContractPeriodsUUID,
+                KPAUUID = kpaUUID,
+                Weight= 100
+            };
+        // Set context for the KPA UUID and open sidebar for Linked KPI creation
+        _rightSidebarService.Open(ControlTypes.sb_Goals_Contracts_Linked, Linked);
+        StateHasChanged();
+    }
+
+    private async Task EditKPI(ContractKPIModel kpi)
+    {
+        if (kpi?.UUID == null) return;
+        // Set context for the KPA UUID and open sidebar for KPI editing
+        ContractKPISaveModel Data = await kpi.ToContractKPISaveModel();
+        _rightSidebarService.Open(ControlTypes.sb_Goals_Contracts_KPI, Data);
+        StateHasChanged();
+    }
+
+    private async Task DeleteKPAConfirm(string? kpaUUID)
+    {
+        var result = await DialogService.Confirm("Are you sure you want to delete this KPA?", "Delete KPA", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (result.HasValue && result.Value)
+        {
+            await DeleteKPA(kpaUUID);
+        }
+    }
+
+    // Delete Methods (you'll need to implement these in your service)
+    private async Task DeleteKPA(string? kpaUUID)
+    {
+        if (!string.IsNullOrEmpty(kpaUUID))
+        {
+            // Implement KPA deletion logic
+            var results = await _kpaService.Delete(kpaUUID);
+            _logMessage = results;
+            await LoadContract(); // Refresh the contract data
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DeleteKPIConfirm(string? kpiUUID)
+    {
+        var result = await DialogService.Confirm("Are you sure you want to delete this KPI?", "Delete KPI", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (result.HasValue && result.Value)
+        {
+            await DeleteKPI(kpiUUID);
+        }
+    }
+
+    private async Task DeleteKPI(string? kpiUUID)
+    {
+        if (!string.IsNullOrEmpty(kpiUUID))
+        {
+
+            // Implement KPI deletion logic
+            var results = await _kpiService.Delete(kpiUUID);
+            _logMessage = results;
+            await LoadContract(); // Refresh the contract data
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DeleteLinkedConfirm(string? linkedUUID, string linkType)
+    {
+        var result = await DialogService.Confirm($"Are you sure you want to delete this Linked {linkType}?", $"Delete Linked {linkType}", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (result.HasValue && result.Value)
+        {
+            await DeleteLinked(linkedUUID);
+        }
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            // Unsubscribe from the data refresh event
+            if (_rightSidebarService != null)
+            {
+                _rightSidebarService.OnDataRefresh -= HandleDataRefresh;
+            }
+
+            // Cleanup timers with null checks
+            if (_pillarTimers != null)
+            {
+                foreach (var timer in _pillarTimers.Values)
+                {
+                    timer?.Dispose();
+                }
+                _pillarTimers.Clear();
+            }
+
+            if (_kpaTimers != null)
+            {
+                foreach (var timer in _kpaTimers.Values)
+                {
+                    timer?.Dispose();
+                }
+                _kpaTimers.Clear();
+            }
+
+            if (_kpiTimers != null)
+            {
+                foreach (var timer in _kpiTimers.Values)
+                {
+                    timer?.Dispose();
+                }
+                _kpiTimers.Clear();
+            }
+
+            if (_kpiLinkedTimers != null)
+            {
+                foreach (var timer in _kpiLinkedTimers.Values)
+                {
+                    timer?.Dispose();
+                }
+                _kpiLinkedTimers.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the exception if needed, but don't throw from Dispose
+            Console.WriteLine($"Error during component disposal: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteLinked(string? LinksUUID)
+    {
+        if (!string.IsNullOrEmpty(LinksUUID))
+        {
+            // Implement Linked KPI deletion logic
+            var results = await _kpaLinksService.Delete(LinksUUID);
+            _logMessage = results;
+            await LoadContract(); // Refresh the contract data
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}
+
+   
+  
+

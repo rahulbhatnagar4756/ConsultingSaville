@@ -1,0 +1,76 @@
+﻿@using Library.Frog.Services
+
+
+@if (Elements != null && Elements.Count() > 0 && Element != null)
+{
+    @foreach (var element in Elements.Where(x => x.FrogElementsUUIDLink == Element.FrogElementsUUID).ToList())
+    {
+
+        @if (element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Panel)
+        {
+            <OneCoreAssessUI.Components.Pages.FROG.Controls.PanelControl Element=@element
+                                                                       Elements=@Elements
+                                                                       CompanyUUID=@CompanyUUID
+                                                                       UsersUUIDLoggedIn=@UsersUUIDLoggedIn
+                                                                       Reloadpage="ReloadPageEvent" />
+        }
+
+        @if (element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Dropdown)
+        {
+            <OneCoreAssessUI.Components.Pages.FROG.Controls.DropdownControl Element=@element 
+                                                                            CompanyUUID=@CompanyUUID
+                                                                            UsersUUIDLoggedIn=@UsersUUIDLoggedIn/>
+        }
+
+        @if (element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Label)
+        {
+            <OneCoreAssessUI.Components.Pages.FROG.Controls.LabelControl Element=@element />
+        }
+
+        @if (element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Textbox)
+        {
+            <OneCoreAssessUI.Components.Pages.FROG.Controls.TextboxControl Element=@element />
+        }
+
+        @if (element.FrogControlInputTypesId == (int)Enumerables.FrogControlInputTypes.Button)
+        {
+            <OneCoreAssessUI.Components.Pages.FROG.Controls.ButtonControl Element=@element
+                                                                        CompanyUUID=@CompanyUUID
+                                                                        UsersUUIDLoggedIn=@UsersUUIDLoggedIn
+                                                                        Reloadpage="ReloadPageEvent" />
+        }
+    }
+}
+
+@code {
+    [Inject] IFrogService FrogService { get; set; }
+
+    [Parameter] public EventCallback<Library.Frog.Models.ResultModel> ReloadPage { get; set; }
+    [Parameter] public EventCallback<string> RedirectURL { get; set; }
+
+    [Parameter] public Library.Frog.Models.FrogElementModel Element { get; set; }
+    [Parameter] public List<Library.Frog.Models.FrogElementModel> Elements { get; set; }
+    [Parameter] public string CompanyUUID { get; set; }
+    [Parameter] public string UsersUUIDLoggedIn { get; set; }
+
+ 
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PopulateElement(Element);
+    }
+
+
+    private async Task PopulateElement(Library.Frog.Models.FrogElementModel element)
+    {
+        if (element.FrogLookupTypesId == null) return;
+        if (element == null || string.IsNullOrWhiteSpace(element.ResultValue)) return;
+    }
+
+
+ 
+
+    private async Task ReloadPageEvent(Library.Frog.Models.ResultModel result) =>
+        await ReloadPage.InvokeAsync(result);
+     
+}

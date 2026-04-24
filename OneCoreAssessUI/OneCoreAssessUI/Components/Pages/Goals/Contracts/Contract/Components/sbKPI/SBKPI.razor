@@ -1,0 +1,344 @@
+﻿@using Library.API.Base.Services.Users
+@using Library.API.Goals.Models
+@using Library.API.Goals.Models.Contracts
+@using Library.API.Goals.Models.RatingPeriod
+@using Library.API.Goals.Models.Status
+@using Library.API.Goals.Models.Tolerances
+@using Library.API.Goals.Services
+@using Library.API.Goals.Services.Contracts
+@using OneCoreAssessUI.Enumerables
+@using OneCoreAssessUI.Services
+@using Radzen
+@inject DialogService DialogService
+
+<!-- Header -->
+<RadzenStack class="header-custom">
+    <RadzenStack class="header-outer">
+        <RadzenStack>
+            <RadzenText TextStyle="TextStyle.DisplayH3" class="header-label" Text="KPI Details" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenStack>
+
+<RadzenStack Style="height: calc(100vh - 192px);">
+    <!-- Error/Success Message -->
+    @if (_logMessage != null && _logMessage.isValid.HasValue)
+    {
+        <div class="rz-alert @(_logMessage.isValid.Value ? "rz-success-light" : "rz-danger-light")" style="margin-bottom: 1rem; display: flex; align-items: center;">
+            <RadzenIcon Icon=@(_logMessage.isValid.Value ? "check_circle" : "error") Style="margin-right: 8px;" />
+            <span>@_logMessage.Message</span>
+        </div>
+    }
+
+    @if (_kpi != null)
+    {
+        <RadzenStack class="p-4" Style="flex: 1; overflow-y: auto;">
+            <!-- KPI Name -->
+            <RadzenColumn Size="12">
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Name *</RadzenText>
+                <RadzenTextBox Placeholder="Enter KPI Name..."
+                               @bind-Value="_kpi.Name"
+                               Style="width: 100%"
+                               aria-label="KPI Name" />
+            </RadzenColumn>
+
+            <!-- KPI Description -->
+            <RadzenColumn Size="12">
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Description</RadzenText>
+                <RadzenTextArea oninput="event.target.style.height = Math.max(event.target.clientHeight, event.target.scrollHeight) + 'px';"
+                                @bind-Value="_kpi.Description"
+                                Style="width: 100%"
+                                aria-label="Description" />
+            </RadzenColumn>
+
+
+
+
+
+            <RadzenColumn Size="12">
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Status</RadzenText>
+                <RadzenDropDown @bind-Value="_kpi.StatusUUID"
+                                Data="_statusList"
+                                Style="width: 100%;"
+                                TextProperty="Name"
+                                ValueProperty="UUID"
+                                Placeholder="Select Status..."
+                                Name="StatusDropDown" />
+            </RadzenColumn>
+
+            <!-- Tolerance Sets Dropdown -->
+            <RadzenColumn Size="12">
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Tolerance Set</RadzenText>
+                <RadzenDropDown @bind-Value="_kpi.ToleranceSetsUUID"
+                                Data="_toleranceSetsList"
+                                Style="width: 100%;"
+                                TextProperty="Name"
+                                ValueProperty="UUID"
+                                Placeholder="Select tolerance set..."
+                                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                FilterOperator="StringFilterOperator.Contains"
+                                AllowFiltering="true"
+                                Name="ToleranceSetsDropDown" />
+            </RadzenColumn>
+
+            <!-- Date Range -->
+            <RadzenRow>
+                <RadzenColumn Size="6">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Start Date</RadzenText>
+                    <RadzenDatePicker @bind-Value="_kpi.DateStart"
+                                      Style="width: 100%;"
+                                      DateFormat="dd MMM yyyy"
+                                      Placeholder="Select start date..."
+                                      aria-label="Start Date" />
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">End Date</RadzenText>
+                    <RadzenDatePicker @bind-Value="_kpi.DateEnd"
+                                      Style="width: 100%;"
+                                      DateFormat="dd MMM yyyy"
+                                      Placeholder="Select end date..."
+                                      aria-label="End Date" />
+                </RadzenColumn>
+            </RadzenRow>
+
+            <!-- Target and Weight -->
+            <RadzenRow>
+                <RadzenColumn Size="6">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Target *</RadzenText>
+                    <RadzenNumeric @bind-Value="_kpi.Target"
+                                   Style="width: 100%;"
+                                   Step="0.01m"
+                                   Format="F2"
+                                   Min="0"
+                                   Placeholder="Enter target..."
+                                   aria-label="Target" />
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Weight (%)</RadzenText>
+                    <RadzenNumeric @bind-Value="_kpi.Weights"
+                                   Style="width: 100%;"
+                                   Step="1m"
+                                   Format="F2"
+                                   Min="0"
+                                   Placeholder="Enter weight..."
+                                   aria-label="Weight" />
+                </RadzenColumn>
+            </RadzenRow>
+
+            <!-- Score Processing -->
+            <RadzenColumn Size="12">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenCheckBox @bind-Value="_kpi.isScoreProcessing" Name="isScoreProcessingCheckbox" />
+                    <RadzenLabel Text="Enable Score Processing" Component="isScoreProcessingCheckbox" Style="margin-left: 8px;" />
+                </RadzenStack>
+            </RadzenColumn>
+
+            <!-- Action Buttons -->
+            <RadzenColumn Size="12" class="mt-1">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" style="width: 100%">
+                    <RadzenButton style="flex: 1;"
+                                  Icon="save"
+                                  BusyText="Saving..."
+                                  IsBusy="_isSaving"
+                                  Click="@OnSave_Click"
+                                  Text="Save" />
+
+                    @if (!string.IsNullOrEmpty(_kpi?.UUID))
+                    {
+                        <RadzenButton Icon="delete"
+                                      Style="color: #fff; background-color: var(--rz-danger); width: 40px; min-width: 40px;"
+                                      IsBusy="_isSaving"
+                                      Click="OnDelete_Confirm" />
+                    }
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenStack>
+    }
+
+</RadzenStack>
+@code {
+    [Inject] public IKPIService KPIService { get; set; }
+    [Inject] public IStatusService StatusService { get; set; }
+    [Inject] public IUsersService UsersService { get; set; }
+    [Inject] public ITolerancesServices ToleranceSetsService { get; set; }
+    [Inject] public IRatingPeriodsServices RatingPeriodsService { get; set; }
+
+    [CascadingParameter] public RightSidebarService _rightSidebarService { get; set; }
+
+    private ResultsModel? _logMessage = null;
+    private ContractKPISaveModel _kpi = new();
+    private ContractKPISaveModel? _kpiCurrent = null;
+    private bool _isSaving = false;
+    private List<StatusModel>? _statusList = new();
+    private List<ToleranceSetsModel>? _toleranceSetsList = new(); 
+    private List<RatingPeriodDto>? _ratingPeriodList = new();
+    private string? _kpaUUID;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDropdownData();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Get the KPA UUID from the shared context (set when "Add KPI" was clicked)
+        _kpi = _rightSidebarService.GetSharedContext<ContractKPISaveModel>();
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task LoadDropdownData()
+    {
+        try
+        {
+            var loadTasks = new List<Task>
+            {
+                LoadStatusList(),
+                LoadToleranceSetsList() 
+            };
+
+            await Task.WhenAll(loadTasks);
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error loading data: {ex.Message}" };
+        }
+    }
+
+    private async Task LoadStatusList()
+    {
+        try
+        {
+            _statusList = await StatusService.GetStatus();
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error loading status list: {ex.Message}" };
+        }
+    }
+
+    private async Task LoadToleranceSetsList()
+    {
+        try
+        {
+            _toleranceSetsList = await ToleranceSetsService.GetToleranceSets();
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error loading tolerance sets: {ex.Message}" };
+        }
+    }
+
+    private async Task LoadRatingPeriodsList()
+    {
+        try
+        {
+            _ratingPeriodList = await RatingPeriodsService.GetRatingPeriodTypes();
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error loading rating Period list: {ex.Message}" };
+        }
+    }
+
+    private async Task OnSave_Click()
+    {
+        if (_kpi == null || string.IsNullOrWhiteSpace(_kpi.Name))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Please enter a name for the KPI." };
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_kpi.UsersUUID))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Please select a target user." };
+            return;
+        }
+
+        if (_kpi.Target <= 0)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Target must be greater than 0." };
+            return;
+        }
+
+        // Validate date range
+        if (_kpi.DateStart.HasValue && _kpi.DateEnd.HasValue && _kpi.DateStart > _kpi.DateEnd)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Start date must be before end date." };
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+
+            _logMessage = await KPIService.Save(_kpi);
+
+            if (_logMessage != null && _logMessage.isValid == true && !string.IsNullOrEmpty(_kpi.UUID))
+            {
+                _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_Contracts_KPI);
+                // New KPI was created, update the UUID
+                _kpi.UUID = _logMessage.UUID;
+            }
+
+            // Trigger data refresh for the main contract view
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error saving KPI: {ex.Message}" };
+            Console.WriteLine($"Error saving KPI: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task OnDelete_Confirm()
+    {
+        var result = await DialogService.Confirm("Are you sure you want to delete this KPI?", "Delete KPI", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (result.HasValue && result.Value)
+        {
+            await OnDelete_Click();
+        }
+    }
+
+    private async Task OnDelete_Click()
+    {
+        if (string.IsNullOrEmpty(_kpi?.UUID))
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = "Cannot delete: KPI UUID is missing." };
+            return;
+        }
+
+        try
+        {
+            _isSaving = true;
+
+            _logMessage = await KPIService.Delete(_kpi.UUID);
+
+            if (_logMessage?.isValid == true)
+            {
+                // Trigger data refresh for the main contract view
+                _rightSidebarService.TriggerDataRefresh(ControlTypes.sb_Goals_Contracts_KPI);
+                // Close the sidebar
+                _rightSidebarService.Close();
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            _logMessage = new ResultsModel { isValid = false, Message = $"Error deleting KPI: {ex.Message}" };
+            Console.WriteLine($"Error deleting KPI: {ex.Message}");
+        }
+        finally
+        {
+            _isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}
